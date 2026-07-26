@@ -80,16 +80,17 @@ export async function prepareImage(file: File, maxSide = 1600): Promise<Prepared
 
     const bitmap = await createImageBitmap(canvas);
 
-    const originalScale = 1 / scale;
+    const originalScaleX = source.width / width;
+    const originalScaleY = source.height / height;
     return {
       bitmap,
       width,
       height,
       toOriginal: (rect) => ({
-        x: rect.x * originalScale,
-        y: rect.y * originalScale,
-        width: rect.width * originalScale,
-        height: rect.height * originalScale,
+        x: rect.x * originalScaleX,
+        y: rect.y * originalScaleY,
+        width: rect.width * originalScaleX,
+        height: rect.height * originalScaleY,
       }),
     };
   } finally {

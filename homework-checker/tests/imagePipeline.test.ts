@@ -40,4 +40,33 @@ describe("prepareImage", () => {
     expect(prepared.toOriginal({ x: 60, y: 80, width: 120, height: 40 }))
       .toEqual({ x: 120, y: 160, width: 240, height: 80 });
   });
+
+  it("uses each rounded output dimension for coordinate mapping", async () => {
+    const context: CanvasContextStub = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(100 * 33 * 4) })),
+      putImageData: vi.fn(),
+    };
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => context),
+    };
+    const file = testImageFile(1000, 333);
+    vi.spyOn(document, "createElement").mockReturnValue(canvas as unknown as HTMLCanvasElement);
+    vi.stubGlobal("createImageBitmap", vi.fn(async (source) => {
+      if (source === file) return file.__dimensions!;
+      return { width: canvas.width, height: canvas.height };
+    }));
+
+    const prepared = await prepareImage(file, 100);
+
+    expect(prepared).toMatchObject({ width: 100, height: 33 });
+    expect(prepared.toOriginal({ x: 10, y: 10, width: 20, height: 10 })).toEqual({
+      x: 100,
+      y: (333 / 33) * 10,
+      width: 200,
+      height: (333 / 33) * 10,
+    });
+  });
 });
