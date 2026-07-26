@@ -13,6 +13,7 @@ import type { OcrWorkerEvent, QuestionRegion } from "./ocr.types";
 import { segmentQuestions } from "./questionSegmenter";
 
 const closeBitmap = (prepared: PreparedImage | null) => prepared?.bitmap.close?.();
+const DOWNLOAD_URL_REVOKE_DELAY_MS = 1_000;
 
 export type OcrWorkerFactory = () => Worker;
 
@@ -23,6 +24,8 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
   const ocrWorkerRef = useRef<Worker | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const requestId = useRef(0);
+  const exportRequestId = useRef(0);
+  const downloadUrlTimers = useRef(new Map<string, ReturnType<typeof window.setTimeout>>());
   const [asset, setAsset] = useState<SessionAsset | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +41,12 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
 
   const releaseCurrent = useCallback(() => {
     requestId.current += 1;
+    exportRequestId.current += 1;
+    for (const [url, timer] of downloadUrlTimers.current) {
+      window.clearTimeout(timer);
+      URL.revokeObjectURL(url);
+    }
+    downloadUrlTimers.current.clear();
     assetRef.current?.release();
     closeBitmap(preparedRef.current);
     ocrWorkerRef.current?.terminate();
@@ -229,24 +238,43 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
 
   const downloadAnnotatedImage = async () => {
     if (!asset || !imageSize) return;
+    const requestedAsset = asset;
+    const exportRequest = ++exportRequestId.current;
+    const isCurrentExport = () => exportRequestId.current === exportRequest && assetRef.current === requestedAsset;
     setExportError(null);
     const image = new Image();
     image.onload = async () => {
+      if (!isCurrentExport()) return;
       try {
         const blob = await exportAnnotatedImage(image, annotations);
+        if (!isCurrentExport()) return;
         const url = URL.createObjectURL(blob);
         const timestamp = new Date();
         const stamp = `${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, "0")}${String(timestamp.getDate()).padStart(2, "0")}-${String(timestamp.getHours()).padStart(2, "0")}${String(timestamp.getMinutes()).padStart(2, "0")}`;
         const link = document.createElement("a");
+        const revokeDownloadUrl = () => {
+          const timer = downloadUrlTimers.current.get(url);
+          if (timer !== undefined) window.clearTimeout(timer);
+          downloadUrlTimers.current.delete(url);
+          URL.revokeObjectURL(url);
+        };
+        const timer = window.setTimeout(revokeDownloadUrl, DOWNLOAD_URL_REVOKE_DELAY_MS);
+        downloadUrlTimers.current.set(url, timer);
         link.href = url;
         link.download = `数学批改-${stamp}.jpg`;
-        link.click();
-        URL.revokeObjectURL(url);
+        try {
+          link.click();
+        } catch (reason) {
+          revokeDownloadUrl();
+          throw reason;
+        }
       } catch (reason) {
-        setExportError(reason instanceof Error ? reason.message : "无法导出批改图。");
+        if (isCurrentExport()) setExportError(reason instanceof Error ? reason.message : "无法导出批改图。");
       }
     };
-    image.onerror = () => setExportError("照片无法加载，无法导出批改图。");
+    image.onerror = () => {
+      if (isCurrentExport()) setExportError("照片无法加载，无法导出批改图。");
+    };
     image.src = asset.url;
   };
 

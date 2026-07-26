@@ -45,6 +45,9 @@ test("reviews a fixed local OCR result without running a real OCR model", async 
   await page.getByLabel("识别内容").fill("47 + 28 = 75");
   await page.getByRole("button", { name: "系统读错了" }).click();
   await expect(page.getByRole("heading", { name: "答案正确" })).toBeVisible();
+  await page.getByRole("button", { name: "恢复" }).click();
+  await expect(page.getByRole("heading", { name: "确定错误" })).toBeVisible();
+  await expect(page.getByLabel("识别内容")).toHaveValue("47 + 28 = 65");
 
   await page.getByRole("button", { name: "取消标记" }).click();
   await expect(page.locator(".annotation-canvas__target--pass")).toHaveCount(0);
