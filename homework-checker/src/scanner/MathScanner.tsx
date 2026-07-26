@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
+import { AnnotationCanvas, exportAnnotatedImage } from "../annotation/AnnotationCanvas";
+import {
+  createAnnotationState,
+  dismissAnnotation,
+  restoreRecognizedText,
+  updateRecognizedText,
+  type AnnotationState,
+} from "../annotation/annotationModel";
 import { createSessionAsset, type SessionAsset } from "../privacy/sessionAssets";
 import { prepareImage, type PreparedImage, type Rect } from "./imagePipeline";
 import type { OcrWorkerEvent, QuestionRegion } from "./ocr.types";
@@ -6,7 +14,9 @@ import { segmentQuestions } from "./questionSegmenter";
 
 const closeBitmap = (prepared: PreparedImage | null) => prepared?.bitmap.close?.();
 
-export function MathScanner() {
+export type OcrWorkerFactory = () => Worker;
+
+export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactory }) {
   const cameraInput = useRef<HTMLInputElement>(null);
   const assetRef = useRef<SessionAsset | null>(null);
   const preparedRef = useRef<PreparedImage | null>(null);
@@ -19,6 +29,10 @@ export function MathScanner() {
   const [hasStartedCheck, setHasStartedCheck] = useState(false);
   const [ocrStage, setOcrStage] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionRegion[]>([]);
+  const [annotationState, setAnnotationState] = useState<AnnotationState | null>(null);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
+  const [editedText, setEditedText] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
   const [manualSelection, setManualSelection] = useState(false);
   const [selection, setSelection] = useState<Rect | null>(null);
 
@@ -40,6 +54,10 @@ export function MathScanner() {
     setHasStartedCheck(false);
     setOcrStage(null);
     setQuestions([]);
+    setAnnotationState(null);
+    setSelectedAnnotationId(null);
+    setEditedText("");
+    setExportError(null);
     setManualSelection(false);
     setSelection(null);
     const nextAsset = createSessionAsset(file);
@@ -81,6 +99,10 @@ export function MathScanner() {
     setHasStartedCheck(false);
     setOcrStage(null);
     setQuestions([]);
+    setAnnotationState(null);
+    setSelectedAnnotationId(null);
+    setEditedText("");
+    setExportError(null);
     setManualSelection(false);
     setSelection(null);
   };
@@ -127,7 +149,7 @@ export function MathScanner() {
 
     try {
       if (!worker) {
-        worker = new Worker(new URL("./ocr.worker.ts", import.meta.url), { type: "module" });
+        worker = workerFactory?.() ?? new Worker(new URL("./ocr.worker.ts", import.meta.url), { type: "module" });
         ocrWorkerRef.current = worker;
       }
 
@@ -139,6 +161,8 @@ export function MathScanner() {
           const regions = segmentQuestions(message.lines);
           setOcrStage(null);
           setQuestions(regions);
+          setAnnotationState(regions.length ? createAnnotationState(regions) : null);
+          setSelectedAnnotationId(null);
           if (!regions.length) {
             setManualSelection(true);
             setError("无法自动分题。请在照片上拖出一题的范围，再进行本机识别。");
@@ -163,7 +187,68 @@ export function MathScanner() {
         ? `无法启动本机文字识别：${reason.message}`
         : "无法启动本机文字识别，请确认浏览器允许本机识别。");
     }
-  }, []);
+  }, [workerFactory]);
+
+  const originalAnnotations = annotationState?.annotations ?? [];
+  const imageSize = preparedRef.current
+    ? preparedRef.current.toOriginal({ x: 0, y: 0, width: preparedRef.current.width, height: preparedRef.current.height })
+    : null;
+  const annotations = preparedRef.current
+    ? originalAnnotations.map((annotation) => ({ ...annotation, box: preparedRef.current!.toOriginal(annotation.box) }))
+    : [];
+  const selectedIndex = originalAnnotations.findIndex((annotation) => annotation.id === selectedAnnotationId);
+  const selectedAnnotation = selectedIndex < 0 ? null : originalAnnotations[selectedIndex];
+  const activeErrors = originalAnnotations.filter((annotation) => !annotation.dismissed && annotation.severity === "error");
+  const activeReviews = originalAnnotations.filter((annotation) => !annotation.dismissed && annotation.severity === "review");
+
+  const selectAnnotation = (id: string) => {
+    const annotation = originalAnnotations.find((candidate) => candidate.id === id);
+    if (!annotation) return;
+    setSelectedAnnotationId(id);
+    setEditedText(annotation.recognized);
+  };
+
+  const saveRecognizedText = () => {
+    if (!annotationState || !selectedAnnotationId) return;
+    const next = updateRecognizedText(annotationState, selectedAnnotationId, editedText);
+    setAnnotationState(next);
+    setEditedText(next.annotations.find((annotation) => annotation.id === selectedAnnotationId)?.recognized ?? editedText);
+  };
+
+  const restoreRecognized = () => {
+    if (!annotationState || !selectedAnnotationId) return;
+    const next = restoreRecognizedText(annotationState, selectedAnnotationId);
+    setAnnotationState(next);
+    setEditedText(next.annotations.find((annotation) => annotation.id === selectedAnnotationId)?.recognized ?? "");
+  };
+
+  const cancelAnnotation = () => {
+    if (!annotationState || !selectedAnnotationId) return;
+    setAnnotationState(dismissAnnotation(annotationState, selectedAnnotationId));
+  };
+
+  const downloadAnnotatedImage = async () => {
+    if (!asset || !imageSize) return;
+    setExportError(null);
+    const image = new Image();
+    image.onload = async () => {
+      try {
+        const blob = await exportAnnotatedImage(image, annotations);
+        const url = URL.createObjectURL(blob);
+        const timestamp = new Date();
+        const stamp = `${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, "0")}${String(timestamp.getDate()).padStart(2, "0")}-${String(timestamp.getHours()).padStart(2, "0")}${String(timestamp.getMinutes()).padStart(2, "0")}`;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `数学批改-${stamp}.jpg`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (reason) {
+        setExportError(reason instanceof Error ? reason.message : "无法导出批改图。");
+      }
+    };
+    image.onerror = () => setExportError("照片无法加载，无法导出批改图。");
+    image.src = asset.url;
+  };
 
   const pointInImage = (event: PointerEvent<HTMLDivElement>) => {
     const prepared = preparedRef.current;
@@ -226,13 +311,13 @@ export function MathScanner() {
           <span aria-hidden="true">📷</span>
           <span>拍照</span>
           <small>使用后置相机</small>
-          <input ref={cameraInput} type="file" accept="image/*" capture="environment" onChange={onFileChange} />
+          <input ref={cameraInput} aria-label="拍照" type="file" accept="image/*" capture="environment" onChange={onFileChange} />
         </label>
         <label className="secondary-action scanner__input-action">
           <span aria-hidden="true">🖼️</span>
           <span>从相册选择</span>
           <small>选择已有照片</small>
-          <input type="file" accept="image/*" onChange={onFileChange} />
+          <input aria-label="从相册选择" type="file" accept="image/*" onChange={onFileChange} />
         </label>
       </div>
 
@@ -244,16 +329,16 @@ export function MathScanner() {
             onPointerMove={onSelectionMove}
             onPointerUp={onSelectionEnd}
           >
-            <img src={asset.url} alt="待检查的数学作业照片" />
+            {imageSize && annotations.length ? (
+              <AnnotationCanvas imageUrl={asset.url} width={imageSize.width} height={imageSize.height} annotations={annotations} onSelect={selectAnnotation} />
+            ) : <img src={asset.url} alt="待检查的数学作业照片" />}
             {selection && preparedRef.current && (
               <span
                 className="scanner__selection"
                 aria-hidden="true"
                 style={{
-                  left: `${selection.x / preparedRef.current.width * 100}%`,
-                  top: `${selection.y / preparedRef.current.height * 100}%`,
-                  width: `${selection.width / preparedRef.current.width * 100}%`,
-                  height: `${selection.height / preparedRef.current.height * 100}%`,
+                  left: `${selection.x / preparedRef.current.width * 100}%`, top: `${selection.y / preparedRef.current.height * 100}%`,
+                  width: `${selection.width / preparedRef.current.width * 100}%`, height: `${selection.height / preparedRef.current.height * 100}%`,
                 }}
               />
             )}
@@ -270,6 +355,33 @@ export function MathScanner() {
             {manualSelection && <p role="status">请在照片上拖出一题范围；只会重新识别所选区域。</p>}
           </div>
         </section>
+      )}
+      {originalAnnotations.length > 0 && (
+        <section className="scanner__results" aria-labelledby="annotation-results-title">
+          <h2 id="annotation-results-title">检查结果</h2>
+          <p className="scanner__result-summary">发现 {activeErrors.length} 个确定错误{activeReviews.length ? `，${activeReviews.length} 个需要复核` : ""}</p>
+          <button type="button" className="scan-start" onClick={() => void downloadAnnotatedImage()}>下载批改图</button>
+          {exportError && <p role="alert" className="scanner__error">{exportError}</p>}
+        </section>
+      )}
+      {selectedAnnotation && (
+        <aside className="annotation-drawer" aria-labelledby="annotation-drawer-title">
+          <div>
+            <p className="eyebrow">第 {selectedIndex + 1} 题</p>
+            <h2 id="annotation-drawer-title">{selectedAnnotation.dismissed ? "此标记已取消" : selectedAnnotation.severity === "error" ? "确定错误" : selectedAnnotation.severity === "review" ? "需要复核" : "答案正确"}</h2>
+          </div>
+          <label>
+            识别内容
+            <input value={editedText} onChange={(event) => setEditedText(event.target.value)} aria-label="识别内容" />
+          </label>
+          <p>原因：{selectedAnnotation.reason}</p>
+          {selectedAnnotation.expected && <p>建议答案：{selectedAnnotation.expected}</p>}
+          <div className="annotation-drawer__actions">
+            <button type="button" className="scan-start" onClick={saveRecognizedText}>系统读错了</button>
+            <button type="button" className="filter-button" onClick={restoreRecognized}>恢复</button>
+            <button type="button" className="filter-button" onClick={cancelAnnotation} disabled={selectedAnnotation.dismissed}>取消标记</button>
+          </div>
+        </aside>
       )}
       {error && <p className="scanner__error" role="alert">{error}</p>}
       <p className="scanner__privacy">照片只在此手机处理，不会上传、记录或保存在浏览器中。</p>
