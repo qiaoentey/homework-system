@@ -40,7 +40,7 @@ describe("initial database schema", () => {
 
     await expect(pool.query(
       `insert into students (name, grade, branch_code, group_code)
-       values ('ALICE TAN', 'Y3', 'MK', 'MK HAPPY')`,
+       values (' ALICE TAN ', ' y3 ', 'MK', 'MK HAPPY')`,
     )).rejects.toMatchObject({ code: "23505" });
   });
 });

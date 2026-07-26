@@ -4,12 +4,54 @@ import { fileURLToPath } from "node:url";
 import { createPool } from "./pool.js";
 
 const migrationsDirectory = fileURLToPath(new URL("./migrations", import.meta.url));
+const studentIdentityMigration = "002_unique_student_identity.sql";
 
 async function getMigrationNames() {
   return (await readdir(migrationsDirectory))
     .filter((name) => name.endsWith(".sql"))
     .sort();
 }
+
+async function preflightStudentIdentityMigration(client) {
+  const conflicts = await client.query(
+    `select first_student.group_code,
+            lower(btrim(first_student.name)) as normalized_name,
+            lower(btrim(first_student.grade)) as normalized_grade
+     from students first_student
+     join students duplicate_student
+       on duplicate_student.group_code = first_student.group_code
+      and lower(btrim(duplicate_student.name)) = lower(btrim(first_student.name))
+      and lower(btrim(duplicate_student.grade)) = lower(btrim(first_student.grade))
+      and duplicate_student.id > first_student.id
+     order by first_student.group_code, normalized_name, normalized_grade
+     limit 1`,
+  );
+  if (!conflicts.rows.length) return;
+
+  const conflict = conflicts.rows[0];
+  const students = await client.query(
+    `select id
+     from students
+     where group_code = $1
+       and lower(btrim(name)) = $2
+       and lower(btrim(grade)) = $3
+     order by id`,
+    [conflict.group_code, conflict.normalized_name, conflict.normalized_grade],
+  );
+  const ids = students.rows.map((student) => student.id).join(", ");
+
+  throw new Error(
+    `${studentIdentityMigration} blocked by duplicate normalized student identity: ` +
+    `group="${conflict.group_code}", name="${conflict.normalized_name}", ` +
+    `grade="${conflict.normalized_grade}", count=${students.rows.length}, ` +
+    `ids=[${ids}]. Resolve the duplicate identities manually before retrying, ` +
+    "preserving students, student_activity, attendance_events, and student_messages history.",
+  );
+}
+
+const migrationPreflights = new Map([
+  [studentIdentityMigration, preflightStudentIdentityMigration],
+]);
 
 export async function migrate(pool) {
   const migrationsTable = await pool.query(
@@ -37,6 +79,8 @@ export async function migrate(pool) {
     const client = await pool.connect();
     try {
       await client.query("begin");
+      const preflight = migrationPreflights.get(name);
+      if (preflight) await preflight(client);
       await client.query(sql);
       await client.query("insert into schema_migrations (name) values ($1)", [name]);
       await client.query("commit");

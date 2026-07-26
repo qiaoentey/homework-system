@@ -278,6 +278,7 @@ describe("student API", () => {
       agent.post("/api/students").set(studentHeaders()).send({
         ...body,
         name: "CONCURRENT STUDENT",
+        grade: "y3",
       }),
     ]);
 
