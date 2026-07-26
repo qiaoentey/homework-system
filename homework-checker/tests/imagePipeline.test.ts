@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prepareImage } from "../src/scanner/imagePipeline";
 
 type CanvasContextStub = {
@@ -13,6 +13,7 @@ const testImageFile = (width: number, height: number) => Object.assign(
 );
 
 describe("prepareImage", () => {
+  beforeEach(() => vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:prepared"), revokeObjectURL: vi.fn() }));
   afterEach(() => vi.restoreAllMocks());
 
   it("maps OCR coordinates back to the original image", async () => {
@@ -25,6 +26,7 @@ describe("prepareImage", () => {
       width: 0,
       height: 0,
       getContext: vi.fn(() => context),
+      toBlob: (callback: BlobCallback) => callback(new Blob(["normalized"], { type: "image/jpeg" })),
     };
     const file = testImageFile(2400, 3200);
     vi.spyOn(document, "createElement").mockReturnValue(canvas as unknown as HTMLCanvasElement);
@@ -51,6 +53,7 @@ describe("prepareImage", () => {
       width: 0,
       height: 0,
       getContext: vi.fn(() => context),
+      toBlob: (callback: BlobCallback) => callback(new Blob(["normalized"], { type: "image/jpeg" })),
     };
     const file = testImageFile(1000, 333);
     vi.spyOn(document, "createElement").mockReturnValue(canvas as unknown as HTMLCanvasElement);
@@ -68,5 +71,34 @@ describe("prepareImage", () => {
       width: 200,
       height: (333 / 33) * 10,
     });
+  });
+
+  it("creates one normalized display source for EXIF-decoded bitmap and annotation coordinates", async () => {
+    const context: CanvasContextStub = {
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(3 * 2 * 4) })),
+      putImageData: vi.fn(),
+    };
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn(() => context),
+      toBlob: (callback: BlobCallback) => callback(new Blob(["normalized"], { type: "image/jpeg" })),
+    };
+    const file = testImageFile(3, 2);
+    vi.spyOn(document, "createElement").mockReturnValue(canvas as unknown as HTMLCanvasElement);
+    vi.stubGlobal("createImageBitmap", vi.fn(async (source) => {
+      if (source === file) return file.__dimensions!;
+      return { width: canvas.width, height: canvas.height };
+    }));
+    const createObjectURL = vi.fn(() => "blob:normalized-photo");
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL: vi.fn() });
+
+    const prepared = await prepareImage(file);
+
+    expect(createObjectURL).toHaveBeenCalledOnce();
+    expect(prepared).toMatchObject({ displayUrl: "blob:normalized-photo" });
+    expect(prepared.toOriginal({ x: 0, y: 0, width: prepared.width, height: prepared.height }))
+      .toEqual({ x: 0, y: 0, width: 3, height: 2 });
   });
 });

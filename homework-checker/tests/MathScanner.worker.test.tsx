@@ -26,6 +26,8 @@ const prepared = {
   bitmap: {} as ImageBitmap,
   width: 8,
   height: 6,
+  displayUrl: "blob:prepared",
+  release: vi.fn(),
   toOriginal: vi.fn(),
 };
 const imageData = {

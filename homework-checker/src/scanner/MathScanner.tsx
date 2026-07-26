@@ -12,7 +12,7 @@ import { prepareImage, type PreparedImage, type Rect } from "./imagePipeline";
 import type { OcrWorkerEvent, QuestionRegion } from "./ocr.types";
 import { segmentQuestions } from "./questionSegmenter";
 
-const closeBitmap = (prepared: PreparedImage | null) => prepared?.bitmap.close?.();
+const closeBitmap = (prepared: PreparedImage | null) => prepared?.release();
 const DOWNLOAD_URL_REVOKE_DELAY_MS = 1_000;
 
 export type OcrWorkerFactory = () => Worker;
@@ -202,6 +202,7 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
   const imageSize = preparedRef.current
     ? preparedRef.current.toOriginal({ x: 0, y: 0, width: preparedRef.current.width, height: preparedRef.current.height })
     : null;
+  const previewUrl = preparedRef.current?.displayUrl ?? asset?.url;
   const annotations = preparedRef.current
     ? originalAnnotations.map((annotation) => ({ ...annotation, box: preparedRef.current!.toOriginal(annotation.box) }))
     : [];
@@ -275,7 +276,7 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
     image.onerror = () => {
       if (isCurrentExport()) setExportError("照片无法加载，无法导出批改图。");
     };
-    image.src = asset.url;
+    image.src = previewUrl ?? asset.url;
   };
 
   const pointInImage = (event: PointerEvent<HTMLDivElement>) => {
@@ -357,9 +358,9 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
             onPointerMove={onSelectionMove}
             onPointerUp={onSelectionEnd}
           >
-            {imageSize && annotations.length ? (
-              <AnnotationCanvas imageUrl={asset.url} width={imageSize.width} height={imageSize.height} annotations={annotations} onSelect={selectAnnotation} />
-            ) : <img src={asset.url} alt="待检查的数学作业照片" />}
+            {imageSize && annotations.length && previewUrl ? (
+              <AnnotationCanvas imageUrl={previewUrl} width={imageSize.width} height={imageSize.height} annotations={annotations} onSelect={selectAnnotation} />
+            ) : <img src={previewUrl ?? asset.url} alt="待检查的数学作业照片" />}
             {selection && preparedRef.current && (
               <span
                 className="scanner__selection"

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { AnswerResource } from "./catalog";
 
 type AnswerCardProps = { resource: AnswerResource };
@@ -5,6 +6,18 @@ type AnswerCardProps = { resource: AnswerResource };
 export function AnswerCard({ resource }: AnswerCardProps) {
   const gradeLabel = resource.grade === 1 ? "一年级" : resource.grade === 2 ? "二年级" : "三年级";
   const title = `${gradeLabel}${resource.subject}`;
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+
+  useEffect(() => {
+    const markOnline = () => setIsOnline(true);
+    const markOffline = () => setIsOnline(false);
+    window.addEventListener("online", markOnline);
+    window.addEventListener("offline", markOffline);
+    return () => {
+      window.removeEventListener("online", markOnline);
+      window.removeEventListener("offline", markOffline);
+    };
+  }, []);
 
   return (
     <article className="answer-card" aria-label={`${title}答案资源`}>
@@ -23,7 +36,8 @@ export function AnswerCard({ resource }: AnswerCardProps) {
       <section aria-label={`${title}答案影片`}>
         <h4>答案影片</h4>
         <ul className="video-list">
-          {resource.videos.map((video) => (
+          {!isOnline && <li><span>影片需要联网</span></li>}
+          {isOnline && resource.videos.map((video) => (
             <li key={video.videoId}>
               <a
                 href={`https://www.youtube.com/watch?v=${video.videoId}`}
