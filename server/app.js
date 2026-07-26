@@ -3,6 +3,8 @@ import cookieSession from "cookie-session";
 import { loadConfig } from "./config.js";
 import { createPool } from "./db/pool.js";
 import { createCatalogRouter } from "./routes/catalog.js";
+import { createAttendanceRouter } from "./routes/attendance.js";
+import { createMessagesRouter } from "./routes/messages.js";
 import { createSessionRouter } from "./routes/session.js";
 import { createStudentsRouter } from "./routes/students.js";
 
@@ -25,6 +27,8 @@ export function createApp({ config = loadConfig(), googleVerifier, pool } = {}) 
   app.get("/api/health", (_request, response) => response.json({ ok: true }));
   app.use("/api/session", createSessionRouter({ config, googleVerifier }));
   app.use("/api/catalog", createCatalogRouter());
+  app.use("/api", createAttendanceRouter({ pool: databasePool }));
+  app.use("/api", createMessagesRouter({ pool: databasePool }));
   app.use("/api/students", createStudentsRouter({ pool: databasePool }));
   return app;
 }
