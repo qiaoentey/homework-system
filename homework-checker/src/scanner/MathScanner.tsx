@@ -85,6 +85,16 @@ export function MathScanner() {
     setSelection(null);
   };
 
+  const failOcrWorker = (worker: Worker | null, message: string) => {
+    if (worker && ocrWorkerRef.current === worker) {
+      worker.terminate();
+      ocrWorkerRef.current = null;
+    }
+    setOcrStage(null);
+    setManualSelection(false);
+    setError(message);
+  };
+
   const imageDataFor = (prepared: PreparedImage, region?: Rect) => {
     const source = region ?? { x: 0, y: 0, width: prepared.width, height: prepared.height };
     const canvas = document.createElement("canvas");
@@ -113,39 +123,45 @@ export function MathScanner() {
     setError(null);
     setQuestions([]);
     setOcrStage("读取模型…");
-    const worker = ocrWorkerRef.current ?? new Worker(new URL("./ocr.worker.ts", import.meta.url), { type: "module" });
-    ocrWorkerRef.current = worker;
-
-    worker.onmessage = (event: MessageEvent<OcrWorkerEvent>) => {
-      const message = event.data;
-      if (message.type === "progress") {
-        setOcrStage(`${message.stage}… ${Math.round(message.progress * 100)}%`);
-      } else if (message.type === "result") {
-        const regions = segmentQuestions(message.lines);
-        setOcrStage(null);
-        setQuestions(regions);
-        if (!regions.length) {
-          setManualSelection(true);
-          setError("无法自动分题。请在照片上拖出一题的范围，再进行本机识别。");
-        } else {
-          setManualSelection(false);
-        }
-      } else {
-        setOcrStage(null);
-        setManualSelection(false);
-        setError(`本机文字识别未能完成：${message.message}`);
-      }
-    };
+    let worker = ocrWorkerRef.current;
 
     try {
+      if (!worker) {
+        worker = new Worker(new URL("./ocr.worker.ts", import.meta.url), { type: "module" });
+        ocrWorkerRef.current = worker;
+      }
+
+      worker.onmessage = (event: MessageEvent<OcrWorkerEvent>) => {
+        const message = event.data;
+        if (message.type === "progress") {
+          setOcrStage(`${message.stage}… ${Math.round(message.progress * 100)}%`);
+        } else if (message.type === "result") {
+          const regions = segmentQuestions(message.lines);
+          setOcrStage(null);
+          setQuestions(regions);
+          if (!regions.length) {
+            setManualSelection(true);
+            setError("无法自动分题。请在照片上拖出一题的范围，再进行本机识别。");
+          } else {
+            setManualSelection(false);
+          }
+        } else {
+          failOcrWorker(worker, `本机文字识别未能完成：${message.message}`);
+        }
+      };
+      worker.onerror = () => failOcrWorker(worker, "本机文字识别进程已停止，请重试。");
+      worker.onmessageerror = () => failOcrWorker(worker, "本机识别数据无法读取，请重新开始检查。");
+
+      const image = imageDataFor(prepared, region);
       worker.postMessage({
         type: "recognize",
-        image: imageDataFor(prepared, region),
+        image,
         languages: ["eng", "msa", "chi_tra"],
-      });
+      }, [image.data.buffer as ArrayBuffer]);
     } catch (reason) {
-      setOcrStage(null);
-      setError(reason instanceof Error ? reason.message : "无法在此装置上准备识别图片。");
+      failOcrWorker(worker, reason instanceof Error
+        ? `无法启动本机文字识别：${reason.message}`
+        : "无法启动本机文字识别，请确认浏览器允许本机识别。");
     }
   }, []);
 

@@ -19,8 +19,17 @@ const toLine = (line: Tesseract.Line): OcrLine => ({
 });
 
 let initializedWorker: Promise<Tesseract.Worker> | undefined;
+let activeWorker: Tesseract.Worker | undefined;
 
-const getWorker = () => {
+export async function terminateFailedOcrWorker(worker: Pick<Tesseract.Worker, "terminate"> | undefined) {
+  try {
+    await worker?.terminate();
+  } catch {
+    // A failed worker must not prevent its caller from reporting the original OCR error.
+  }
+}
+
+const getWorker = async () => {
   if (!initializedWorker) {
     initializedWorker = createWorker(OFFLINE_LANGUAGES, OEM.LSTM_ONLY, {
       langPath: "/ocr",
@@ -37,7 +46,16 @@ const getWorker = () => {
       },
     });
   }
-  return initializedWorker;
+
+  try {
+    activeWorker = await initializedWorker;
+    return activeWorker;
+  } catch (error) {
+    await terminateFailedOcrWorker(activeWorker);
+    activeWorker = undefined;
+    initializedWorker = undefined;
+    throw error;
+  }
 };
 
 const recognize = async ({ image }: OcrRequest) => {
@@ -63,10 +81,15 @@ const recognize = async ({ image }: OcrRequest) => {
 self.onmessage = (event: MessageEvent<OcrRequest>) => {
   if (event.data.type !== "recognize") return;
   void recognize(event.data).catch((error: unknown) => {
-    initializedWorker = undefined;
-    send({
-      type: "error",
-      message: error instanceof Error ? error.message : "本机文字识别失败，请重新拍摄清晰的作业页。",
-    });
+    const failedWorker = activeWorker;
+    void (async () => {
+      await terminateFailedOcrWorker(failedWorker);
+      if (activeWorker === failedWorker) activeWorker = undefined;
+      initializedWorker = undefined;
+      send({
+        type: "error",
+        message: error instanceof Error ? error.message : "本机文字识别失败，请重新拍摄清晰的作业页。",
+      });
+    })();
   });
 };
