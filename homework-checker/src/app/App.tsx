@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnswerLibrary } from "../answer-library/AnswerLibrary";
+import { MathScanner } from "../scanner/MathScanner";
 import { isAppRoute, type AppRoute } from "./routes";
 
 const currentRoute = (): AppRoute => (isAppRoute(window.location.pathname) ? window.location.pathname : "/");
@@ -24,9 +25,7 @@ export function App() {
     return (
       <main className="page-shell">
         <a className="text-button" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }} aria-label="返回首页">← 返回首页</a>
-        <p className="eyebrow">数学功课检查</p>
-        <h1>拍照检查数学</h1>
-        <p>拍照检查功能将在下一阶段提供。照片只会在此设备的浏览器中处理。</p>
+        <MathScanner />
       </main>
     );
   }
