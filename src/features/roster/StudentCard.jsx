@@ -1,0 +1,78 @@
+import { EVENT_BUTTONS } from "../../domain/attendance.js";
+
+export function StudentCard({
+  student,
+  activeEvents = [],
+  selected,
+  saveState,
+  onSelect,
+  onToggleEvent,
+  onClear,
+  onRetry,
+}) {
+  const saving = saveState?.status === "saving";
+  const eventSet = new Set(activeEvents);
+
+  return (
+    <article
+      className={`student-card${selected ? " student-card--selected" : ""}`}
+      data-testid="student-card"
+    >
+      <header className="student-card__header">
+        <button
+          className="student-card__identity"
+          type="button"
+          aria-label={`选择 ${student.name}`}
+          aria-pressed={selected}
+          onClick={() => onSelect(student.id)}
+        >
+          <strong>{student.name}</strong>
+          <span>{student.grade}</span>
+        </button>
+        <div className="student-card__pickup">
+          <span>接送</span>
+          <strong>{student.profile?.usualPickupTime || "未填写"}</strong>
+          {student.profile?.pickupMethod ? <small>{student.profile.pickupMethod}</small> : null}
+        </div>
+      </header>
+
+      <div className="event-grid" aria-label={`${student.name} 今日点名`}>
+        {EVENT_BUTTONS.map(([code, label]) => (
+          <button
+            className="event-button"
+            key={code}
+            type="button"
+            aria-pressed={eventSet.has(code)}
+            disabled={saving}
+            onClick={() => onToggleEvent(student.id, code)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <footer className="student-card__footer">
+        <button
+          className="clear-button"
+          type="button"
+          disabled={saving}
+          onClick={() => onClear(student.id)}
+        >
+          清除今日
+        </button>
+        <div className="student-card__save-state" role="status">
+          {saveState?.status === "saving" ? "保存中…" : null}
+          {saveState?.status === "saved" ? "已保存" : null}
+          {saveState?.status === "error" ? (
+            <>
+              <span>保存失败</span>
+              <button className="retry-button" type="button" onClick={() => onRetry(student.id)}>
+                重试
+              </button>
+            </>
+          ) : null}
+        </div>
+      </footer>
+    </article>
+  );
+}

@@ -86,3 +86,89 @@ export const sessionApi = {
   logout: () => apiRequest("/api/session", { method: "DELETE" }),
   catalog: () => apiRequest("/api/catalog"),
 };
+
+function queryPath(path, parameters) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(parameters)) {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  }
+  return `${path}?${query.toString()}`;
+}
+
+export const rosterApi = {
+  students: ({ branchCode, groupCode, search = "", cursor, limit = 50 }) => apiRequest(
+    queryPath("/api/students", {
+      branch: branchCode,
+      group: groupCode,
+      status: "active",
+      search,
+      cursor,
+      limit,
+    }),
+    { branchCode, groupCode },
+  ),
+  attendance: ({ branchCode, groupCode, date }) => apiRequest(
+    queryPath("/api/attendance", {
+      branch: branchCode,
+      group: groupCode,
+      date,
+    }),
+    { branchCode, groupCode },
+  ),
+  summary: ({ branchCode, groupCode, date }) => apiRequest(
+    queryPath("/api/summary", {
+      branch: branchCode,
+      group: groupCode,
+      date,
+    }),
+    { branchCode, groupCode },
+  ),
+  setAttendance: ({
+    branchCode,
+    groupCode,
+    studentId,
+    date,
+    eventCode,
+    active,
+  }) => apiRequest(
+    `/api/students/${encodeURIComponent(studentId)}/attendance/${date}/${eventCode}`,
+    {
+      method: "PUT",
+      body: { active },
+      branchCode,
+      groupCode,
+    },
+  ),
+  clearAttendance: ({ branchCode, groupCode, studentId, date }) => apiRequest(
+    `/api/students/${encodeURIComponent(studentId)}/attendance/${date}`,
+    {
+      method: "DELETE",
+      branchCode,
+      groupCode,
+    },
+  ),
+  saveProfile: ({ branchCode, groupCode, studentId, updatedAt, profile }) => apiRequest(
+    `/api/students/${encodeURIComponent(studentId)}/profile`,
+    {
+      method: "PATCH",
+      body: { updatedAt, profile },
+      branchCode,
+      groupCode,
+    },
+  ),
+  messages: ({ branchCode, groupCode, studentId }) => apiRequest(
+    `/api/students/${encodeURIComponent(studentId)}/messages`,
+    { branchCode, groupCode },
+  ),
+  createMessage: ({ branchCode, groupCode, studentId, date, body }) => apiRequest(
+    `/api/students/${encodeURIComponent(studentId)}/messages`,
+    {
+      method: "POST",
+      body: { date, body },
+      branchCode,
+      groupCode,
+    },
+  ),
+};

@@ -4,6 +4,7 @@ import { LoginScreen } from "./features/auth/LoginScreen.jsx";
 import { BranchGateway } from "./features/branches/BranchGateway.jsx";
 import { GroupChooser } from "./features/groups/GroupChooser.jsx";
 import { AppShell } from "./features/layout/AppShell.jsx";
+import { RosterScreen } from "./features/roster/RosterScreen.jsx";
 import { flowReducer, initialFlowState } from "./state/flowReducer.js";
 
 export function App() {
@@ -114,19 +115,12 @@ export function App() {
   if (flow.screen === "roster" && selectedBranch) {
     return (
       <AppShell onLogout={logout}>
-        <section className="roster-placeholder">
-          <nav className="roster-placeholder__actions" aria-label="名单返回">
-            <button type="button" className="back-button" onClick={() => dispatch({ type: "BACK_TO_GROUPS" })}>
-              <span aria-hidden="true">←</span>
-              返回老师
-            </button>
-            <button type="button" className="back-button" onClick={() => dispatch({ type: "BACK_TO_BRANCHES" })}>
-              返回分院
-            </button>
-          </nav>
-          <span className="eyebrow">{selectedBranch.label} 分院</span>
-          <h1>{flow.groupCode}</h1>
-        </section>
+        <RosterScreen
+          branchCode={flow.branchCode}
+          groupCode={flow.groupCode}
+          onBackGroups={() => dispatch({ type: "BACK_TO_GROUPS" })}
+          onBackBranches={() => dispatch({ type: "BACK_TO_BRANCHES" })}
+        />
       </AppShell>
     );
   }
