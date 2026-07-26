@@ -1,6 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../server/app.js";
+import { createGoogleVerifier } from "../../server/auth/session.js";
 
 const emergencyPasswordHash = "task-4-test-salt:330dbd3ebcf20a4b02e6fc954a0677540e9a27cfc5ff51d956659ec11877e06fb426131601c8a7765cdd2f51a908b9013eb463625f6123e097ff762fe5b53b00";
 
@@ -46,6 +47,33 @@ describe("session routes", () => {
     });
 
     await request(app).post("/api/session/google").send({ credential: "test-token" }).expect(403);
+  });
+
+  it("rejects a Google identity whose email is not verified", async () => {
+    const agent = request.agent(createTestApp({
+      googleVerifier: async () => ({ email: "teacher@example.com", emailVerified: false }),
+    }));
+
+    await agent.post("/api/session/google").send({ credential: "test-token" }).expect(403);
+    await agent.get("/api/session").expect(401);
+  });
+
+  it("verifies Google credentials against the configured client audience", async () => {
+    let verificationOptions;
+    const verifier = createGoogleVerifier("configured-client.apps.googleusercontent.com", {
+      async verifyIdToken(options) {
+        verificationOptions = options;
+        return {
+          getPayload: () => ({ email: "teacher@example.com", email_verified: true }),
+        };
+      },
+    });
+
+    await expect(verifier("test-token")).resolves.toEqual({ email: "teacher@example.com", emailVerified: true });
+    expect(verificationOptions).toEqual({
+      idToken: "test-token",
+      audience: "configured-client.apps.googleusercontent.com",
+    });
   });
 
   it("creates a session for an allowed verified Google identity", async () => {

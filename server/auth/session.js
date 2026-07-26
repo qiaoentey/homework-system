@@ -19,8 +19,7 @@ export async function verifyEmergencyPassword(password, storedHash) {
   return timingSafeEqual(actualHash, expectedHash);
 }
 
-export function createGoogleVerifier(googleClientId) {
-  const client = new OAuth2Client(googleClientId);
+export function createGoogleVerifier(googleClientId, client = new OAuth2Client(googleClientId)) {
 
   return async (credential) => {
     const ticket = await client.verifyIdToken({
