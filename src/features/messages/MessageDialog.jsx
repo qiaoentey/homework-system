@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
 
 export function MessageDialog({
@@ -13,6 +13,13 @@ export function MessageDialog({
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const bodyLength = Array.from(body).length;
+  const dialogRef = useRef(null);
+  const editorRef = useRef(null);
+  const returnFocusRef = useRef(
+    typeof document === "undefined" ? null : document.activeElement,
+  );
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     let current = true;
@@ -33,6 +40,43 @@ export function MessageDialog({
       current = false;
     };
   }, [branchCode, groupCode, student.id]);
+
+  useEffect(() => {
+    const returnFocus = returnFocusRef.current;
+    editorRef.current?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(dialogRef.current?.querySelectorAll(
+        'button:not(:disabled), textarea:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      ) ?? []);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!dialogRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      returnFocus?.focus();
+    };
+  }, []);
 
   async function submit(event) {
     event.preventDefault();
@@ -60,6 +104,7 @@ export function MessageDialog({
     <div className="dialog-backdrop">
       <section
         className="message-dialog"
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="message-title"
@@ -75,6 +120,7 @@ export function MessageDialog({
             <span>留言内容</span>
             <textarea
               aria-label="留言内容"
+              ref={editorRef}
               rows={5}
               value={body}
               onChange={(event) => setBody(event.target.value)}

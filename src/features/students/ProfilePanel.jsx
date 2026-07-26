@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
 import {
   EMPTY_PROFILE,
@@ -17,16 +17,25 @@ export function ProfilePanel({
   const [values, setValues] = useState(EMPTY_PROFILE);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const requestGeneration = useRef(0);
+  const activeStudentId = useRef(student?.id ?? null);
+
+  if (activeStudentId.current !== (student?.id ?? null)) {
+    activeStudentId.current = student?.id ?? null;
+    requestGeneration.current += 1;
+  }
 
   useEffect(() => {
     setValues(student ? normalizeProfile(student.profile) : { ...EMPTY_PROFILE });
     setStatus("idle");
     setError("");
-  }, [student]);
+  }, [student?.id]);
 
   async function save(event) {
     event.preventDefault();
     if (!student || status === "saving") return;
+    const request = ++requestGeneration.current;
+    const studentId = student.id;
     setStatus("saving");
     setError("");
     try {
@@ -37,9 +46,21 @@ export function ProfilePanel({
         updatedAt: student.updatedAt,
         profile: values,
       });
+      if (
+        request !== requestGeneration.current ||
+        studentId !== activeStudentId.current
+      ) {
+        return;
+      }
       onSaved(updated);
       setStatus("saved");
     } catch {
+      if (
+        request !== requestGeneration.current ||
+        studentId !== activeStudentId.current
+      ) {
+        return;
+      }
       setStatus("error");
       setError("资料保存失败，请重试");
     }

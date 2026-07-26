@@ -13,6 +13,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RosterScreen } from "../../src/features/roster/RosterScreen.jsx";
+import { ProfilePanel } from "../../src/features/students/ProfilePanel.jsx";
 
 const PROFILE = {
   school: "SJKC Example",
@@ -57,6 +58,14 @@ function jsonResponse(status, body) {
       return body === undefined ? "" : JSON.stringify(body);
     },
   };
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
 }
 
 function setupFetch() {
@@ -172,5 +181,67 @@ describe("current-group search and safe profile selection", () => {
         schoolClass: "3B",
       },
     });
+  });
+
+  it("keeps student B saving when student A's older profile request resolves", async () => {
+    const saveA = deferred();
+    const saveB = deferred();
+    const studentB = {
+      ...HAYDEN,
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "STUDENT B",
+      updatedAt: "2026-07-27T00:30:00.000Z",
+    };
+    const onSaved = vi.fn();
+    vi.stubGlobal("fetch", vi.fn(async (url) => (
+      url.includes(HAYDEN.id) ? saveA.promise : saveB.promise
+    )));
+
+    const { rerender } = render(
+      <ProfilePanel
+        branchCode="WS"
+        groupCode="WS HUILING"
+        student={HAYDEN}
+        noResults={false}
+        onSaved={onSaved}
+        onOpenMessages={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "保存学生资料" }));
+
+    rerender(
+      <ProfilePanel
+        branchCode="WS"
+        groupCode="WS HUILING"
+        student={studentB}
+        noResults={false}
+        onSaved={onSaved}
+        onOpenMessages={() => {}}
+      />,
+    );
+    await waitFor(() => expect(screen.getByRole("button", { name: "保存学生资料" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "保存学生资料" }));
+    expect(screen.getByRole("button", { name: "保存中…" })).toBeDisabled();
+
+    await act(async () => {
+      saveA.resolve(jsonResponse(200, {
+        ...HAYDEN,
+        updatedAt: "2026-07-27T01:00:00.000Z",
+      }));
+    });
+
+    expect(screen.getByRole("button", { name: "保存中…" })).toBeDisabled();
+    expect(screen.queryByText("资料已保存")).not.toBeInTheDocument();
+
+    await act(async () => {
+      saveB.resolve(jsonResponse(200, {
+        ...studentB,
+        updatedAt: "2026-07-27T01:30:00.000Z",
+      }));
+    });
+
+    expect(await screen.findByText("资料已保存")).toBeVisible();
+    expect(onSaved).toHaveBeenCalledTimes(1);
+    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: studentB.id }));
   });
 });

@@ -12,6 +12,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { MessageDialog } from "../../src/features/messages/MessageDialog.jsx";
 import { RosterScreen } from "../../src/features/roster/RosterScreen.jsx";
 
 const EMPTY_PROFILE = {
@@ -48,6 +49,14 @@ function jsonResponse(status, body) {
       return body === undefined ? "" : JSON.stringify(body);
     },
   };
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((nextResolve) => {
+    resolve = nextResolve;
+  });
+  return { promise, resolve };
 }
 
 function rosterSupport(url) {
@@ -99,12 +108,23 @@ describe("virtualized current-group roster", () => {
   it("loads the next cursor when scrolling into the final five virtual items", async () => {
     const firstPage = Array.from({ length: 50 }, (_, index) => student(index + 1));
     const secondPage = Array.from({ length: 50 }, (_, index) => student(index + 51));
+    const secondPageRequest = deferred();
     const fetchMock = vi.fn(async (url) => {
       if (url.startsWith("/api/students?")) {
         const cursor = new URL(url, "http://test.local").searchParams.get("cursor");
-        return jsonResponse(200, cursor
-          ? { items: secondPage, nextCursor: "next-100", total: 121 }
-          : { items: firstPage, nextCursor: "next-50", total: 121 });
+        if (cursor === "next-50") return secondPageRequest.promise;
+        if (cursor === "next-100") {
+          return jsonResponse(200, {
+            items: Array.from({ length: 21 }, (_, index) => student(index + 101)),
+            nextCursor: null,
+            total: 121,
+          });
+        }
+        return jsonResponse(200, {
+          items: firstPage,
+          nextCursor: "next-50",
+          total: 121,
+        });
       }
       return rosterSupport(url);
     });
@@ -118,9 +138,42 @@ describe("virtualized current-group roster", () => {
     fireEvent.scroll(list);
 
     await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([url]) => (
+      const nextPageCalls = fetchMock.mock.calls.filter(([url]) => (
         url.startsWith("/api/students?") && url.includes("cursor=next-50")
-      ))).toBe(true);
+      ));
+      expect(nextPageCalls).toHaveLength(1);
+      const requestUrl = new URL(nextPageCalls[0][0], "http://test.local");
+      expect(Object.fromEntries(requestUrl.searchParams)).toMatchObject({
+        branch: "STP",
+        group: "PS STP",
+        status: "active",
+        cursor: "next-50",
+        limit: "50",
+      });
+      expect(nextPageCalls[0][1].headers).toMatchObject({
+        "X-Branch-Code": "STP",
+        "X-Group-Code": "PS STP",
+      });
+    });
+
+    fireEvent.scroll(list);
+    expect(fetchMock.mock.calls.filter(([url]) => url.includes("cursor=next-50"))).toHaveLength(1);
+
+    await act(async () => {
+      secondPageRequest.resolve(jsonResponse(200, {
+        items: secondPage,
+        nextCursor: "next-100",
+        total: 121,
+      }));
+    });
+    Object.defineProperty(list, "scrollTop", { configurable: true, value: 28_500 });
+    fireEvent.scroll(list);
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([url]) => url.includes("cursor=next-100")))
+        .toHaveLength(1);
+      expect(fetchMock.mock.calls.filter(([url]) => url.includes("cursor=next-50")))
+        .toHaveLength(1);
     });
   });
 
@@ -158,6 +211,130 @@ describe("virtualized current-group roster", () => {
 });
 
 describe("attendance controls and summary", () => {
+  it("does not let a stale initial attendance response overwrite a newer saved event", async () => {
+    const initialAttendance = deferred();
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) return initialAttendance.promise;
+      if (url.startsWith("/api/summary?")) {
+        return jsonResponse(200, {
+          expected: 1, arrived: 1, notArrived: 0, absent: 0, koko: 0, unmarked: 0,
+        });
+      }
+      if (url.includes("/attendance/") && options.method === "PUT") {
+        return jsonResponse(200, {
+          studentId: student(1).id,
+          date: "2026-07-27",
+          eventCode: "arrive",
+          active: true,
+          updatedBy: "teacher@example.com",
+          updatedAt: "2026-07-27T01:00:00.000Z",
+        });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    const arrive = within(card).getByRole("button", { name: "到" });
+    fireEvent.click(arrive);
+    expect(await within(card).findByText("已保存")).toBeVisible();
+
+    await act(async () => {
+      initialAttendance.resolve(jsonResponse(200, { items: [] }));
+    });
+
+    expect(arrive).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("does not let an older initial summary overwrite a newer post-save summary", async () => {
+    const initialSummary = deferred();
+    let summaryCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
+      if (url.startsWith("/api/summary?")) {
+        summaryCalls += 1;
+        if (summaryCalls === 1) return initialSummary.promise;
+        return jsonResponse(200, {
+          expected: 1, arrived: 1, notArrived: 0, absent: 0, koko: 0, unmarked: 0,
+        });
+      }
+      if (url.includes("/attendance/") && options.method === "PUT") {
+        return jsonResponse(200, {
+          studentId: student(1).id,
+          date: "2026-07-27",
+          eventCode: "arrive",
+          active: true,
+          updatedBy: "teacher@example.com",
+          updatedAt: "2026-07-27T01:00:00.000Z",
+        });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    fireEvent.click(within(card).getByRole("button", { name: "到" }));
+    expect(await screen.findByText("已到 1")).toBeVisible();
+
+    await act(async () => {
+      initialSummary.resolve(jsonResponse(200, {
+        expected: 1, arrived: 0, notArrived: 1, absent: 0, koko: 0, unmarked: 1,
+      }));
+    });
+
+    expect(screen.getByText("已到 1")).toBeVisible();
+    expect(screen.queryByText("已到 0")).not.toBeInTheDocument();
+  });
+
+  it("shows scoped attendance and summary bootstrap failures with independent retries", async () => {
+    let attendanceCalls = 0;
+    let summaryCalls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) {
+        attendanceCalls += 1;
+        return attendanceCalls === 1
+          ? jsonResponse(503, { error: "attendance unavailable" })
+          : jsonResponse(200, { items: [] });
+      }
+      if (url.startsWith("/api/summary?")) {
+        summaryCalls += 1;
+        return summaryCalls === 1
+          ? jsonResponse(503, { error: "summary unavailable" })
+          : jsonResponse(200, {
+            expected: 1, arrived: 0, notArrived: 1, absent: 0, koko: 0, unmarked: 1,
+          });
+      }
+      throw new Error(`Unexpected request: GET ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    expect(await screen.findByText("Student 001")).toBeVisible();
+    expect(screen.getByRole("alert", { name: "点名资料错误" }))
+      .toHaveTextContent("点名资料载入失败");
+    expect(screen.getByRole("alert", { name: "统计错误" }))
+      .toHaveTextContent("统计载入失败");
+    expect(screen.getByTestId("student-list")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "重试点名资料" }));
+    fireEvent.click(screen.getByRole("button", { name: "重试统计" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alert", { name: "点名资料错误" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert", { name: "统计错误" })).not.toBeInTheDocument();
+    });
+    expect(attendanceCalls).toBe(2);
+    expect(summaryCalls).toBe(2);
+  });
+
   it("rolls back a failed optimistic event, retries it, disables only that student, and refreshes summary", async () => {
     let eventAttempts = 0;
     let summaryCalls = 0;
@@ -327,5 +504,53 @@ describe("one on-demand message editor", () => {
 
     expect(await screen.findByRole("dialog", { name: "Student 001 留言" })).toBeVisible();
     expect(screen.getAllByRole("textbox", { name: "留言内容" })).toHaveLength(1);
+  });
+
+  it("enters and traps focus, closes on Escape, and restores focus to the opener", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.endsWith("/messages")) return jsonResponse(200, { items: [] });
+      throw new Error(`Unexpected request: GET ${url}`);
+    }));
+
+    function Harness() {
+      const [open, setOpen] = React.useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>打开留言</button>
+          {open ? (
+            <MessageDialog
+              branchCode="STP"
+              groupCode="PS STP"
+              student={student(1)}
+              date="2026-07-27"
+              onClose={() => setOpen(false)}
+            />
+          ) : null}
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "打开留言" });
+    opener.focus();
+    fireEvent.click(opener);
+
+    const editor = await screen.findByRole("textbox", { name: "留言内容" });
+    const close = screen.getByRole("button", { name: "关闭" });
+    await waitFor(() => expect(editor).toHaveFocus());
+
+    opener.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(close).toHaveFocus();
+
+    editor.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(close).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(editor).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
   });
 });

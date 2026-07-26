@@ -393,6 +393,27 @@ button {
   font-size: 22px;
 }
 
+.roster-support-errors {
+  display: grid;
+  gap: 8px;
+  margin: -12px 0 18px;
+}
+
+.support-error {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  border: 1px solid rgba(168, 43, 49, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 245, 246, 0.9);
+  color: var(--color-error);
+  font-size: 13px;
+  font-weight: 750;
+}
+
 .roster-loading,
 .roster-error,
 .roster-empty {

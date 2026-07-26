@@ -40,12 +40,16 @@ export function RosterScreen({
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [attendance, setAttendance] = useState({});
+  const [attendanceStatus, setAttendanceStatus] = useState("loading");
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
-  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryStatus, setSummaryStatus] = useState("loading");
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [saveStates, setSaveStates] = useState({});
   const [messageOpen, setMessageOpen] = useState(false);
   const requestGeneration = useRef(0);
+  const attendanceRequestGeneration = useRef(0);
+  const attendanceMutationVersions = useRef(new Map());
+  const summaryRequestGeneration = useRef(0);
 
   const selectedStudent = useMemo(
     () => students.find((student) => student.id === selectedStudentId) ?? null,
@@ -58,14 +62,39 @@ export function RosterScreen({
   }, [searchInput]);
 
   const loadSummary = useCallback(async () => {
-    setSummaryLoading(true);
+    const request = ++summaryRequestGeneration.current;
+    setSummaryStatus("loading");
     try {
       const nextSummary = await rosterApi.summary({ branchCode, groupCode, date });
+      if (request !== summaryRequestGeneration.current) return;
       setSummary(nextSummary);
+      setSummaryStatus("ready");
     } catch {
-      // Attendance is already durable; a summary read failure must not roll it back.
-    } finally {
-      setSummaryLoading(false);
+      if (request !== summaryRequestGeneration.current) return;
+      setSummaryStatus("error");
+    }
+  }, [branchCode, date, groupCode]);
+
+  const loadAttendance = useCallback(async () => {
+    const request = ++attendanceRequestGeneration.current;
+    const startingVersions = new Map(attendanceMutationVersions.current);
+    setAttendanceStatus("loading");
+    try {
+      const response = await rosterApi.attendance({ branchCode, groupCode, date });
+      if (request !== attendanceRequestGeneration.current) return;
+      const loadedAttendance = eventsByStudent(response.items);
+      setAttendance((current) => {
+        for (const [studentId, version] of attendanceMutationVersions.current) {
+          if (startingVersions.get(studentId) !== version) {
+            loadedAttendance[studentId] = current[studentId] ?? [];
+          }
+        }
+        return loadedAttendance;
+      });
+      setAttendanceStatus("ready");
+    } catch {
+      if (request !== attendanceRequestGeneration.current) return;
+      setAttendanceStatus("error");
     }
   }, [branchCode, date, groupCode]);
 
@@ -102,25 +131,16 @@ export function RosterScreen({
   }, [loadFirstPage]);
 
   useEffect(() => {
-    let current = true;
+    attendanceMutationVersions.current = new Map();
     setAttendance({});
     setSaveStates({});
-    setSummaryLoading(true);
-    rosterApi.attendance({ branchCode, groupCode, date }).then((response) => {
-      if (!current) return;
-      setAttendance(eventsByStudent(response.items));
-    }).catch(() => {});
-    rosterApi.summary({ branchCode, groupCode, date }).then((response) => {
-      if (!current) return;
-      setSummary(response);
-    }).catch(() => {}).finally(() => {
-      if (!current) return;
-      setSummaryLoading(false);
-    });
+    loadAttendance();
+    loadSummary();
     return () => {
-      current = false;
+      attendanceRequestGeneration.current += 1;
+      summaryRequestGeneration.current += 1;
     };
-  }, [branchCode, date, groupCode]);
+  }, [loadAttendance, loadSummary]);
 
   const loadMore = useCallback(async (retry = false) => {
     if (!nextCursor || loadingMore || (loadMoreError && !retry)) return;
@@ -186,6 +206,10 @@ export function RosterScreen({
   }, [branchCode, date, groupCode, loadSummary]);
 
   function toggleEvent(studentId, eventCode) {
+    attendanceMutationVersions.current.set(
+      studentId,
+      (attendanceMutationVersions.current.get(studentId) ?? 0) + 1,
+    );
     const previous = attendance[studentId] ?? [];
     const active = !previous.includes(eventCode);
     const next = active
@@ -196,6 +220,10 @@ export function RosterScreen({
   }
 
   function clearDay(studentId) {
+    attendanceMutationVersions.current.set(
+      studentId,
+      (attendanceMutationVersions.current.get(studentId) ?? 0) + 1,
+    );
     const previous = attendance[studentId] ?? [];
     setAttendance((current) => ({ ...current, [studentId]: [] }));
     saveAttendance(studentId, { type: "clear", previous });
@@ -204,6 +232,10 @@ export function RosterScreen({
   function retry(studentId) {
     const operation = saveStates[studentId]?.operation;
     if (!operation) return;
+    attendanceMutationVersions.current.set(
+      studentId,
+      (attendanceMutationVersions.current.get(studentId) ?? 0) + 1,
+    );
     const optimistic = operation.type === "clear"
       ? []
       : operation.active
@@ -265,7 +297,28 @@ export function RosterScreen({
         </label>
       </header>
 
-      <SummaryBar summary={summary} loading={summaryLoading} />
+      <SummaryBar summary={summary} loading={summaryStatus === "loading"} />
+
+      {(attendanceStatus === "error" || summaryStatus === "error") ? (
+        <div className="roster-support-errors">
+          {attendanceStatus === "error" ? (
+            <div className="support-error" role="alert" aria-label="点名资料错误">
+              <span>点名资料载入失败</span>
+              <button className="retry-button" type="button" onClick={loadAttendance}>
+                重试点名资料
+              </button>
+            </div>
+          ) : null}
+          {summaryStatus === "error" ? (
+            <div className="support-error" role="alert" aria-label="统计错误">
+              <span>统计载入失败</span>
+              <button className="retry-button" type="button" onClick={loadSummary}>
+                重试统计
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {rosterStatus === "loading" ? (
         <div className="roster-loading" role="status">正在载入名单…</div>
