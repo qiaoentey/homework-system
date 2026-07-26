@@ -54,7 +54,7 @@
 
 使用用户提供的 MK Google Sheet，导入：
 
-- Happy：87 名，代号 `MK HAPPY`
+- Happy：82 名，代号 `MK HAPPY`
 - Qiao En：只导入主名单 40 名，代号 `MK QIAO EN`
 - Wen Xuan：从 WS Sheet 的 Wen Xuan 工作表导入 18 名，但归属 MK，代号 `MK WEN XUAN`
 

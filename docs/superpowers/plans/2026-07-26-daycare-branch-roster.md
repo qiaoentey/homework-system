@@ -369,7 +369,7 @@ Normalize whitespace only; do not translate or respell names.
 
 ```js
 expect(result.counts).toMatchObject({
-  "MK HAPPY": 87,
+  "MK HAPPY": 82,
   "MK QIAO EN": 40,
   "MK WEN XUAN": 18,
   "WS HUILING": 46,
