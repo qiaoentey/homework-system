@@ -274,20 +274,24 @@ describe("student API", () => {
     };
 
     const responses = await Promise.all([
-      agent.post("/api/students").set(studentHeaders()).send(body),
       agent.post("/api/students").set(studentHeaders()).send({
         ...body,
         name: "CONCURRENT STUDENT",
         grade: "y3",
       }),
+      agent.post("/api/students").set(studentHeaders()).send(body),
     ]);
 
     expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
     expect(responses.find((response) => response.status === 409).body.code)
       .toBe("DUPLICATE_STUDENT");
     expect(Number((await pool.query(
-      "select count(*) from students where group_code = $1 and lower(name) = $2 and grade = $3",
-      ["MK HAPPY", "concurrent student", "Y3"],
+      `select count(*)
+       from students
+       where group_code = $1
+         and lower(btrim(name)) = $2
+         and lower(btrim(grade)) = $3`,
+      ["MK HAPPY", "concurrent student", "y3"],
     )).rows[0].count)).toBe(1);
     expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(1);
   });
