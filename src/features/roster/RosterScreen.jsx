@@ -3,7 +3,10 @@ import { rosterApi } from "../../api/client.js";
 import { EMPTY_SUMMARY } from "../../domain/attendance.js";
 import { SummaryBar } from "../dashboard/SummaryBar.jsx";
 import { MessageDialog } from "../messages/MessageDialog.jsx";
+import { EnrolDialog } from "../students/EnrolDialog.jsx";
 import { ProfilePanel } from "../students/ProfilePanel.jsx";
+import { RestoreDialog } from "../students/RestoreDialog.jsx";
+import { StopDialog } from "../students/StopDialog.jsx";
 import { StudentVirtualList } from "./StudentVirtualList.jsx";
 
 function localDate() {
@@ -27,6 +30,7 @@ function eventsByStudent(items) {
 export function RosterScreen({
   branchCode,
   groupCode,
+  groups = [{ code: groupCode, label: groupCode }],
   date = localDate(),
   onBackGroups,
   onBackBranches,
@@ -46,6 +50,8 @@ export function RosterScreen({
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [saveStates, setSaveStates] = useState({});
   const [messageOpen, setMessageOpen] = useState(false);
+  const [lifecycleDialog, setLifecycleDialog] = useState(null);
+  const [toast, setToast] = useState("");
   const requestGeneration = useRef(0);
   const attendanceRequestGeneration = useRef(0);
   const attendanceMutationVersions = useRef(new Map());
@@ -141,6 +147,11 @@ export function RosterScreen({
       summaryRequestGeneration.current += 1;
     };
   }, [loadAttendance, loadSummary]);
+
+  useEffect(() => {
+    setLifecycleDialog(null);
+    setToast("");
+  }, [branchCode, groupCode]);
 
   const loadMore = useCallback(async (retry = false) => {
     if (!nextCursor || loadingMore || (loadMoreError && !retry)) return;
@@ -262,6 +273,34 @@ export function RosterScreen({
     )));
   }
 
+  function refreshCurrentGroup() {
+    loadFirstPage();
+    loadAttendance();
+    loadSummary();
+  }
+
+  function enrolled() {
+    setLifecycleDialog(null);
+    setToast("学生已加入");
+    refreshCurrentGroup();
+  }
+
+  function stopped(stoppedStudent) {
+    setStudents((current) => current.filter((student) => student.id !== stoppedStudent.id));
+    setTotal((current) => Math.max(0, current - 1));
+    setSelectedStudentId((current) => current === stoppedStudent.id ? null : current);
+    setMessageOpen(false);
+    setLifecycleDialog(null);
+    setToast("学生已停补");
+    loadSummary();
+  }
+
+  function restored() {
+    setLifecycleDialog(null);
+    setToast("学生已恢复");
+    refreshCurrentGroup();
+  }
+
   return (
     <section className="roster-screen">
       {(onBackGroups || onBackBranches) ? (
@@ -298,6 +337,20 @@ export function RosterScreen({
       </header>
 
       <SummaryBar summary={summary} loading={summaryStatus === "loading"} />
+
+      <div className="roster-lifecycle-actions" aria-label="学生管理">
+        <button className="primary-button" type="button" onClick={() => setLifecycleDialog("enrol")}>
+          Enrol 学生
+        </button>
+        <button className="secondary-button" type="button" onClick={() => setLifecycleDialog("stop")}>
+          停补学生
+        </button>
+        <button className="secondary-button" type="button" onClick={() => setLifecycleDialog("restore")}>
+          恢复学生
+        </button>
+      </div>
+
+      {toast ? <div className="lifecycle-toast" role="status">{toast}</div> : null}
 
       {(attendanceStatus === "error" || summaryStatus === "error") ? (
         <div className="roster-support-errors">
@@ -364,6 +417,32 @@ export function RosterScreen({
           student={selectedStudent}
           date={date}
           onClose={() => setMessageOpen(false)}
+        />
+      ) : null}
+      {lifecycleDialog === "enrol" ? (
+        <EnrolDialog
+          branchCode={branchCode}
+          groupCode={groupCode}
+          groups={groups}
+          onClose={() => setLifecycleDialog(null)}
+          onEnrolled={enrolled}
+        />
+      ) : null}
+      {lifecycleDialog === "stop" ? (
+        <StopDialog
+          branchCode={branchCode}
+          groupCode={groupCode}
+          groups={groups}
+          onClose={() => setLifecycleDialog(null)}
+          onStopped={stopped}
+        />
+      ) : null}
+      {lifecycleDialog === "restore" ? (
+        <RestoreDialog
+          branchCode={branchCode}
+          groupCode={groupCode}
+          onClose={() => setLifecycleDialog(null)}
+          onRestored={restored}
         />
       ) : null}
     </section>

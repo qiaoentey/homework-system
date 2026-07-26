@@ -171,4 +171,53 @@ export const rosterApi = {
       groupCode,
     },
   ),
+  findStudents: ({
+    branchCode,
+    groupCode,
+    status,
+    search = "",
+    limit = 50,
+  }) => apiRequest(
+    queryPath("/api/students", {
+      branch: branchCode,
+      group: groupCode,
+      status,
+      search,
+      limit,
+    }),
+    { branchCode, groupCode },
+  ),
+  enrolStudent: ({ branchCode, groupCode, name, grade, profile }) => apiRequest(
+    "/api/students",
+    {
+      method: "POST",
+      body: { name, grade, branchCode, groupCode, profile },
+      branchCode,
+      groupCode,
+    },
+  ),
+  stopStudent: ({
+    branchCode,
+    groupCode,
+    studentId,
+    name,
+    grade,
+  }) => apiRequest(
+    `/api/students/${encodeURIComponent(studentId)}/stop`,
+    {
+      method: "POST",
+      body: { name, grade, groupCode },
+      branchCode,
+      groupCode,
+    },
+  ),
+  restoreStudent: ({ branchCode, groupCode, studentId }) => apiRequest(
+    `/api/students/${encodeURIComponent(studentId)}/restore`,
+    {
+      method: "POST",
+      body: {},
+      branchCode,
+      groupCode,
+    },
+  ),
 };

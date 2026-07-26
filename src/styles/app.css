@@ -367,6 +367,30 @@ button {
   margin-bottom: 24px;
 }
 
+.roster-lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: -8px 0 24px;
+}
+
+.roster-lifecycle-actions .primary-button,
+.roster-lifecycle-actions .secondary-button {
+  min-height: 44px;
+  padding: 8px 16px;
+}
+
+.lifecycle-toast {
+  margin: -10px 0 20px;
+  padding: 11px 14px;
+  border: 1px solid rgba(34, 130, 82, 0.22);
+  border-radius: 12px;
+  background: rgba(238, 252, 245, 0.92);
+  color: #17633e;
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .summary-bar__item {
   min-width: 0;
   padding: 12px 6px;
@@ -713,6 +737,133 @@ button {
   box-shadow: 0 26px 70px rgba(6, 21, 43, 0.25);
 }
 
+.lifecycle-dialog {
+  width: min(100%, 680px);
+  max-height: min(820px, 90vh);
+  overflow: auto;
+  padding: 26px;
+  border-radius: var(--radius-card);
+  background: #f8fbff;
+  box-shadow: 0 26px 70px rgba(6, 21, 43, 0.25);
+}
+
+.lifecycle-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.lifecycle-dialog__header h2 {
+  margin: 0;
+  color: var(--color-navy);
+}
+
+.lifecycle-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.lifecycle-form__grid--identity {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lifecycle-form label {
+  display: grid;
+  gap: 7px;
+  color: #354b68;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.lifecycle-form input,
+.lifecycle-form select {
+  width: 100%;
+  min-height: 44px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 12px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--color-navy);
+  padding: 0 12px;
+}
+
+.lifecycle-form input:focus,
+.lifecycle-form select:focus {
+  border-color: var(--color-blue);
+  box-shadow: 0 0 0 3px rgba(23, 104, 209, 0.12);
+}
+
+.lifecycle-form__profile,
+.candidate-list {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 0;
+  padding: 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+}
+
+.lifecycle-form__profile legend,
+.candidate-list legend {
+  padding: 0 6px;
+  color: var(--color-navy);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.lifecycle-form > .primary-button,
+.lifecycle-dialog__confirm {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.lifecycle-form > .secondary-button {
+  margin-top: 14px;
+}
+
+.candidate-list label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: white;
+  color: #354b68;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.candidate-list input {
+  margin-top: 2px;
+}
+
+.lifecycle-confirmation {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(23, 104, 209, 0.2);
+  border-radius: 12px;
+  background: var(--color-blue-light);
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.lifecycle-confirmation strong {
+  color: var(--color-navy);
+  font-size: 15px;
+}
+
+.lifecycle-dialog__empty {
+  color: var(--color-muted);
+  text-align: center;
+}
+
 .message-dialog__header {
   display: flex;
   align-items: center;
@@ -837,6 +988,11 @@ button {
   }
 
   .profile-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lifecycle-form__grid,
+  .lifecycle-form__grid--identity {
     grid-template-columns: 1fr;
   }
 

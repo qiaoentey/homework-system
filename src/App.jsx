@@ -118,6 +118,7 @@ export function App() {
         <RosterScreen
           branchCode={flow.branchCode}
           groupCode={flow.groupCode}
+          groups={selectedBranch.groups}
           onBackGroups={() => dispatch({ type: "BACK_TO_GROUPS" })}
           onBackBranches={() => dispatch({ type: "BACK_TO_BRANCHES" })}
         />
