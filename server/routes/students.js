@@ -18,9 +18,10 @@ const branchSchema = z.enum(branchCodes);
 const groupSchema = z.enum(groupCodes);
 const uuidSchema = z.uuid();
 const trimmedRequired = z.string().trim().min(1);
-const profileSchema = z.object(Object.fromEntries(
+const fullProfileSchema = z.object(Object.fromEntries(
   PROFILE_FIELDS.map((field) => [field, z.string()]),
-)).partial().strict();
+)).strict();
+const partialProfileSchema = fullProfileSchema.partial();
 
 const listSchema = z.object({
   branch: branchSchema,
@@ -37,7 +38,7 @@ const enrolSchema = z.object({
   grade: trimmedRequired,
   branchCode: branchSchema,
   groupCode: groupSchema,
-  profile: profileSchema.optional().default({}),
+  profile: fullProfileSchema,
 }).strict();
 
 const stopSchema = z.object({
@@ -48,7 +49,7 @@ const stopSchema = z.object({
 
 const profileUpdateSchema = z.object({
   updatedAt: z.string().datetime({ offset: true }),
-  profile: profileSchema.refine((profile) => Object.keys(profile).length > 0),
+  profile: partialProfileSchema.refine((profile) => Object.keys(profile).length > 0),
 }).strict();
 
 function error(response, status, code, message) {

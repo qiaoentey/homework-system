@@ -144,6 +144,7 @@ describe("student API", () => {
     await insertStudent(pool, {
       id: "00000000-0000-4000-8000-000000000001",
       name: "Alice",
+      grade: "Y5",
     });
 
     const first = await agent
@@ -166,6 +167,38 @@ describe("student API", () => {
     ]);
     expect(second.body.nextCursor).toBeNull();
     expect(second.body.total).toBe(3);
+  });
+
+  it("uses the database-computed non-ASCII sort key for stable cursors", async () => {
+    await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "ÉCLAIR",
+    });
+    await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000001",
+      name: "éclair",
+      grade: "Y5",
+    });
+
+    const first = await agent
+      .get("/api/students?branch=MK&group=MK%20HAPPY&limit=1")
+      .expect(200);
+    const cursor = JSON.parse(Buffer.from(first.body.nextCursor, "base64url").toString("utf8"));
+    const databaseSortKey = await pool.query(
+      "select lower(name) as sort_name from students where id = $1",
+      [first.body.items[0].id],
+    );
+
+    expect(first.body.items[0].id).toBe("00000000-0000-4000-8000-000000000001");
+    expect(cursor).toEqual({
+      name: databaseSortKey.rows[0].sort_name,
+      id: "00000000-0000-4000-8000-000000000001",
+    });
+
+    const second = await agent
+      .get(`/api/students?branch=MK&group=MK%20HAPPY&limit=1&cursor=${encodeURIComponent(first.body.nextCursor)}`)
+      .expect(200);
+    expect(second.body.items[0].id).toBe("00000000-0000-4000-8000-000000000002");
   });
 
   it("clamps requested page sizes to 50", async () => {
@@ -231,11 +264,63 @@ describe("student API", () => {
     expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(1);
   });
 
+  it("atomically rejects one of two concurrent duplicate enrolments", async () => {
+    const body = {
+      name: "Concurrent Student",
+      grade: "Y3",
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: emptyProfile,
+    };
+
+    const responses = await Promise.all([
+      agent.post("/api/students").set(studentHeaders()).send(body),
+      agent.post("/api/students").set(studentHeaders()).send({
+        ...body,
+        name: "CONCURRENT STUDENT",
+      }),
+    ]);
+
+    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+    expect(responses.find((response) => response.status === 409).body.code)
+      .toBe("DUPLICATE_STUDENT");
+    expect(Number((await pool.query(
+      "select count(*) from students where group_code = $1 and lower(name) = $2 and grade = $3",
+      ["MK HAPPY", "concurrent student", "Y3"],
+    )).rows[0].count)).toBe(1);
+    expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(1);
+  });
+
   it("rejects invalid enrolment fields, cross-branch groups, and write context", async () => {
     await agent
       .post("/api/students")
       .set(studentHeaders())
       .send({ name: "", grade: "", branchCode: "MK", groupCode: "", profile: emptyProfile })
+      .expect(400);
+
+    await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send({
+        name: "NO PROFILE",
+        grade: "Y3",
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+      })
+      .expect(400);
+
+    const incompleteProfile = { ...emptyProfile };
+    delete incompleteProfile.lateStayFriday;
+    await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send({
+        name: "INCOMPLETE PROFILE",
+        grade: "Y3",
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+        profile: incompleteProfile,
+      })
       .expect(400);
 
     const mismatch = await agent

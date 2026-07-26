@@ -28,4 +28,19 @@ describe("initial database schema", () => {
        values ('00000000-0000-4000-8000-000000000001', 'Test', 'Y2', 'WS', 'MK HAPPY')`,
     )).rejects.toThrow();
   });
+
+  it("atomically rejects duplicate normalized student identities, including stopped records", async () => {
+    const pool = await createTestDatabase();
+    pools.push(pool);
+
+    await pool.query(
+      `insert into students (name, grade, branch_code, group_code, status)
+       values ('Alice Tan', 'Y3', 'MK', 'MK HAPPY', 'stopped')`,
+    );
+
+    await expect(pool.query(
+      `insert into students (name, grade, branch_code, group_code)
+       values ('ALICE TAN', 'Y3', 'MK', 'MK HAPPY')`,
+    )).rejects.toMatchObject({ code: "23505" });
+  });
 });

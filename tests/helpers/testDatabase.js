@@ -1,9 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import { DataType, newDb } from "pg-mem";
-
-const migrationPath = fileURLToPath(new URL("../../server/db/migrations/001_initial.sql", import.meta.url));
+import { migrate } from "../../server/db/migrate.js";
 
 export async function createTestDatabase() {
   const database = newDb();
@@ -18,6 +15,6 @@ export async function createTestDatabase() {
 
   const { Pool } = database.adapters.createPg();
   const pool = new Pool();
-  await pool.query(await readFile(migrationPath, "utf8"));
+  await migrate(pool);
   return pool;
 }

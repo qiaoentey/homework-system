@@ -11,17 +11,13 @@ function mapStudent(row) {
   };
 }
 
-function normalizedName(name) {
-  return name.toLowerCase();
-}
-
 function nextUpdatedAt(previous) {
   return new Date(Math.max(Date.now(), new Date(previous).getTime() + 1));
 }
 
 function encodeCursor(student) {
   return Buffer.from(JSON.stringify({
-    name: normalizedName(student.name),
+    name: student.sort_name,
     id: student.id,
   })).toString("base64url");
 }
@@ -91,7 +87,8 @@ export async function listStudents(pool, {
 
   values.push(limit + 1);
   const result = await pool.query(
-    `select id, name, grade, branch_code, group_code, status, profile, updated_at
+    `select id, name, grade, branch_code, group_code, status, profile, updated_at,
+            lower(name) as sort_name
      from students
      where ${conditions.join(" and ")}
      order by lower(name), id
@@ -116,34 +113,28 @@ export async function enrolStudent(pool, {
   profile,
   actor,
 }) {
-  return inTransaction(pool, async (client) => {
-    const duplicate = await client.query(
-      `select 1
-       from students
-       where group_code = $1
-         and lower(name) = $2
-         and lower(grade) = $3
-       limit 1`,
-      [groupCode, normalizedName(name), normalizedName(grade)],
-    );
-    if (duplicate.rows.length) {
+  try {
+    return await inTransaction(pool, async (client) => {
+      const inserted = await client.query(
+        `insert into students (name, grade, branch_code, group_code, status, profile)
+         values ($1, $2, $3, $4, 'active', $5)
+         returning id, name, grade, branch_code, group_code, status, profile, updated_at`,
+        [name, grade, branchCode, groupCode, profile],
+      );
+      const student = inserted.rows[0];
+      await client.query(
+        `insert into student_activity (student_id, action, actor, details)
+         values ($1, 'enrol', $2, $3)`,
+        [student.id, actor, { branchCode, groupCode }],
+      );
+      return mapStudent(student);
+    });
+  } catch (error) {
+    if (error.code === "23505") {
       throw new StudentRepositoryError("DUPLICATE_STUDENT");
     }
-
-    const inserted = await client.query(
-      `insert into students (name, grade, branch_code, group_code, status, profile)
-       values ($1, $2, $3, $4, 'active', $5)
-       returning id, name, grade, branch_code, group_code, status, profile, updated_at`,
-      [name, grade, branchCode, groupCode, profile],
-    );
-    const student = inserted.rows[0];
-    await client.query(
-      `insert into student_activity (student_id, action, actor, details)
-       values ($1, 'enrol', $2, $3)`,
-      [student.id, actor, { branchCode, groupCode }],
-    );
-    return mapStudent(student);
-  });
+    throw error;
+  }
 }
 
 export async function stopStudent(pool, {
