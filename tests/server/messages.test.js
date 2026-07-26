@@ -1,6 +1,7 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../server/app.js";
+import { listStudentMessages } from "../../server/repositories/messages.js";
 import { createTestDatabase } from "../helpers/testDatabase.js";
 
 const emergencyPasswordHash = "task-4-test-salt:330dbd3ebcf20a4b02e6fc954a0677540e9a27cfc5ff51d956659ec11877e06fb426131601c8a7765cdd2f51a908b9013eb463625f6123e097ff762fe5b53b00";
@@ -132,6 +133,43 @@ describe("student message API", () => {
     expect(response.body.items.every((message) => message.studentId === student.id)).toBe(true);
   });
 
+  it("preserves a PostgreSQL local-midnight message date in Malaysia time", async () => {
+    const previousTimezone = process.env.TZ;
+    process.env.TZ = "Asia/Kuala_Lumpur";
+    try {
+      const databaseDate = new Date(2026, 6, 27);
+      expect(databaseDate.toISOString().slice(0, 10)).toBe("2026-07-26");
+      const driverPool = {
+        query: async (sql) => {
+          if (sql.includes("from students")) {
+            return { rows: [{ branch_code: "MK", group_code: "MK HAPPY" }] };
+          }
+          return {
+            rows: [{
+              id: "00000000-0000-4000-8000-000000000002",
+              student_id: "00000000-0000-4000-8000-000000000001",
+              message_date: databaseDate,
+              body: "Bring workbook",
+              created_by: "teacher@example.com",
+              created_at: new Date("2026-07-27T03:00:00.000Z"),
+            }],
+          };
+        },
+      };
+
+      const response = await listStudentMessages(driverPool, {
+        id: "00000000-0000-4000-8000-000000000001",
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+      });
+
+      expect(response.items[0].date).toBe("2026-07-27");
+    } finally {
+      if (previousTimezone === undefined) delete process.env.TZ;
+      else process.env.TZ = previousTimezone;
+    }
+  });
+
   it("rejects message access when the student is outside the selected group", async () => {
     const student = await insertStudent(pool);
 
@@ -182,5 +220,25 @@ describe("student message API", () => {
 
     expect(Number((await pool.query("select count(*) from student_messages")).rows[0].count))
       .toBe(0);
+  });
+
+  it("counts message limits by Unicode code points instead of UTF-16 units", async () => {
+    const student = await insertStudent(pool);
+    const path = `/api/students/${student.id}/messages`;
+
+    const accepted = await agent
+      .post(path)
+      .set(groupHeaders())
+      .send({ date: "2026-07-27", body: "🙂".repeat(1001) })
+      .expect(201);
+    expect(Array.from(accepted.body.body)).toHaveLength(1001);
+
+    await agent
+      .post(path)
+      .set(groupHeaders())
+      .send({ date: "2026-07-27", body: "🙂".repeat(2001) })
+      .expect(400);
+    expect(Number((await pool.query("select count(*) from student_messages")).rows[0].count))
+      .toBe(1);
   });
 });

@@ -1,6 +1,7 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../server/app.js";
+import { listAttendance } from "../../server/repositories/attendance.js";
 import { createTestDatabase } from "../helpers/testDatabase.js";
 
 const emergencyPasswordHash = "task-4-test-salt:330dbd3ebcf20a4b02e6fc954a0677540e9a27cfc5ff51d956659ec11877e06fb426131601c8a7765cdd2f51a908b9013eb463625f6123e097ff762fe5b53b00";
@@ -126,6 +127,38 @@ describe("attendance API", () => {
         },
       ],
     });
+  });
+
+  it("preserves a PostgreSQL local-midnight attendance date in Malaysia time", async () => {
+    const previousTimezone = process.env.TZ;
+    process.env.TZ = "Asia/Kuala_Lumpur";
+    try {
+      const databaseDate = new Date(2026, 6, 27);
+      expect(databaseDate.toISOString().slice(0, 10)).toBe("2026-07-26");
+      const driverPool = {
+        query: async () => ({
+          rows: [{
+            student_id: "00000000-0000-4000-8000-000000000001",
+            attendance_date: databaseDate,
+            event_code: "arrive",
+            is_active: true,
+            updated_by: "teacher@example.com",
+            updated_at: new Date("2026-07-27T03:00:00.000Z"),
+          }],
+        }),
+      };
+
+      const response = await listAttendance(driverPool, {
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+        date: "2026-07-27",
+      });
+
+      expect(response.items[0].date).toBe("2026-07-27");
+    } finally {
+      if (previousTimezone === undefined) delete process.env.TZ;
+      else process.env.TZ = previousTimezone;
+    }
   });
 
   it("upserts one event without duplicating it and records the signed-in actor", async () => {

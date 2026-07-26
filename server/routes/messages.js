@@ -17,7 +17,7 @@ const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u).refine((value) => {
 });
 const createSchema = z.object({
   date: dateSchema,
-  body: z.string().trim().min(1).max(2000),
+  body: z.string().trim().min(1).refine((body) => Array.from(body).length <= 2000),
 }).strict();
 
 function error(response, status, code, message) {
