@@ -1,0 +1,22 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #172033;
+  background: #f6f8fc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --ink: #172033;
+  --muted: #58627a;
+  --surface: #ffffff;
+  --border: #dce3f2;
+  --primary: #3056d3;
+  --primary-dark: #203fa8;
+  --accent: #eb8a24;
+  --radius: 18px;
+  --shadow: 0 10px 30px rgb(39 61 109 / 10%);
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+
+button, a { font: inherit; }
