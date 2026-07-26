@@ -30,6 +30,17 @@ describe("approved roster import", () => {
     expect(result.counts).toMatchObject(APPROVED_COUNTS);
     expect(result.rows.filter((row) => row.groupCode === "MK QIAO EN"))
       .not.toContainEqual(expect.objectContaining({ sourceRef: expect.stringContaining("basic") }));
+    expect(result.rows).toContainEqual(expect.objectContaining({
+      groupCode: "MK QIAO EN",
+      name: "Aria",
+      grade: "Y6",
+    }));
+    for (const label of ["假期通知", "午餐伙食", "晚餐伙食", "liew妈妈", "Daycare助理"]) {
+      expect(result.rows).not.toContainEqual(expect.objectContaining({
+        groupCode: "MK HAPPY",
+        name: label,
+      }));
+    }
   });
 
   it("is idempotent and does not create duplicate students", async () => {
