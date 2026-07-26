@@ -33,7 +33,7 @@ class EquationParser {
     const expression = this.expression();
     if (this.current()?.type !== "equals") this.fail("missing-equals");
     this.index += 1;
-    const answer = this.value();
+    const answer = this.signedValue();
     if (this.current()) this.fail("trailing-token");
     return { expression, studentAnswer: answer.value, unit: answer.unit };
   }
@@ -90,6 +90,20 @@ class EquationParser {
     if (unit && suffix && unit !== suffix) this.fail("unexpected-token");
     unit ??= suffix;
     return { value, unit };
+  }
+
+  private signedValue(): { value: NumericValue; unit?: UnitCode } {
+    const operator = this.current();
+    if (operator?.type !== "operator" || (operator.value !== "+" && operator.value !== "-")) return this.value();
+    this.index += 1;
+    const answer = this.value();
+    if (operator.value === "+") return answer;
+    return {
+      ...answer,
+      value: answer.value.kind === "fraction"
+        ? { kind: "fraction", value: answer.value.value.neg() }
+        : { kind: "decimal", value: answer.value.value.negated() },
+    };
   }
 
   private consumeUnit() {

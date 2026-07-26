@@ -24,6 +24,15 @@ describe("parseEquation", () => {
     });
   });
 
+  it.each([
+    ["1 - 3 = -2", "-2"],
+    ["0.5 - 1.25 = -0.75", "-0.75"],
+    ["1/4 - 1/2 = -1/4", "-1/4"],
+  ])("accepts a negative student answer in %s", (input, expected) => {
+    const parsed = unwrap(parseEquation(input));
+    expect(checkEquation(parsed)).toMatchObject({ status: "correct", expected });
+  });
+
   it("normalizes supported OCR operators without converting words to operators", () => {
     expect(checkEquation(unwrap(parseEquation("6 x 7 = 42"))).status).toBe("correct");
     expect(checkEquation(unwrap(parseEquation("8 cm x 5 cm = 40 cm²"))).status).toBe("correct");

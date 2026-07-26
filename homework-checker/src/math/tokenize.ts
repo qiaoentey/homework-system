@@ -87,6 +87,8 @@ export function tokenize(source: string): TokenizeResult {
       while (isLetter(source[index]) || source[index] === "²" || source[index] === "2") {
         word += source[index++] === "²" ? "2" : source[index - 1];
       }
+      // Unknown words stay inert tokens so the checker can conservatively return
+      // "uncertain" for a unit-like OCR result; they are never treated as operators.
       const unit = KNOWN_UNITS.has(word as KnownUnitCode) ? (word as KnownUnitCode) : "unknown";
       tokens.push({ type: "unit", value: unit, position });
       continue;

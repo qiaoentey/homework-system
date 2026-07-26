@@ -1,4 +1,3 @@
-import Decimal from "decimal.js";
 import Fraction from "fraction.js";
 import type { ExprNode, NumericValue, ParsedEquation } from "./parser";
 import { toDecimal } from "./parser";
@@ -12,16 +11,16 @@ export type CheckResult = {
 };
 
 type Dimension = "length" | "mass" | "volume" | "money" | "time" | "area";
-type UnitDefinition = { dimension: Dimension; scale: Decimal };
+type UnitDefinition = { dimension: Dimension; scale: Fraction };
 type Quantity = { value: NumericValue; unit?: UnitCode };
 
 const units: Record<KnownUnitCode, UnitDefinition> = {
-  mm: { dimension: "length", scale: new Decimal("0.001") }, cm: { dimension: "length", scale: new Decimal("0.01") }, m: { dimension: "length", scale: new Decimal(1) }, km: { dimension: "length", scale: new Decimal(1000) },
-  g: { dimension: "mass", scale: new Decimal(1) }, kg: { dimension: "mass", scale: new Decimal(1000) },
-  ml: { dimension: "volume", scale: new Decimal(1) }, l: { dimension: "volume", scale: new Decimal(1000) },
-  sen: { dimension: "money", scale: new Decimal("0.01") }, RM: { dimension: "money", scale: new Decimal(1) },
-  s: { dimension: "time", scale: new Decimal(1) }, min: { dimension: "time", scale: new Decimal(60) }, h: { dimension: "time", scale: new Decimal(3600) }, day: { dimension: "time", scale: new Decimal(86400) },
-  mm2: { dimension: "area", scale: new Decimal("0.000001") }, cm2: { dimension: "area", scale: new Decimal("0.0001") }, m2: { dimension: "area", scale: new Decimal(1) }, km2: { dimension: "area", scale: new Decimal(1_000_000) },
+  mm: { dimension: "length", scale: new Fraction("0.001") }, cm: { dimension: "length", scale: new Fraction("0.01") }, m: { dimension: "length", scale: new Fraction(1) }, km: { dimension: "length", scale: new Fraction(1000) },
+  g: { dimension: "mass", scale: new Fraction(1) }, kg: { dimension: "mass", scale: new Fraction(1000) },
+  ml: { dimension: "volume", scale: new Fraction(1) }, l: { dimension: "volume", scale: new Fraction(1000) },
+  sen: { dimension: "money", scale: new Fraction("0.01") }, RM: { dimension: "money", scale: new Fraction(1) },
+  s: { dimension: "time", scale: new Fraction(1) }, min: { dimension: "time", scale: new Fraction(60) }, h: { dimension: "time", scale: new Fraction(3600) }, day: { dimension: "time", scale: new Fraction(86400) },
+  mm2: { dimension: "area", scale: new Fraction("0.000001") }, cm2: { dimension: "area", scale: new Fraction("0.0001") }, m2: { dimension: "area", scale: new Fraction(1) }, km2: { dimension: "area", scale: new Fraction(1_000_000) },
 };
 
 class CannotDetermine extends Error {
@@ -50,9 +49,11 @@ const valueOperation = (left: NumericValue, operator: "+" | "-" | "*" | "/", rig
   return { kind: "decimal", value: first.dividedBy(second) };
 };
 
+const toFraction = (value: NumericValue) => value.kind === "fraction" ? value.value : new Fraction(value.value.toFixed());
+
 const convertToBase = (quantity: Quantity) => {
   const unit = definition(quantity.unit);
-  return unit ? toDecimal(quantity.value).times(unit.scale) : toDecimal(quantity.value);
+  return unit ? toFraction(quantity.value).mul(unit.scale) : toFraction(quantity.value);
 };
 
 const dimensionOf = (quantity: Quantity) => definition(quantity.unit)?.dimension;
@@ -86,15 +87,20 @@ const evaluate = (node: ExprNode): Quantity => {
     if (leftDimension !== rightDimension) throw new CannotDetermine("Units must have the same dimension before adding or subtracting.");
     if (!leftDimension) return { value: valueOperation(left.value, node.operator, right.value) };
     return {
-      value: { kind: "decimal", value: node.operator === "+" ? convertToBase(left).plus(convertToBase(right)) : convertToBase(left).minus(convertToBase(right)) },
+      value: { kind: "fraction", value: node.operator === "+" ? convertToBase(left).add(convertToBase(right)) : convertToBase(left).sub(convertToBase(right)) },
       unit: baseUnitFor(leftDimension),
     };
   }
   if (node.operator === "/" && dimensionOf(right)) throw new CannotDetermine("Unit division is outside the deterministic checker.");
+  if (node.operator === "/" && dimensionOf(left)) {
+    const divisor = toFraction(right.value);
+    if (divisor.equals(0)) throw new CannotDetermine("Division by zero cannot be checked.");
+    return { value: { kind: "fraction", value: toFraction(left.value).div(divisor) }, unit: left.unit };
+  }
   if (node.operator === "*" && (dimensionOf(left) || dimensionOf(right))) {
     const unit = resultingProductUnit(left.unit, right.unit);
-    const scale = definition(unit)?.scale ?? new Decimal(1);
-    return { value: { kind: "decimal", value: convertToBase(left).times(convertToBase(right)).dividedBy(scale) }, unit };
+    const scale = definition(unit)?.scale ?? new Fraction(1);
+    return { value: { kind: "fraction", value: convertToBase(left).mul(convertToBase(right)).div(scale) }, unit };
   }
   return { value: valueOperation(left.value, node.operator, right.value), unit: left.unit };
 };
@@ -123,7 +129,7 @@ export function checkEquation(parsed: ParsedEquation): CheckResult {
     const expectedBase = convertToBase(expected);
     const actualBase = convertToBase({ value: parsed.studentAnswer, unit: parsed.unit });
     const displayValue = answerDefinition
-      ? { kind: "decimal" as const, value: expectedBase.dividedBy(answerDefinition.scale) }
+      ? { kind: "fraction" as const, value: expectedBase.div(answerDefinition.scale) }
       : expected.value;
     const expectedText = format(displayValue, parsed.unit);
     return expectedBase.equals(actualBase)
