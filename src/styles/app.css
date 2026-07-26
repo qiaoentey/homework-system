@@ -167,6 +167,19 @@ button {
   transform: translateY(-2px);
 }
 
+.choice-button[data-variant="primary"] {
+  border-color: var(--color-navy);
+  background: linear-gradient(135deg, #0c1e3b 0%, #07152b 100%);
+  box-shadow: 0 18px 38px rgba(8, 25, 52, 0.18);
+  color: white;
+}
+
+.choice-button:focus-visible {
+  box-shadow:
+    0 0 0 4px rgba(23, 104, 209, 0.2),
+    0 18px 38px rgba(8, 25, 52, 0.18);
+}
+
 .choice-button:active {
   transform: translateY(0);
 }

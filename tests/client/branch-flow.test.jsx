@@ -94,6 +94,9 @@ describe.each([
       "STP",
       "WS",
     ]);
+    expect(screen.getByRole("button", { name: "MK" })).toHaveAttribute("data-variant", "default");
+    expect(screen.getByRole("button", { name: "STP" })).toHaveAttribute("data-variant", "primary");
+    expect(screen.getByRole("button", { name: "WS" })).toHaveAttribute("data-variant", "default");
 
     fireEvent.click(screen.getByRole("button", { name: "MK" }));
     expect(screen.getByRole("button", { name: "HAPPY" })).toBeVisible();

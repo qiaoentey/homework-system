@@ -9,6 +9,7 @@ export function BranchGateway({ branches, onSelect }) {
         {branches.map((branch) => (
           <button
             className="choice-button"
+            data-variant={branch.code === "STP" ? "primary" : "default"}
             key={branch.code}
             type="button"
             onClick={() => onSelect(branch.code)}
