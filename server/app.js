@@ -1,11 +1,16 @@
 import express from "express";
 import cookieSession from "cookie-session";
 import { loadConfig } from "./config.js";
+import { createPool } from "./db/pool.js";
 import { createCatalogRouter } from "./routes/catalog.js";
 import { createSessionRouter } from "./routes/session.js";
+import { createStudentsRouter } from "./routes/students.js";
 
-export function createApp({ config = loadConfig(), googleVerifier } = {}) {
+export function createApp({ config = loadConfig(), googleVerifier, pool } = {}) {
   const app = express();
+  const databasePool = pool === undefined
+    ? createPool(config.databaseUrl ?? process.env.DATABASE_URL)
+    : pool;
   app.set("trust proxy", config.environment === "production" ? 1 : false);
   app.use(express.json({ limit: "100kb" }));
   app.use(cookieSession({
@@ -20,5 +25,6 @@ export function createApp({ config = loadConfig(), googleVerifier } = {}) {
   app.get("/api/health", (_request, response) => response.json({ ok: true }));
   app.use("/api/session", createSessionRouter({ config, googleVerifier }));
   app.use("/api/catalog", createCatalogRouter());
+  app.use("/api/students", createStudentsRouter({ pool: databasePool }));
   return app;
 }
