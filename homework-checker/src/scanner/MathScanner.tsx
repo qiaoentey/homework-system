@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
 import { createSessionAsset, type SessionAsset } from "../privacy/sessionAssets";
-import { prepareImage, type PreparedImage } from "./imagePipeline";
+import { prepareImage, type PreparedImage, type Rect } from "./imagePipeline";
+import type { OcrWorkerEvent, QuestionRegion } from "./ocr.types";
+import { segmentQuestions } from "./questionSegmenter";
 
 const closeBitmap = (prepared: PreparedImage | null) => prepared?.bitmap.close?.();
 
@@ -8,18 +10,26 @@ export function MathScanner() {
   const cameraInput = useRef<HTMLInputElement>(null);
   const assetRef = useRef<SessionAsset | null>(null);
   const preparedRef = useRef<PreparedImage | null>(null);
+  const ocrWorkerRef = useRef<Worker | null>(null);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
   const requestId = useRef(0);
   const [asset, setAsset] = useState<SessionAsset | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasStartedCheck, setHasStartedCheck] = useState(false);
+  const [ocrStage, setOcrStage] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<QuestionRegion[]>([]);
+  const [manualSelection, setManualSelection] = useState(false);
+  const [selection, setSelection] = useState<Rect | null>(null);
 
   const releaseCurrent = useCallback(() => {
     requestId.current += 1;
     assetRef.current?.release();
     closeBitmap(preparedRef.current);
+    ocrWorkerRef.current?.terminate();
     assetRef.current = null;
     preparedRef.current = null;
+    ocrWorkerRef.current = null;
   }, []);
 
   useEffect(() => releaseCurrent, [releaseCurrent]);
@@ -28,6 +38,10 @@ export function MathScanner() {
     releaseCurrent();
     setError(null);
     setHasStartedCheck(false);
+    setOcrStage(null);
+    setQuestions([]);
+    setManualSelection(false);
+    setSelection(null);
     const nextAsset = createSessionAsset(file);
     const activeRequest = requestId.current;
     assetRef.current = nextAsset;
@@ -65,6 +79,124 @@ export function MathScanner() {
     setIsPreparing(false);
     setError(null);
     setHasStartedCheck(false);
+    setOcrStage(null);
+    setQuestions([]);
+    setManualSelection(false);
+    setSelection(null);
+  };
+
+  const imageDataFor = (prepared: PreparedImage, region?: Rect) => {
+    const source = region ?? { x: 0, y: 0, width: prepared.width, height: prepared.height };
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(source.width));
+    canvas.height = Math.max(1, Math.round(source.height));
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("无法在此装置上准备识别图片。");
+    context.drawImage(
+      prepared.bitmap,
+      source.x,
+      source.y,
+      source.width,
+      source.height,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+    return context.getImageData(0, 0, canvas.width, canvas.height);
+  };
+
+  const recognize = useCallback((region?: Rect) => {
+    const prepared = preparedRef.current;
+    if (!prepared) return;
+
+    setError(null);
+    setQuestions([]);
+    setOcrStage("读取模型…");
+    const worker = ocrWorkerRef.current ?? new Worker(new URL("./ocr.worker.ts", import.meta.url), { type: "module" });
+    ocrWorkerRef.current = worker;
+
+    worker.onmessage = (event: MessageEvent<OcrWorkerEvent>) => {
+      const message = event.data;
+      if (message.type === "progress") {
+        setOcrStage(`${message.stage}… ${Math.round(message.progress * 100)}%`);
+      } else if (message.type === "result") {
+        const regions = segmentQuestions(message.lines);
+        setOcrStage(null);
+        setQuestions(regions);
+        if (!regions.length) {
+          setManualSelection(true);
+          setError("无法自动分题。请在照片上拖出一题的范围，再进行本机识别。");
+        } else {
+          setManualSelection(false);
+        }
+      } else {
+        setOcrStage(null);
+        setManualSelection(false);
+        setError(`本机文字识别未能完成：${message.message}`);
+      }
+    };
+
+    try {
+      worker.postMessage({
+        type: "recognize",
+        image: imageDataFor(prepared, region),
+        languages: ["eng", "msa", "chi_tra"],
+      });
+    } catch (reason) {
+      setOcrStage(null);
+      setError(reason instanceof Error ? reason.message : "无法在此装置上准备识别图片。");
+    }
+  }, []);
+
+  const pointInImage = (event: PointerEvent<HTMLDivElement>) => {
+    const prepared = preparedRef.current;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (!prepared || !bounds.width || !bounds.height) return null;
+    return {
+      x: Math.max(0, Math.min(prepared.width, (event.clientX - bounds.left) * prepared.width / bounds.width)),
+      y: Math.max(0, Math.min(prepared.height, (event.clientY - bounds.top) * prepared.height / bounds.height)),
+    };
+  };
+
+  const onSelectionStart = (event: PointerEvent<HTMLDivElement>) => {
+    if (!manualSelection || ocrStage) return;
+    const point = pointInImage(event);
+    if (!point) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStart.current = point;
+    setSelection({ x: point.x, y: point.y, width: 0, height: 0 });
+  };
+
+  const onSelectionMove = (event: PointerEvent<HTMLDivElement>) => {
+    const point = pointInImage(event);
+    const start = dragStart.current;
+    if (!start || !point) return;
+    setSelection({
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y),
+    });
+  };
+
+  const onSelectionEnd = (event: PointerEvent<HTMLDivElement>) => {
+    const point = pointInImage(event);
+    const start = dragStart.current;
+    dragStart.current = null;
+    if (!start || !point) return;
+    const region = {
+      x: Math.min(start.x, point.x),
+      y: Math.min(start.y, point.y),
+      width: Math.abs(point.x - start.x),
+      height: Math.abs(point.y - start.y),
+    };
+    if (region.width < 12 || region.height < 12) {
+      setError("请选择完整的一题范围后再识别。");
+      return;
+    }
+    setSelection(region);
+    recognize(region);
   };
 
   return (
@@ -90,15 +222,36 @@ export function MathScanner() {
 
       {asset && (
         <section className="scanner__preview" aria-label="照片预览">
-          <img src={asset.url} alt="待检查的数学作业照片" />
+          <div
+            className={`scanner__image-frame${manualSelection ? " scanner__image-frame--selecting" : ""}`}
+            onPointerDown={onSelectionStart}
+            onPointerMove={onSelectionMove}
+            onPointerUp={onSelectionEnd}
+          >
+            <img src={asset.url} alt="待检查的数学作业照片" />
+            {selection && preparedRef.current && (
+              <span
+                className="scanner__selection"
+                aria-hidden="true"
+                style={{
+                  left: `${selection.x / preparedRef.current.width * 100}%`,
+                  top: `${selection.y / preparedRef.current.height * 100}%`,
+                  width: `${selection.width / preparedRef.current.width * 100}%`,
+                  height: `${selection.height / preparedRef.current.height * 100}%`,
+                }}
+              />
+            )}
+          </div>
           <div>
-            <p>{isPreparing ? "正在安全准备照片…" : "照片已准备好，可以开始检查。"}</p>
+            <p>{isPreparing ? "正在安全准备照片…" : ocrStage ?? "照片已准备好，可以开始检查。"}</p>
             <div className="scanner__controls">
               <button className="filter-button" type="button" onClick={() => cameraInput.current?.click()}>重新拍摄</button>
               <button className="filter-button" type="button" onClick={clearPhoto}>清除照片</button>
-              <button className="scan-start" type="button" disabled={isPreparing} onClick={() => setHasStartedCheck(true)}>开始检查</button>
+              <button className="scan-start" type="button" disabled={isPreparing || Boolean(ocrStage)} onClick={() => { setHasStartedCheck(true); recognize(); }}>开始检查</button>
             </div>
-            {hasStartedCheck && <p role="status">照片已准备，下一步将识别题目和答案。</p>}
+            {hasStartedCheck && !ocrStage && !questions.length && !manualSelection && <p role="status">照片已准备，正在等待开始识别。</p>}
+            {questions.length > 0 && <p role="status">已在本机找到 {questions.length} 题。</p>}
+            {manualSelection && <p role="status">请在照片上拖出一题范围；只会重新识别所选区域。</p>}
           </div>
         </section>
       )}

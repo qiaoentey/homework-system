@@ -10,10 +10,14 @@
     "test:e2e": "playwright test --pass-with-no-tests"
   },
   "dependencies": {
+    "@tesseract.js-data/chi_tra": "^1.0.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/msa": "^1.0.0",
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "tesseract.js": "^7.0.0",
+    "vite": "latest",
     "vite-plugin-pwa": "latest"
   },
   "devDependencies": {
