@@ -85,6 +85,10 @@ describe.each([
     container.style.width = `${width}px`;
     container.style.height = `${height}px`;
 
+    const brandLogo = screen.getByRole("img", { name: "诚意教育，您身边学习专家" });
+    expect(brandLogo).toHaveAttribute("src", "/assets/brand-logo.png");
+    expect(brandLogo).toHaveAttribute("width", "105");
+    expect(brandLogo).toHaveAttribute("height", "34");
     expect(await screen.findByRole("heading", { name: "请选择分院" })).toBeVisible();
     expect(screen.getByText("进入后只显示该分院名单")).toBeVisible();
     expect(within(screen.getByRole("group", { name: "分院选择" }))
@@ -94,9 +98,13 @@ describe.each([
       "STP",
       "WS",
     ]);
-    expect(screen.getByRole("button", { name: "MK" })).toHaveAttribute("data-variant", "default");
-    expect(screen.getByRole("button", { name: "STP" })).toHaveAttribute("data-variant", "primary");
-    expect(screen.getByRole("button", { name: "WS" })).toHaveAttribute("data-variant", "default");
+    expect(within(screen.getByRole("group", { name: "分院选择" }))
+      .getAllByRole("button")
+      .map((button) => [button.textContent, button.dataset.variant])).toEqual([
+      ["MK", "default"],
+      ["STP", "primary"],
+      ["WS", "default"],
+    ]);
 
     fireEvent.click(screen.getByRole("button", { name: "MK" }));
     expect(screen.getByRole("button", { name: "HAPPY" })).toBeVisible();
