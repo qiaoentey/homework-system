@@ -46,8 +46,11 @@ export function EnrolDialog({
   const scopeRef = useRef(`${branchCode}\u0000${groupCode}`);
   scopeRef.current = `${branchCode}\u0000${groupCode}`;
 
-  useEffect(() => () => {
-    activeRef.current = false;
+  useEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+    };
   }, []);
 
   const valid = Boolean(name.trim() && grade && selectedGroup);

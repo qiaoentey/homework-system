@@ -32,9 +32,12 @@ export function StopDialog({
   const scopeRef = useRef(`${branchCode}\u0000${groupCode}`);
   scopeRef.current = `${branchCode}\u0000${groupCode}`;
 
-  useEffect(() => () => {
-    activeRef.current = false;
-    requestGeneration.current += 1;
+  useEffect(() => {
+    activeRef.current = true;
+    return () => {
+      activeRef.current = false;
+      requestGeneration.current += 1;
+    };
   }, []);
 
   const selected = candidates.find((student) => student.id === selectedId) ?? null;
