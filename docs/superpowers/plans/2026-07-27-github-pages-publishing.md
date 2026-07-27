@@ -694,3 +694,52 @@ git add docs/superpowers/plans/2026-07-27-github-pages-publishing.md
 git commit -m "docs: record Pages deployment"
 git push origin main
 ```
+
+#### Deployment record — 2026-07-27
+
+- Deployed application commit:
+  `4f5cfb1d46ef8be41d852e9e465a163e35528485`
+  (`fix: resolve dependency audit advisory`). This is the exact SHA built by
+  CI and Pages; the record-only commit follows it.
+- CI:
+  [Homework checker CI run 30267421737](https://github.com/qiaoentey/homework-system/actions/runs/30267421737)
+  — success.
+- Pages:
+  [Homework checker Pages run 30267654409](https://github.com/qiaoentey/homework-system/actions/runs/30267654409)
+  — success; GitHub deployment `5622703998` has terminal state `success`.
+- Public site: <https://qiaoentey.github.io/homework-system/>.
+- Dependency audit: the initial online gate found 8 high-severity findings
+  through `filelist -> minimatch@5.1.9 -> brace-expansion@2.1.2`. A narrow
+  `filelist` override to `minimatch@10.2.5` removed the vulnerable closure
+  without `--force` or an ignored advisory. Final online
+  `npm audit --audit-level=high` exited zero with `found 0 vulnerabilities`.
+- Local verification: 20 unit-test files / 134 tests passed; root E2E
+  15 passed / 5 expected skips; Pages E2E 15 passed / 5 expected skips;
+  both builds and the Pages contract passed.
+- Live HTTP: root, manifest, Service Worker, a Grade 3 Science PDF, and the
+  English OCR model all returned 200; the PDF returned `application/pdf`.
+  The live HTML, manifest, Service Worker, PDF, OCR model, application bundle,
+  OCR/image workers, CSS, and Workbox bundle were SHA-256 identical to the
+  locally verified Pages build.
+- Live mobile-Chromium verification: an IAB/CDP Chromium surface at 390×844
+  opened the root, `#/answers`, the project-base Grade 1 Mathematics PDF, and
+  `#/scan` without console warnings/errors or mobile clipping. The public,
+  de-identified Grade 2 calibration image completed local OCR in about five
+  seconds with three questions, one true red, and two green results. The main
+  target recorded four GET requests: two same-origin worker scripts and two
+  local `blob:` images, with zero POST bodies, WebSockets, third-party origins,
+  or photo/OCR/analytics/credential/payment egress. Worker-internal model
+  fetches were not exposed to the main-target CDP log, so the live OCR-model
+  200 response and artifact hashes supplement that evidence.
+- Calibration scope: Grades 1–6 were not each rerun in the public browser.
+  Both root- and Pages-mode real-browser suites tested the byte-identical
+  deployed Pages artifact across Grades 1–6 with one true red, zero false
+  reds, orange review results, 78 same-origin requests, 12 local `blob:`
+  requests, and no upload; the public browser independently repeated Grade 2.
+- Pages API note: workflow mode reports the correct public URL, source,
+  `public: true`, and `https_enforced: true`, but its legacy `status` field is
+  `null` and `pages/builds/latest` is 404. The workflow run and deployment
+  status above are the terminal-success evidence.
+- Remaining device gates: run the complete install/open, PDF, scan/camera,
+  offline relaunch, update, annotation, and export checklist on a physical
+  iPhone/Safari and a physical Android/Chrome device.
