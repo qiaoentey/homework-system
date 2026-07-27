@@ -50,7 +50,7 @@ The browser privacy calibration listens to every request after upload. It permit
 
 ## OCR provenance and licence
 
-The bundled worker is [Tesseract.js](https://github.com/naptha/tesseract.js) 7.0.0 and its core, licensed Apache-2.0. Bundled English (`eng`), Malay (`msa`), and Traditional Chinese (`chi_tra`) trained-data packages come from [tesseract.js-data / tessdata](https://github.com/naptha/tessdata), version 1.0.0, licensed MIT. They are served from `/ocr/`; no third-party OCR endpoint is contacted.
+The bundled worker is [Tesseract.js](https://github.com/naptha/tesseract.js) 7.0.0 and its core, licensed Apache-2.0. Bundled English (`eng`), Malay (`msa`), and Traditional Chinese (`chi_tra`) trained-data packages come from [tesseract.js-data / tessdata](https://github.com/naptha/tessdata), version 1.0.0, licensed MIT. The GitHub Pages deployment serves them from `/homework-system/ocr/`; local root development serves them from `/ocr/`. No third-party OCR endpoint is contacted.
 
 The real preprocessing and OCR worker stack passes the current Playwright WebKit/iPhone smoke test as well as Chromium calibration. This automated result does not replace testing on physical Safari/iPhone and Chrome/Android devices.
 
@@ -95,7 +95,7 @@ The complete 34-video inventory is asserted in `tests/catalog.test.ts`. Every en
 
 Before any production deployment, complete the automated CI job and record physical-device evidence on at least one current iPhone/Safari and Android/Chrome device:
 
-1. first install online, first OCR-model download, airplane-mode relaunch, and direct `/`, `/scan`, and `/answers` loads;
+1. first install online, first OCR-model download, airplane-mode relaunch, and direct production loads of `/homework-system/`, `/homework-system/#/scan`, and `/homework-system/#/answers`;
 2. camera and gallery photos across the supported worksheet styles, including a deliberate wrong answer and an unjudgeable answer;
 3. manual crop alignment, annotation edit/cancel/restore, and source-color/source-resolution EXIF-correct export;
 4. replacement of a photo during preparation/export, a memory-constrained large-photo attempt, and accepting an update only after a scan finishes;
