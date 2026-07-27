@@ -1,22 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnswerLibrary } from "../answer-library/AnswerLibrary";
 import { MathScanner } from "../scanner/MathScanner";
-import { isAppRoute, type AppRoute } from "./routes";
+import { hashForRoute, routeFromHash, type AppRoute } from "./routes";
 
-const currentRoute = (): AppRoute => (isAppRoute(window.location.pathname) ? window.location.pathname : "/");
+const currentRoute = (): AppRoute => routeFromHash(window.location.hash);
 
 export function App() {
   const [route, setRoute] = useState<AppRoute>(currentRoute);
 
   useEffect(() => {
     const syncRoute = () => setRoute(currentRoute());
-    window.addEventListener("popstate", syncRoute);
-    return () => window.removeEventListener("popstate", syncRoute);
+    window.addEventListener("hashchange", syncRoute);
+    return () => window.removeEventListener("hashchange", syncRoute);
   }, []);
 
   const navigate = useCallback((nextRoute: AppRoute) => {
-    window.history.pushState({}, "", nextRoute);
-    setRoute(nextRoute);
+    window.location.hash = hashForRoute(nextRoute);
   }, []);
 
   if (route === "/answers") return <AnswerLibrary onBack={() => navigate("/")} />;
@@ -24,7 +23,7 @@ export function App() {
   if (route === "/scan") {
     return (
       <main className="page-shell">
-        <a className="text-button" href="/" onClick={(event) => { event.preventDefault(); navigate("/"); }} aria-label="返回首页">← 返回首页</a>
+        <a className="text-button" href="#/" onClick={(event) => { event.preventDefault(); navigate("/"); }} aria-label="返回首页">← 返回首页</a>
         <MathScanner />
       </main>
     );
@@ -38,12 +37,12 @@ export function App() {
         <p>快速找到活动本答案，或准备拍照检查数学作业。</p>
       </section>
       <nav className="home-actions" aria-label="主要功能">
-        <a className="primary-action" href="/answers" onClick={(event) => { event.preventDefault(); navigate("/answers"); }} aria-label="快速查答案">
+        <a className="primary-action" href="#/answers" onClick={(event) => { event.preventDefault(); navigate("/answers"); }} aria-label="快速查答案">
           <span aria-hidden="true">📚</span>
           <span>快速查答案</span>
           <small>按年级和科目找答案 PDF、影片</small>
         </a>
-        <a className="secondary-action" href="/scan" onClick={(event) => { event.preventDefault(); navigate("/scan"); }} aria-label="拍照检查数学">
+        <a className="secondary-action" href="#/scan" onClick={(event) => { event.preventDefault(); navigate("/scan"); }} aria-label="拍照检查数学">
           <span aria-hidden="true">📷</span>
           <span>拍照检查数学</span>
           <small>在本机浏览器检查作业</small>

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/app/App";
+import { hashForRoute, routeFromHash } from "../src/app/routes";
 import { MathScanner, type OcrWorkerFactory } from "../src/scanner/MathScanner";
 
 vi.mock("../src/scanner/imagePipeline", () => ({
@@ -49,6 +50,25 @@ const selectImage = async (input: HTMLElement, name: string) => {
 
 describe("App", () => {
   beforeEach(() => window.history.replaceState({}, "", "/"));
+
+  it.each([
+    ["", "/"],
+    ["#/", "/"],
+    ["#/answers", "/answers"],
+    ["#/scan", "/scan"],
+    ["#/unknown", "/"],
+  ] as const)("maps hash %s to route %s", (hash, route) => {
+    expect(routeFromHash(hash)).toBe(route);
+    expect(hashForRoute(route)).toBe(route === "/" ? "#/" : `#${route}`);
+  });
+
+  it("keeps the project pathname while navigating through hash routes", async () => {
+    window.history.replaceState({}, "", "/homework-system/#/");
+    render(<App />);
+    await userEvent.setup().click(screen.getByRole("link", { name: "快速查答案" }));
+    expect(window.location.pathname).toBe("/homework-system/");
+    expect(window.location.hash).toBe("#/answers");
+  });
 
   it("explains that the first local OCR run needs a connection before later offline use", () => {
     render(<MathScanner workerFactory={fakeOcrWorker("1 + 1 = 2")} />);
