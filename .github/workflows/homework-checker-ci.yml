@@ -1,0 +1,40 @@
+name: Homework checker CI
+
+on:
+  push:
+    paths:
+      - "homework-checker/**"
+      - ".github/workflows/homework-checker-ci.yml"
+  pull_request:
+    paths:
+      - "homework-checker/**"
+      - ".github/workflows/homework-checker-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: homework-checker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: homework-checker/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Unit and component tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Block high-severity production dependency advisories
+        run: npm audit --audit-level=high
+      - name: Install supported browser engines
+        run: npx playwright install --with-deps chromium webkit
+      - name: Mobile, offline, privacy, and real-worker browser tests
+        run: npm run test:e2e
