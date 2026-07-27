@@ -1,5 +1,6 @@
 import { expect, test } from "playwright/test";
 import { fileURLToPath } from "node:url";
+import { appPath } from "./support/appPaths";
 
 // A generic application icon is a fixed, non-personal image fixture.
 const deidentifiedWorksheet = fileURLToPath(new URL("../node_modules/playwright-core/lib/tools/dashboard/appIcon.png", import.meta.url));
@@ -39,7 +40,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("reviews a fixed local OCR result without running a real OCR model", async ({ page }) => {
-  await page.goto("/scan");
+  await page.goto(appPath());
+  await page.getByRole("link", { name: "拍照检查数学" }).click();
+  await expect(page).toHaveURL(/#\/scan$/);
   await page.getByLabel("从相册选择").setInputFiles(deidentifiedWorksheet);
   await expect(page.getByRole("button", { name: "开始检查" })).toBeEnabled();
 

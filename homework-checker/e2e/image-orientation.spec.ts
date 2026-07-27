@@ -1,5 +1,6 @@
 import { expect, test } from "playwright/test";
 import { fileURLToPath } from "node:url";
+import { appPath } from "./support/appPaths";
 
 const exifRotatedFixture = fileURLToPath(new URL("./fixtures/exif-orientation-6.jpg", import.meta.url));
 
@@ -46,7 +47,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("keeps EXIF-decoded bitmap, display and PreparedImage original coordinates aligned", async ({ page }) => {
-  await page.goto("/scan");
+  await page.goto(appPath());
+  await page.getByRole("link", { name: "拍照检查数学" }).click();
+  await expect(page).toHaveURL(/#\/scan$/);
   await page.getByLabel("从相册选择").setInputFiles(exifRotatedFixture);
   await expect(page.getByRole("button", { name: "开始检查" })).toBeEnabled();
   await page.getByRole("button", { name: "开始检查" }).click();

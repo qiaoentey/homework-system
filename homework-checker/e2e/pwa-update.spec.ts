@@ -1,4 +1,5 @@
 import { expect, test } from "playwright/test";
+import { APP_BASE_PATH, appPath } from "./support/appPaths";
 
 const OCR_CACHE_PREFIX = "homework-checker-ocr-";
 const OBSOLETE_OCR_CACHE = `${OCR_CACHE_PREFIX}obsolete-update-test`;
@@ -20,7 +21,7 @@ test("activates the built waiting worker once and cleans only obsolete OCR cache
     loadCountKey: LOAD_COUNT_KEY,
   });
 
-  await page.goto("/");
+  await page.goto(appPath());
   await page.waitForFunction(() => navigator.serviceWorker.ready.then(() => true));
   await page.reload();
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
@@ -29,26 +30,26 @@ test("activates the built waiting worker once and cleans only obsolete OCR cache
     (key) => Number.parseInt(sessionStorage.getItem(key) ?? "0", 10),
     LOAD_COUNT_KEY,
   );
-  const currentOcrCache = await page.evaluate(async (prefix) => {
-    const response = await fetch("/ocr/tesseract-worker.min.js");
+  const currentOcrCache = await page.evaluate(async ({ prefix, workerUrl }) => {
+    const response = await fetch(workerUrl);
     if (!response.ok) throw new Error("Unable to seed the current OCR cache");
     return (await caches.keys()).find((name) => name.startsWith(prefix));
-  }, OCR_CACHE_PREFIX);
+  }, { prefix: OCR_CACHE_PREFIX, workerUrl: appPath("ocr/tesseract-worker.min.js") });
   expect(currentOcrCache).toBeTruthy();
   await page.evaluate(async ({ obsolete, unrelated }) => {
     await caches.open(obsolete);
     await caches.open(unrelated);
   }, { obsolete: OBSOLETE_OCR_CACHE, unrelated: NON_OCR_CACHE });
 
-  const updateUrl = `/service-worker.js?update-cycle=${Date.now()}`;
-  const waitingScript = await page.evaluate(async (scriptUrl) => {
-    const registration = await navigator.serviceWorker.register(scriptUrl, { scope: "/" });
+  const updateUrl = appPath(`service-worker.js?update-cycle=${Date.now()}`);
+  const waitingScript = await page.evaluate(async ({ scriptUrl, scope }) => {
+    const registration = await navigator.serviceWorker.register(scriptUrl, { scope });
     const deadline = Date.now() + 10_000;
     while (!registration.waiting && Date.now() < deadline) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     return registration.waiting?.scriptURL;
-  }, updateUrl);
+  }, { scriptUrl: updateUrl, scope: APP_BASE_PATH });
   expect(waitingScript).toContain(updateUrl);
   await expect(page.getByRole("status")).toContainText("新版本已准备好");
 

@@ -1,6 +1,7 @@
 import { expect, test } from "playwright/test";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { appPath, stripAppBase } from "./support/appPaths";
 
 type CalibrationSample = {
   file: string;
@@ -33,7 +34,7 @@ const samplePath = (file: string) =>
 // static baseline; do not allow arbitrary paths under /assets/.
 const localWorkerAssets = readdirSync(fileURLToPath(new URL("../dist/assets", import.meta.url)))
   .filter((name) => /^(?:ocr|imagePreprocess)\.worker-[\w-]+\.js$/.test(name))
-  .map((name) => `/assets/${name}`);
+  .map((name) => appPath(`assets/${name}`));
 
 const expectedAnnotations = JSON.parse(readFileSync(
   fileURLToPath(new URL("../tests/fixtures/expected-annotations.json", import.meta.url)),
@@ -173,7 +174,9 @@ test.describe("offline OCR calibration and privacy network audit", () => {
 
     for (const sample of samples) {
       const pageStart = requests.length;
-      await page.goto("/scan");
+      await page.goto(appPath());
+      await page.getByRole("link", { name: "拍照检查数学" }).click();
+      await expect(page).toHaveURL(/#\/scan$/);
       await page.waitForLoadState("networkidle");
       await page.evaluate(async (paths) => {
         await Promise.all(paths.map((path) => fetch(path, { cache: "no-store" }).then((response) => {
@@ -182,7 +185,7 @@ test.describe("offline OCR calibration and privacy network audit", () => {
       }, localWorkerAssets);
       const preUploadPaths = new Set(requests.slice(pageStart)
         .filter(({ url }) => ["http:", "https:"].includes(new URL(url).protocol))
-        .map(({ url }) => new URL(url).pathname));
+        .map(({ url }) => stripAppBase(new URL(url).pathname)));
       for (const path of preUploadPaths) expect(isInitialStaticPath(path), `initial static path: ${path}`).toBe(true);
       const uploadStart = requests.length;
       await page.getByLabel("从相册选择").setInputFiles(samplePath(sample.file));
@@ -290,12 +293,12 @@ test.describe("offline OCR calibration and privacy network audit", () => {
       expect(request.postData, `body-free request: ${request.url}`).toBeNull();
       expect(parsed.search, `query-free request: ${request.url}`).toBe("");
       expect(parsed.hash, `hash-free request: ${request.url}`).toBe("");
-      expect(isInitialStaticPath(parsed.pathname), `static path: ${request.url}`).toBe(true);
+      expect(isInitialStaticPath(stripAppBase(parsed.pathname)), `static path: ${request.url}`).toBe(true);
       expect(containsSensitiveRecognition(`${request.url}\n${request.postData ?? ""}`, allSensitiveForms), `recognized text must not leave: ${request.url}`).toBe(false);
       expect(/base64|blob:/i.test(`${request.url}\n${request.postData ?? ""}`), `encoded image/blob must not leave: ${request.url}`).toBe(false);
     }
     for (const { request, preUploadPaths } of postUploadAudits) {
-      expect(isAllowedPostUploadPath(new URL(request.url).pathname, preUploadPaths), `post-upload path must be pre-observed or fixed OCR: ${request.url}`).toBe(true);
+      expect(isAllowedPostUploadPath(stripAppBase(new URL(request.url).pathname), preUploadPaths), `post-upload path must be pre-observed or fixed OCR: ${request.url}`).toBe(true);
     }
     expect(webSocketActivity.some((record) => containsSensitiveRecognition(record, allSensitiveForms))).toBe(false);
     console.log(JSON.stringify({ calibration, networkRequestCount: networkRequests.length, localBlobRequestCount: requests.length - networkRequests.length }));
@@ -307,7 +310,9 @@ test.describe("offline OCR calibration and privacy network audit", () => {
 
   test("runs the real preprocessing and OCR workers in current WebKit", async ({ browserName, page }) => {
     test.skip(browserName !== "webkit", "This smoke specifically checks the current WebKit worker stack.");
-    await page.goto("/scan");
+    await page.goto(appPath());
+    await page.getByRole("link", { name: "拍照检查数学" }).click();
+    await expect(page).toHaveURL(/#\/scan$/);
     await page.getByLabel("从相册选择").setInputFiles(samplePath("grade2-arithmetic.jpg"));
     await expect(page.getByRole("button", { name: "开始检查" })).toBeEnabled();
     await page.getByRole("button", { name: "开始检查" }).click();
