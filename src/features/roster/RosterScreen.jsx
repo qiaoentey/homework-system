@@ -286,13 +286,10 @@ export function RosterScreen({
   }
 
   function stopped(stoppedStudent) {
-    setStudents((current) => current.filter((student) => student.id !== stoppedStudent.id));
-    setTotal((current) => Math.max(0, current - 1));
-    setSelectedStudentId((current) => current === stoppedStudent.id ? null : current);
-    setMessageOpen(false);
     setLifecycleDialog(null);
     setToast("学生已停补");
-    loadSummary();
+    if (stoppedStudent.groupCode !== groupCode) return;
+    refreshCurrentGroup();
   }
 
   function restored() {

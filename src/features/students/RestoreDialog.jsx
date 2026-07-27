@@ -35,22 +35,39 @@ export function RestoreDialog({
     setStudents([]);
     setSelectedId("");
     try {
-      const response = await rosterApi.findStudents({
-        branchCode,
-        groupCode,
-        status: "stopped",
-        search: "",
-      });
-      if (
-        !activeRef.current ||
-        request !== requestGeneration.current ||
-        requestScope !== scopeRef.current
-      ) return;
-      setStudents(response.items.filter((student) => (
-        student.status === "stopped" &&
-        student.branchCode === branchCode &&
-        student.groupCode === groupCode
-      )));
+      const stoppedById = new Map();
+      const seenCursors = new Set();
+      let cursor;
+      do {
+        const response = await rosterApi.findStudents({
+          branchCode,
+          groupCode,
+          status: "stopped",
+          search: "",
+          cursor,
+          limit: 50,
+        });
+        if (
+          !activeRef.current ||
+          request !== requestGeneration.current ||
+          requestScope !== scopeRef.current
+        ) return;
+        for (const student of response.items) {
+          if (
+            student.status === "stopped" &&
+            student.branchCode === branchCode &&
+            student.groupCode === groupCode
+          ) {
+            stoppedById.set(student.id, student);
+          }
+        }
+        cursor = response.nextCursor;
+        if (cursor && seenCursors.has(cursor)) {
+          throw new Error("Repeated stopped-student cursor");
+        }
+        if (cursor) seenCursors.add(cursor);
+      } while (cursor);
+      setStudents([...stoppedById.values()]);
       setStatus("ready");
     } catch {
       if (

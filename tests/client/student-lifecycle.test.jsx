@@ -265,12 +265,62 @@ describe("student enrolment", () => {
 });
 
 describe("stop-supplement", () => {
+  it("does not let a pre-stop active roster response reinsert the stopped UUID", async () => {
+    const current = student(1, {
+      name: "CURRENT STUDENT",
+      grade: "Y4",
+    });
+    const staleRoster = deferred();
+    let activeReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        if (query.get("search") === "CURRENT STUDENT") {
+          return jsonResponse(200, { items: [current], nextCursor: null, total: 1 });
+        }
+        activeReads += 1;
+        return activeReads === 1
+          ? staleRoster.promise
+          : jsonResponse(200, { items: [], nextCursor: null, total: 0 });
+      }
+      if (url === `/api/students/${current.id}/stop` && options.method === "POST") {
+        return jsonResponse(200, { ...current, status: "stopped" });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    fireEvent.click(screen.getByRole("button", { name: "停补学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), {
+      target: { value: "CURRENT STUDENT" },
+    });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y4" } });
+    fireEvent.click(screen.getByRole("button", { name: "查找学生" }));
+    expect(await screen.findByText("CURRENT STUDENT · Y4 · WS HUILING")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "确认停补" }));
+    expect(await screen.findByText("学生已停补")).toBeVisible();
+
+    await act(async () => {
+      staleRoster.resolve(jsonResponse(200, {
+        items: [current],
+        nextCursor: null,
+        total: 1,
+      }));
+    });
+
+    await waitFor(() => expect(screen.queryByText("CURRENT STUDENT")).not.toBeInTheDocument());
+    expect(activeReads).toBe(2);
+  });
+
   it("resolves one exact UUID, shows the exact confirmation, and removes only that active card", async () => {
     const current = student(1, {
       name: "CURRENT STUDENT",
       grade: "Y4",
     });
     let stopRequest;
+    let stopped = false;
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
       const support = supportResponse(url);
       if (support) return support;
@@ -280,10 +330,15 @@ describe("stop-supplement", () => {
           expect(query.get("status")).toBe("active");
           return jsonResponse(200, { items: [current], nextCursor: null, total: 1 });
         }
-        return jsonResponse(200, { items: [current], nextCursor: null, total: 1 });
+        return jsonResponse(200, {
+          items: stopped ? [] : [current],
+          nextCursor: null,
+          total: stopped ? 0 : 1,
+        });
       }
       if (url === `/api/students/${current.id}/stop` && options.method === "POST") {
         stopRequest = { url, options };
+        stopped = true;
         return jsonResponse(200, { ...current, status: "stopped" });
       }
       throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
@@ -315,6 +370,64 @@ describe("stop-supplement", () => {
     });
   });
 
+  it("leaves the open cards, total, and summary unchanged when stopping another same-branch group", async () => {
+    const current = student(1, { name: "OPEN GROUP STUDENT" });
+    const otherGroup = student(2, {
+      name: "OTHER GROUP STUDENT",
+      grade: "Y5",
+      groupCode: "WS JIA WEN",
+    });
+    let summaryCalls = 0;
+    let openRosterReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
+      if (url.startsWith("/api/summary?")) {
+        summaryCalls += 1;
+        return jsonResponse(200, {
+          expected: 1,
+          arrived: 0,
+          notArrived: 1,
+          absent: 0,
+          koko: 0,
+          unmarked: 1,
+        });
+      }
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        if (query.get("search") === "OTHER GROUP STUDENT") {
+          expect(query.get("group")).toBe("WS JIA WEN");
+          return jsonResponse(200, { items: [otherGroup], nextCursor: null, total: 1 });
+        }
+        openRosterReads += 1;
+        return jsonResponse(200, { items: [current], nextCursor: null, total: 1 });
+      }
+      if (url === `/api/students/${otherGroup.id}/stop` && options.method === "POST") {
+        return jsonResponse(200, { ...otherGroup, status: "stopped" });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("OPEN GROUP STUDENT");
+    fireEvent.click(screen.getByRole("button", { name: "停补学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), {
+      target: { value: "OTHER GROUP STUDENT" },
+    });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y5" } });
+    fireEvent.change(screen.getByLabelText("老师班级"), {
+      target: { value: "WS JIA WEN" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "查找学生" }));
+    expect(await screen.findByText("OTHER GROUP STUDENT · Y5 · WS JIA WEN")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "确认停补" }));
+
+    expect(await screen.findByText("学生已停补")).toBeVisible();
+    expect(screen.getByText("OPEN GROUP STUDENT")).toBeVisible();
+    expect(screen.getByText(/只显示当前老师的在读学生 · 共 1 名/)).toBeVisible();
+    expect(openRosterReads).toBe(1);
+    expect(summaryCalls).toBe(1);
+  });
+
   it("requires an explicit UUID choice when exact identity has multiple candidates", async () => {
     const first = student(1, { name: "SAME NAME", grade: "Y3" });
     const second = student(2, { name: "SAME NAME", grade: "Y3" });
@@ -343,9 +456,186 @@ describe("stop-supplement", () => {
     fireEvent.click(screen.getByRole("radio", { name: new RegExp(first.id) }));
     expect(screen.getByRole("button", { name: "确认停补" })).toBeEnabled();
   });
+
+  it("shows a stop mutation failure and retries the same confirmed UUID once", async () => {
+    const current = student(1, { name: "RETRY STOP", grade: "Y4" });
+    let stopAttempts = 0;
+    let stopped = false;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const search = new URL(url, "http://test.local").searchParams.get("search");
+        return jsonResponse(200, {
+          items: search || !stopped ? [current] : [],
+          nextCursor: null,
+          total: search || !stopped ? 1 : 0,
+          search,
+        });
+      }
+      if (url === `/api/students/${current.id}/stop` && options.method === "POST") {
+        stopAttempts += 1;
+        if (stopAttempts === 1) {
+          return jsonResponse(503, { error: "temporarily unavailable" });
+        }
+        stopped = true;
+        return jsonResponse(200, { ...current, status: "stopped" });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("RETRY STOP");
+    fireEvent.click(screen.getByRole("button", { name: "停补学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), { target: { value: "RETRY STOP" } });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y4" } });
+    fireEvent.click(screen.getByRole("button", { name: "查找学生" }));
+    await screen.findByText("RETRY STOP · Y4 · WS HUILING");
+    fireEvent.click(screen.getByRole("button", { name: "确认停补" }));
+
+    expect(await screen.findByText("学生停补失败，请重新确认后重试")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "确认停补" }));
+    expect(await screen.findByText("学生已停补")).toBeVisible();
+    expect(stopAttempts).toBe(2);
+  });
+
+  it("ignores a completed stop mutation after its dialog closes", async () => {
+    const current = student(1, { name: "LATE STOP", grade: "Y4" });
+    const stopping = deferred();
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [current], nextCursor: null, total: 1 });
+      }
+      if (url === `/api/students/${current.id}/stop` && options.method === "POST") {
+        return stopping.promise;
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("LATE STOP");
+    fireEvent.click(screen.getByRole("button", { name: "停补学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), { target: { value: "LATE STOP" } });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y4" } });
+    fireEvent.click(screen.getByRole("button", { name: "查找学生" }));
+    await screen.findByText("LATE STOP · Y4 · WS HUILING");
+    fireEvent.click(screen.getByRole("button", { name: "确认停补" }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+
+    await act(async () => {
+      stopping.resolve(jsonResponse(200, { ...current, status: "stopped" }));
+    });
+    expect(screen.queryByText("学生已停补")).not.toBeInTheDocument();
+    expect(screen.getByText("LATE STOP")).toBeVisible();
+  });
+
+  it("ignores a completed stop mutation after its roster scope switches", async () => {
+    const current = student(1, { name: "LATE STOP", grade: "Y4" });
+    const stopping = deferred();
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        const isWs = query.get("branch") === "WS";
+        return jsonResponse(200, {
+          items: [isWs ? current : student(3, {
+            name: "STP STUDENT",
+            branchCode: "STP",
+            groupCode: "PS STP",
+          })],
+          nextCursor: null,
+          total: 1,
+        });
+      }
+      if (url === `/api/students/${current.id}/stop` && options.method === "POST") {
+        return stopping.promise;
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    const view = renderRoster();
+
+    await screen.findByText("LATE STOP");
+    fireEvent.click(screen.getByRole("button", { name: "停补学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), { target: { value: "LATE STOP" } });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y4" } });
+    fireEvent.click(screen.getByRole("button", { name: "查找学生" }));
+    await screen.findByText("LATE STOP · Y4 · WS HUILING");
+    fireEvent.click(screen.getByRole("button", { name: "确认停补" }));
+    view.rerender(
+      <RosterScreen
+        branchCode="STP"
+        groupCode="PS STP"
+        groups={[{ code: "PS STP", label: "PS" }]}
+        date="2026-07-27"
+      />,
+    );
+    expect(await screen.findByText("STP STUDENT")).toBeVisible();
+
+    await act(async () => {
+      stopping.resolve(jsonResponse(200, { ...current, status: "stopped" }));
+    });
+    expect(screen.queryByText("学生已停补")).not.toBeInTheDocument();
+    expect(screen.getByText("STP STUDENT")).toBeVisible();
+  });
 });
 
 describe("restore", () => {
+  it("loads every stopped-student cursor page with exact scope and deduplicates UUIDs", async () => {
+    const active = student(100, { name: "ACTIVE STUDENT" });
+    const firstPage = Array.from({ length: 50 }, (_, index) => student(index + 1, {
+      name: `STOPPED ${String(index + 1).padStart(2, "0")}`,
+      status: "stopped",
+    }));
+    const secondPage = [
+      firstPage[49],
+      ...Array.from({ length: 5 }, (_, index) => student(index + 51, {
+        name: `STOPPED ${index + 51}`,
+        status: "stopped",
+      })),
+    ];
+    const stoppedUrls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        if (query.get("status") === "stopped") {
+          stoppedUrls.push(url);
+          expect(options.headers).toMatchObject({
+            "X-Branch-Code": "WS",
+            "X-Group-Code": "WS HUILING",
+          });
+          expect(query.get("branch")).toBe("WS");
+          expect(query.get("group")).toBe("WS HUILING");
+          expect(query.get("limit")).toBe("50");
+          return query.get("cursor") === "stopped-page-2"
+            ? jsonResponse(200, { items: secondPage, nextCursor: null, total: 55 })
+            : jsonResponse(200, {
+              items: firstPage,
+              nextCursor: "stopped-page-2",
+              total: 55,
+            });
+        }
+        return jsonResponse(200, { items: [active], nextCursor: null, total: 1 });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("ACTIVE STUDENT");
+    fireEvent.click(screen.getByRole("button", { name: "恢复学生" }));
+    const dialog = await screen.findByRole("dialog", { name: "恢复学生" });
+
+    expect(await within(dialog).findByRole("radio", { name: /STOPPED 55/ })).toBeVisible();
+    expect(within(dialog).getAllByRole("radio")).toHaveLength(55);
+    expect(stoppedUrls).toHaveLength(2);
+    expect(stoppedUrls[0]).not.toContain("cursor=");
+    expect(stoppedUrls[1]).toContain("cursor=stopped-page-2");
+  });
+
   it("lists only stopped students in the current scope, requires selection and confirmation, then refreshes active roster", async () => {
     const active = student(1, { name: "ACTIVE STUDENT" });
     const stopped = student(2, {
@@ -403,6 +693,174 @@ describe("restore", () => {
       "X-Group-Code": "WS HUILING",
     });
     expect(JSON.parse(restoreRequest.options.body)).toEqual({});
+  });
+
+  it("retries all stopped-student pages after a later page load failure", async () => {
+    const active = student(1, { name: "ACTIVE STUDENT" });
+    const firstStopped = student(2, { name: "FIRST STOPPED", status: "stopped" });
+    const lastStopped = student(3, { name: "LAST STOPPED", status: "stopped" });
+    let firstPageReads = 0;
+    let secondPageReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        if (query.get("status") === "stopped") {
+          if (query.get("cursor") === "retry-page-2") {
+            secondPageReads += 1;
+            return secondPageReads === 1
+              ? jsonResponse(503, { error: "page failed" })
+              : jsonResponse(200, { items: [lastStopped], nextCursor: null, total: 2 });
+          }
+          firstPageReads += 1;
+          return jsonResponse(200, {
+            items: [firstStopped],
+            nextCursor: "retry-page-2",
+            total: 2,
+          });
+        }
+        return jsonResponse(200, { items: [active], nextCursor: null, total: 1 });
+      }
+      throw new Error(`Unexpected request: GET ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("ACTIVE STUDENT");
+    fireEvent.click(screen.getByRole("button", { name: "恢复学生" }));
+    expect(await screen.findByText("停补学生载入失败，请重试")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "重新载入" }));
+
+    expect(await screen.findByRole("radio", { name: /LAST STOPPED/ })).toBeVisible();
+    expect(firstPageReads).toBe(2);
+    expect(secondPageReads).toBe(2);
+  });
+
+  it("shows a restore mutation failure and retries the same stopped UUID once", async () => {
+    const active = student(1, { name: "ACTIVE STUDENT" });
+    const stopped = student(2, { name: "RETRY RESTORE", status: "stopped" });
+    let restoreAttempts = 0;
+    let activeReads = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const status = new URL(url, "http://test.local").searchParams.get("status");
+        if (status === "stopped") {
+          return jsonResponse(200, { items: [stopped], nextCursor: null, total: 1 });
+        }
+        activeReads += 1;
+        return jsonResponse(200, {
+          items: activeReads === 1 ? [active] : [active, { ...stopped, status: "active" }],
+          nextCursor: null,
+          total: activeReads === 1 ? 1 : 2,
+        });
+      }
+      if (url === `/api/students/${stopped.id}/restore` && options.method === "POST") {
+        restoreAttempts += 1;
+        return restoreAttempts === 1
+          ? jsonResponse(503, { error: "temporarily unavailable" })
+          : jsonResponse(200, { ...stopped, status: "active" });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("ACTIVE STUDENT");
+    fireEvent.click(screen.getByRole("button", { name: "恢复学生" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /RETRY RESTORE/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认恢复" }));
+    expect(await screen.findByText("学生恢复失败，请重试")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "确认恢复" }));
+
+    expect(await screen.findByText("学生已恢复")).toBeVisible();
+    expect(restoreAttempts).toBe(2);
+  });
+
+  it("ignores a completed restore mutation after its roster scope switches", async () => {
+    const active = student(1, { name: "ACTIVE STUDENT" });
+    const stopped = student(2, { name: "LATE RESTORE", status: "stopped" });
+    const restoring = deferred();
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        if (query.get("status") === "stopped") {
+          return jsonResponse(200, { items: [stopped], nextCursor: null, total: 1 });
+        }
+        const isWs = query.get("branch") === "WS";
+        return jsonResponse(200, {
+          items: [isWs ? active : student(3, {
+            name: "STP STUDENT",
+            branchCode: "STP",
+            groupCode: "PS STP",
+          })],
+          nextCursor: null,
+          total: 1,
+        });
+      }
+      if (url === `/api/students/${stopped.id}/restore` && options.method === "POST") {
+        return restoring.promise;
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    const view = renderRoster();
+
+    await screen.findByText("ACTIVE STUDENT");
+    fireEvent.click(screen.getByRole("button", { name: "恢复学生" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /LATE RESTORE/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认恢复" }));
+    view.rerender(
+      <RosterScreen
+        branchCode="STP"
+        groupCode="PS STP"
+        groups={[{ code: "PS STP", label: "PS" }]}
+        date="2026-07-27"
+      />,
+    );
+    expect(await screen.findByText("STP STUDENT")).toBeVisible();
+
+    await act(async () => {
+      restoring.resolve(jsonResponse(200, { ...stopped, status: "active" }));
+    });
+    expect(screen.queryByText("学生已恢复")).not.toBeInTheDocument();
+    expect(screen.queryByText("LATE RESTORE")).not.toBeInTheDocument();
+    expect(screen.getByText("STP STUDENT")).toBeVisible();
+  });
+
+  it("ignores a completed restore mutation after its dialog closes", async () => {
+    const active = student(1, { name: "ACTIVE STUDENT" });
+    const stopped = student(2, { name: "LATE RESTORE", status: "stopped" });
+    const restoring = deferred();
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const status = new URL(url, "http://test.local").searchParams.get("status");
+        return status === "stopped"
+          ? jsonResponse(200, { items: [stopped], nextCursor: null, total: 1 })
+          : jsonResponse(200, { items: [active], nextCursor: null, total: 1 });
+      }
+      if (url === `/api/students/${stopped.id}/restore` && options.method === "POST") {
+        return restoring.promise;
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("ACTIVE STUDENT");
+    fireEvent.click(screen.getByRole("button", { name: "恢复学生" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /LATE RESTORE/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认恢复" }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+
+    await act(async () => {
+      restoring.resolve(jsonResponse(200, { ...stopped, status: "active" }));
+    });
+    expect(screen.queryByText("学生已恢复")).not.toBeInTheDocument();
+    expect(screen.queryByText("LATE RESTORE")).not.toBeInTheDocument();
+    expect(screen.getByText("ACTIVE STUDENT")).toBeVisible();
   });
 });
 

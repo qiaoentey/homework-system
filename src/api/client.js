@@ -176,6 +176,7 @@ export const rosterApi = {
     groupCode,
     status,
     search = "",
+    cursor,
     limit = 50,
   }) => apiRequest(
     queryPath("/api/students", {
@@ -183,6 +184,7 @@ export const rosterApi = {
       group: groupCode,
       status,
       search,
+      cursor,
       limit,
     }),
     { branchCode, groupCode },
