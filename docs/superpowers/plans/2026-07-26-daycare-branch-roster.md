@@ -1011,6 +1011,52 @@ git add tests/e2e playwright.config.js render.yaml docs/operations.md .env.examp
 git commit -m "test: verify and prepare daycare deployment"
 ```
 
+---
+
+### Task 11: Add a persistent Sites runtime and publish the working system
+
+**Files:**
+- Modify: `.openai/hosting.json`
+- Modify: `worker/index.js`
+- Modify: `scripts/prepare-sites-build.mjs`
+- Modify: `tests/sites-worker.test.mjs`
+- Create: `db/schema.ts`
+- Create: `drizzle/0000_daycare_sites.sql`
+- Create: `drizzle/meta/_journal.json`
+- Create as needed: focused worker test helpers
+
+**Interfaces:**
+- Consumes: the existing React API contract and the existing nine roster CSVs
+- Produces: Cloudflare Worker-compatible `/api/*` routes backed by the Sites `DB` D1 binding
+- Produces: a privately deployed, durable Sites production URL
+
+- [ ] **Step 1: Write failing Sites runtime tests**
+
+Exercise the real worker against a SQLite-backed D1-compatible test adapter. Cover session/catalog, exact active roster counts, branch/group validation, pagination/search, attendance/summary, profile optimistic concurrency, messages, Enrol duplicate protection, stop, and restore preservation. Confirm the current static-only worker fails these tests for missing API routes.
+
+- [ ] **Step 2: Implement the D1 schema and roster migration**
+
+Set `.openai/hosting.json` `d1` to `DB` and keep `r2` null. Add SQLite-compatible tables, foreign keys, indexes, and idempotent inserts for the three branches, nine teacher groups, and exactly 550 approved students from `data/rosters/*.csv`. Use stable UUID-format IDs and JSON text for profiles.
+
+- [ ] **Step 3: Implement the Worker API contract**
+
+Keep static asset serving and SPA fallback intact. Route `/api/*` before assets and reproduce the existing client contract with prepared D1 statements. Sites owner-only access is the authentication boundary, so `/api/session` returns the private-site operator identity and login/logout endpoints remain compatible no-ops. Validate every branch/group relationship and write context. Preserve student IDs, profile, attendance, and messages across stop/restore.
+
+- [ ] **Step 4: Verify and package**
+
+Run focused worker tests red then green, `npm test`, `npm run build`, `npm run test:sites`, and local Playwright. The build must copy D1 migration metadata into the Sites archive and retain the exact visually verified client.
+
+- [ ] **Step 5: Save and deploy privately**
+
+Create the Sites project once, persist its opaque `project_id`, push the exact validated source commit, package that commit, save one version, deploy it owner-only, poll to success, open the deployed URL, and run production read-only smoke checks.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add .openai worker scripts tests db drizzle
+git commit -m "feat: add persistent Sites runtime"
+```
+
 ## Final Verification Checklist
 
 - [ ] `npm test` passes.
