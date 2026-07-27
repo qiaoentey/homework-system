@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:pages": "tsc --noEmit && vite build --base=/homework-system/",
+    "verify:pages": "node scripts/verify-pages-build.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
