@@ -314,6 +314,117 @@ describe("stop-supplement", () => {
     expect(activeReads).toBe(2);
   });
 
+  it("releases stale load-more state after a same-group stop and sequences the refreshed cursor", async () => {
+    const stoppedStudent = student(1, {
+      name: "STOP TARGET",
+      grade: "Y4",
+    });
+    const initialFirstPage = [
+      stoppedStudent,
+      ...Array.from({ length: 49 }, (_, index) => student(index + 2, {
+        name: `INITIAL ${String(index + 2).padStart(3, "0")}`,
+      })),
+    ];
+    const refreshedFirstPage = Array.from({ length: 50 }, (_, index) => student(index + 2, {
+      name: `REFRESHED ${String(index + 2).padStart(3, "0")}`,
+    }));
+    const refreshedSecondPage = Array.from({ length: 50 }, (_, index) => student(index + 52, {
+      name: `POST STOP ${String(index + 52).padStart(3, "0")}`,
+    }));
+    const staleLoadMore = deferred();
+    const refreshedLoadMore = deferred();
+    let firstPageReads = 0;
+    const fetchMock = vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        const cursor = query.get("cursor");
+        if (cursor === "pre-stop-next") return staleLoadMore.promise;
+        if (cursor === "post-stop-next") return refreshedLoadMore.promise;
+        if (query.get("search") === "STOP TARGET") {
+          return jsonResponse(200, {
+            items: [stoppedStudent],
+            nextCursor: null,
+            total: 1,
+          });
+        }
+        firstPageReads += 1;
+        return firstPageReads === 1
+          ? jsonResponse(200, {
+            items: initialFirstPage,
+            nextCursor: "pre-stop-next",
+            total: 101,
+          })
+          : jsonResponse(200, {
+            items: refreshedFirstPage,
+            nextCursor: "post-stop-next",
+            total: 100,
+          });
+      }
+      if (url === `/api/students/${stoppedStudent.id}/stop` && options.method === "POST") {
+        return jsonResponse(200, { ...stoppedStudent, status: "stopped" });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderRoster();
+
+    await screen.findByText("STOP TARGET");
+    const initialList = screen.getByTestId("student-list");
+    Object.defineProperty(initialList, "scrollTop", { configurable: true, value: 14_000 });
+    fireEvent.scroll(initialList);
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([url]) => url.includes("cursor=pre-stop-next")))
+        .toHaveLength(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "停补学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), {
+      target: { value: "STOP TARGET" },
+    });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y4" } });
+    fireEvent.click(screen.getByRole("button", { name: "查找学生" }));
+    await screen.findByText("STOP TARGET · Y4 · WS HUILING");
+    fireEvent.click(screen.getByRole("button", { name: "确认停补" }));
+
+    expect(await screen.findByText("学生已停补")).toBeVisible();
+    expect(await screen.findByText("REFRESHED 046")).toBeVisible();
+    expect(screen.getByText(/只显示当前老师的在读学生 · 共 100 名/)).toBeVisible();
+    const refreshedList = screen.getByTestId("student-list");
+    Object.defineProperty(refreshedList, "scrollTop", { configurable: true, value: 14_000 });
+    fireEvent.scroll(refreshedList);
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([url]) => url.includes("cursor=post-stop-next")))
+        .toHaveLength(1);
+      expect(screen.getByText("REFRESHED 051")).toBeVisible();
+    });
+
+    await act(async () => {
+      staleLoadMore.resolve(jsonResponse(200, {
+        items: [stoppedStudent],
+        nextCursor: null,
+        total: 101,
+      }));
+    });
+    expect(screen.queryByText("STOP TARGET")).not.toBeInTheDocument();
+    fireEvent.scroll(refreshedList);
+    expect(fetchMock.mock.calls.filter(([url]) => url.includes("cursor=pre-stop-next")))
+      .toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([url]) => url.includes("cursor=post-stop-next")))
+      .toHaveLength(1);
+
+    await act(async () => {
+      refreshedLoadMore.resolve(jsonResponse(200, {
+        items: refreshedSecondPage,
+        nextCursor: null,
+        total: 100,
+      }));
+    });
+    expect(await screen.findByText("POST STOP 052")).toBeVisible();
+  });
+
   it("resolves one exact UUID, shows the exact confirmation, and removes only that active card", async () => {
     const current = student(1, {
       name: "CURRENT STUDENT",

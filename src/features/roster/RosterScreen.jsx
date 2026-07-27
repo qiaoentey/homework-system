@@ -109,6 +109,7 @@ export function RosterScreen({
     setRosterStatus("loading");
     setStudents([]);
     setNextCursor(null);
+    setLoadingMore(false);
     setLoadMoreError(false);
     setTotal(0);
     setSelectedStudentId(null);
