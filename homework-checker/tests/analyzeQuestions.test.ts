@@ -34,4 +34,9 @@ describe("analyzeQuestions", () => {
     expect(analyzeQuestions([region("2 mystery + 3 mystery = 5 mystery", 96)])[0])
       .toMatchObject({ severity: "review", expected: undefined });
   });
+
+  it("parses a visual question number without making it part of the equation", () => {
+    expect(analyzeQuestions([region("1) 47 + 28 = 75", 96)])[0])
+      .toMatchObject({ severity: "pass", expected: "75" });
+  });
 });

@@ -12,6 +12,24 @@ export type PreparedImage = {
   toOriginal: (rect: Rect) => Rect;
 };
 
+/**
+ * Decoding a photograph is unavoidable, but creating an additional full-size
+ * canvas is not.  We fail closed above this source limit and normalize every
+ * accepted image to this bounded raster before it is retained for preview/OCR.
+ *
+ * At the 1600 px default, the normalized raster is at most 2,560,000 pixels.
+ * Its measured raw allocation plan is 17 bytes/pixel at peak (canvas, image
+ * data, grayscale scratch and returned bitmap): 41.50 MiB.  A permitted
+ * 12 MP decoded source adds 45.78 MiB, for a bounded raw-pixel peak of
+ * 87.28 MiB before browser implementation overhead and JPEG compression.
+ */
+export const MAX_SOURCE_PIXELS = 12_000_000;
+export const NORMALIZED_MAX_PIXELS = 1_600 * 1_600;
+export const NORMALIZED_PIPELINE_PEAK_BYTES_PER_PIXEL = 17;
+
+export const normalizedPipelinePeakBytes = (width: number, height: number) =>
+  width * height * NORMALIZED_PIPELINE_PEAK_BYTES_PER_PIXEL;
+
 const clampByte = (value: number) => Math.max(0, Math.min(255, Math.round(value)));
 
 const sharpenGrayscale = (pixels: Uint8ClampedArray, width: number, height: number) => {
@@ -74,20 +92,16 @@ export async function prepareImage(file: File, maxSide = 1600): Promise<Prepared
   let displayUrl: string | undefined;
 
   try {
-    // Never display the raw File URL after OCR has decoded it. Some engines
-    // apply EXIF orientation differently to ImageBitmap and HTMLImageElement;
-    // this raster is the single coordinate space for both annotations and export.
-    const displayCanvas = document.createElement("canvas");
-    displayCanvas.width = source.width;
-    displayCanvas.height = source.height;
-    const displayContext = displayCanvas.getContext("2d");
-    if (!displayContext) throw new Error("Unable to prepare this image on this device");
-    displayContext.drawImage(source, 0, 0);
-    displayUrl = URL.createObjectURL(await canvasToBlob(displayCanvas));
+    if (source.width * source.height > MAX_SOURCE_PIXELS) {
+      throw new Error("This photo is too large to process safely on this device. Please choose a photo under 12 megapixels.");
+    }
 
     const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
     const width = Math.max(1, Math.round(source.width * scale));
     const height = Math.max(1, Math.round(source.height * scale));
+    if (width * height > NORMALIZED_MAX_PIXELS) {
+      throw new Error("This photo cannot be normalized safely on this device.");
+    }
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
@@ -100,10 +114,12 @@ export async function prepareImage(file: File, maxSide = 1600): Promise<Prepared
     sharpenGrayscale(imageData.data, width, height);
     context.putImageData(imageData, 0, 0);
 
+    // The displayed image is the same bounded, EXIF-normalized raster used for
+    // OCR.  This avoids allocating a second full-size source canvas and keeps
+    // preview/export coordinates in the same normalized space as annotations.
+    displayUrl = URL.createObjectURL(await canvasToBlob(canvas));
     const bitmap = await createImageBitmap(canvas);
 
-    const originalScaleX = source.width / width;
-    const originalScaleY = source.height / height;
     let released = false;
     return {
       bitmap,
@@ -116,12 +132,9 @@ export async function prepareImage(file: File, maxSide = 1600): Promise<Prepared
         bitmap.close?.();
         URL.revokeObjectURL(displayUrl!);
       },
-      toOriginal: (rect) => ({
-        x: rect.x * originalScaleX,
-        y: rect.y * originalScaleY,
-        width: rect.width * originalScaleX,
-        height: rect.height * originalScaleY,
-      }),
+      // `displayUrl`, OCR and export all use the normalized raster. The
+      // historical name remains to keep callers explicit about this mapping.
+      toOriginal: (rect) => ({ ...rect }),
     };
   } catch (error) {
     if (displayUrl) URL.revokeObjectURL(displayUrl);

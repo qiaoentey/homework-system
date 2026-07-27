@@ -1,7 +1,10 @@
 import type { OcrLine, QuestionRegion } from "./ocr.types";
 import type { Rect } from "./imagePipeline";
 
-const QUESTION_NUMBER = /^\s*(\d{1,3})[.)、]\s*/;
+// Primary-school worksheets commonly number items with a full stop, a closing
+// parenthesis, or Chinese enumeration punctuation. OCR also occasionally turns
+// `、` into `，`, so accept that conservative variant as a question boundary.
+const QUESTION_NUMBER = /^\s*(\d{1,3})[.)、，,]\s*/;
 
 type VisualRow = {
   lines: OcrLine[];
@@ -38,7 +41,10 @@ const visualRows = (lines: OcrLine[], averageHeight: number): VisualRow[] => {
       const mergedRow = mergedRows.at(-1);
       const previous = mergedRow?.at(-1);
       const gap = previous ? line.box.x - (previous.box.x + previous.box.width) : Infinity;
-      if (mergedRow && previous && gap < averageHeight * 8) {
+      // A large horizontal gutter is a column boundary, not a continuation of
+      // the question on the left. Keep the columns as independent visual rows
+      // so that their numbered questions cannot be merged accidentally.
+      if (mergedRow && previous && gap < averageHeight * 4) {
         mergedRow.push(line);
       } else {
         mergedRows.push([line]);
@@ -72,11 +78,21 @@ export function segmentQuestions(lines: OcrLine[]): QuestionRegion[] {
     const verticalGap = previous ? row.box.y - (previous.box.y + previous.box.height) : 0;
     const startsUnnumberedQuestion = !numbered && index > 0 && verticalGap > averageHeight * 1.8;
 
-    if (!current || startsNumberedQuestion || startsUnnumberedQuestion) {
+    if (numbered) {
+      if (startsNumberedQuestion) {
+        current = [];
+        groups.push(current);
+      } else if (!current || verticalGap > averageHeight * 1.8) {
+        // Keep worksheet headers, directions and footers out of numbered
+        // questions. A nearby continuation line remains part of the question.
+        current = undefined;
+        continue;
+      }
+    } else if (!current || startsUnnumberedQuestion) {
       current = [];
       groups.push(current);
     }
-    current.push(...row.lines);
+    current?.push(...row.lines);
   }
 
   return groups.map((group, index) => makeQuestion(index, group));

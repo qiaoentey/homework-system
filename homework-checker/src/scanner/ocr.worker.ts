@@ -34,6 +34,10 @@ const getWorker = async () => {
     initializedWorker = createWorker(OFFLINE_LANGUAGES, OEM.LSTM_ONLY, {
       langPath: "/ocr",
       workerPath: "/ocr/tesseract-worker.min.js",
+      // Tesseract's default Blob wrapper cannot import an absolute public URL
+      // reliably when it is itself spawned from this module worker. Spawn the
+      // bundled same-origin worker directly so this remains fully offline.
+      workerBlobURL: false,
       corePath: "/ocr",
       cacheMethod: "none",
       logger: ({ status, progress }) => {

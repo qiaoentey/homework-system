@@ -1,0 +1,31 @@
+{
+  "dataset": "Synthetic, de-identified worksheet calibration set. No student, school, class, or identity information is present.",
+  "coordinateSpace": "normalized 1000x1400 screenshot pixels",
+  "allowedCoordinateErrorPx": 48,
+  "samples": [
+    {
+      "file": "public/samples/grade1-addition.jpg",
+      "expectedAnnotations": [
+        { "question": "8 + 5 = 13", "severity": "pass", "box": { "x": 138, "y": 337, "width": 520, "height": 90 } },
+        { "question": "12 + 7 = 19", "severity": "pass", "box": { "x": 138, "y": 482, "width": 570, "height": 90 } },
+        { "question": "9 + 6 = 15", "severity": "pass", "box": { "x": 138, "y": 627, "width": 520, "height": 90 } }
+      ]
+    },
+    {
+      "file": "public/samples/grade3-units.jpg",
+      "expectedAnnotations": [
+        { "question": "2 m + 30 cm = 230 cm", "severity": "pass", "box": { "x": 138, "y": 337, "width": 690, "height": 90 } },
+        { "question": "3 kg - 500 g = 2500 g", "severity": "pass", "box": { "x": 138, "y": 482, "width": 700, "height": 90 } },
+        { "question": "1 l + 250 ml = 1250 ml", "severity": "pass", "box": { "x": 138, "y": 627, "width": 700, "height": 90 } }
+      ]
+    },
+    {
+      "file": "public/samples/grade6-fractions.jpg",
+      "expectedAnnotations": [
+        { "question": "1/2 + 1/4 = 3/4", "severity": "pass", "box": { "x": 138, "y": 337, "width": 610, "height": 90 } },
+        { "question": "5/6 - 1/3 = 1/2", "severity": "pass", "box": { "x": 138, "y": 482, "width": 610, "height": 90 } },
+        { "question": "2/3 x 3/5 = 2/5", "severity": "pass", "box": { "x": 138, "y": 627, "width": 610, "height": 90 } }
+      ]
+    }
+  ]
+}

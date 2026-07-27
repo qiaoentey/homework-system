@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { prepareImage } from "../src/scanner/imagePipeline";
+import {
+  MAX_SOURCE_PIXELS,
+  NORMALIZED_PIPELINE_PEAK_BYTES_PER_PIXEL,
+  normalizedPipelinePeakBytes,
+  prepareImage,
+} from "../src/scanner/imagePipeline";
 
 type CanvasContextStub = {
   drawImage: ReturnType<typeof vi.fn>;
@@ -16,7 +21,7 @@ describe("prepareImage", () => {
   beforeEach(() => vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:prepared"), revokeObjectURL: vi.fn() }));
   afterEach(() => vi.restoreAllMocks());
 
-  it("maps OCR coordinates back to the original image", async () => {
+  it("keeps OCR, preview and export coordinates in one normalized raster", async () => {
     const context: CanvasContextStub = {
       drawImage: vi.fn(),
       getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(1200 * 1600 * 4) })),
@@ -40,10 +45,10 @@ describe("prepareImage", () => {
     expect(prepared.width).toBe(1200);
     expect(prepared.height).toBe(1600);
     expect(prepared.toOriginal({ x: 60, y: 80, width: 120, height: 40 }))
-      .toEqual({ x: 120, y: 160, width: 240, height: 80 });
+      .toEqual({ x: 60, y: 80, width: 120, height: 40 });
   });
 
-  it("uses each rounded output dimension for coordinate mapping", async () => {
+  it("uses the bounded normalized dimensions for a wide image", async () => {
     const context: CanvasContextStub = {
       drawImage: vi.fn(),
       getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(100 * 33 * 4) })),
@@ -66,10 +71,7 @@ describe("prepareImage", () => {
 
     expect(prepared).toMatchObject({ width: 100, height: 33 });
     expect(prepared.toOriginal({ x: 10, y: 10, width: 20, height: 10 })).toEqual({
-      x: 100,
-      y: (333 / 33) * 10,
-      width: 200,
-      height: (333 / 33) * 10,
+      x: 10, y: 10, width: 20, height: 10,
     });
   });
 
@@ -99,6 +101,26 @@ describe("prepareImage", () => {
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(prepared).toMatchObject({ displayUrl: "blob:normalized-photo" });
     expect(prepared.toOriginal({ x: 0, y: 0, width: prepared.width, height: prepared.height }))
-      .toEqual({ x: 0, y: 0, width: 3, height: 2 });
+      .toEqual({ x: 0, y: 0, width: prepared.width, height: prepared.height });
+  });
+
+  it("fails closed before creating a normalized canvas for oversized sources", async () => {
+    const context: CanvasContextStub = {
+      drawImage: vi.fn(), getImageData: vi.fn(), putImageData: vi.fn(),
+    };
+    const canvas = { width: 0, height: 0, getContext: vi.fn(() => context) };
+    const file = testImageFile(4_001, 3_000);
+    vi.spyOn(document, "createElement").mockReturnValue(canvas as unknown as HTMLCanvasElement);
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 4_001, height: 3_000 })));
+
+    await expect(prepareImage(file)).rejects.toThrow("too large");
+    expect(MAX_SOURCE_PIXELS).toBe(12_000_000);
+    expect(canvas.getContext).not.toHaveBeenCalled();
+  });
+
+  it("documents the normalized raw-pixel memory calculation", () => {
+    expect(normalizedPipelinePeakBytes(1_600, 1_600)).toBe(
+      1_600 * 1_600 * NORMALIZED_PIPELINE_PEAK_BYTES_PER_PIXEL,
+    );
   });
 });

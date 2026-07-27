@@ -33,6 +33,10 @@ export const recognizedTextFor = (region: QuestionRegion) => region.lines
   .filter(Boolean)
   .join(" ");
 
+// Number labels describe the worksheet layout, not a student expression. They
+// stay visible in the annotation but are excluded from deterministic parsing.
+const equationTextFor = (recognized: string) => recognized.replace(/^\s*\d{1,3}[.)、，,]\s*/, "");
+
 const ocrConfidenceFor = (region: QuestionRegion) => {
   if (!region.lines.length) return 0;
   return Math.min(...region.lines.map((line) => normalizeConfidence(line.confidence)));
@@ -47,7 +51,7 @@ type AnalysisInput = Pick<QuestionRegion, "id" | "box" | "confidence" | "lines">
 export function analyzeQuestion(region: AnalysisInput, recognized = recognizedTextFor(region)): Annotation {
   const ocrConfidence = ocrConfidenceFor(region);
   const regionConfidence = normalizeConfidence(region.confidence);
-  const parsed = parseEquation(recognized);
+  const parsed = parseEquation(equationTextFor(recognized));
   const base = {
     id: region.id,
     questionId: region.id,
