@@ -221,13 +221,23 @@ function fullProfile(value) {
     && PROFILE_FIELDS.every((field) => typeof value[field] === "string");
 }
 
-function matchesEnrolmentPayload(student, body) {
-  const profile = parseProfile(student.profile);
-  return student.name === body.name.trim()
-    && student.grade === body.grade.trim()
-    && student.branch_code === body.branchCode
-    && student.group_code === body.groupCode
-    && PROFILE_FIELDS.every((field) => profile[field] === body.profile[field]);
+function matchesEnrolmentPayload(value, body) {
+  const snapshot = parseProfile(value);
+  return hasOnlyKeys(snapshot, [
+    "name",
+    "grade",
+    "branchCode",
+    "groupCode",
+    "profile",
+    "enrolmentKey",
+  ])
+    && fullProfile(snapshot.profile)
+    && snapshot.name === body.name.trim()
+    && snapshot.grade === body.grade.trim()
+    && snapshot.branchCode === body.branchCode
+    && snapshot.groupCode === body.groupCode
+    && snapshot.enrolmentKey === body.enrolmentKey
+    && PROFILE_FIELDS.every((field) => snapshot.profile[field] === body.profile[field]);
 }
 
 function partialProfile(value) {
@@ -399,8 +409,11 @@ async function enrolStudent(request, database) {
       id,
       operator(request).email,
       JSON.stringify({
+        name: body.name.trim(),
+        grade: body.grade.trim(),
         branchCode: body.branchCode,
         groupCode: body.groupCode,
+        profile: body.profile,
         enrolmentKey: body.enrolmentKey,
       }),
       now,
@@ -417,7 +430,18 @@ async function enrolStudent(request, database) {
   if (!student) {
     return apiError(409, "ENROLMENT_KEY_CONFLICT", "Enrolment key could not be resolved");
   }
-  if (!matchesEnrolmentPayload(student, body)) {
+  const enrolActivities = await all(
+    database,
+    `SELECT details
+     FROM student_activity
+     WHERE student_id = ? AND action = 'enrol'
+     ORDER BY created_at, id`,
+    [student.id],
+  );
+  if (
+    enrolActivities.length !== 1
+    || !matchesEnrolmentPayload(enrolActivities[0].details, body)
+  ) {
     return apiError(409, "ENROLMENT_KEY_CONFLICT", "Enrolment key belongs to another student");
   }
   return json(mapStudent(student), created ? 201 : 200);

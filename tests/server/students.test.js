@@ -327,6 +327,88 @@ describe("student API", () => {
     },
   );
 
+  it("binds enrolment retries to the original profile after the current profile changes", async () => {
+    const originalProfile = { ...emptyProfile, school: "ORIGINAL SCHOOL" };
+    const updatedProfile = { ...originalProfile, school: "UPDATED SCHOOL" };
+    const body = {
+      name: "PROFILE RETRY STUDENT",
+      grade: "Y3",
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: originalProfile,
+      enrolmentKey: "10000000-0000-4000-8000-000000000011",
+    };
+    const created = await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send(body)
+      .expect(201);
+    await agent
+      .patch(`/api/students/${created.body.id}/profile`)
+      .set(studentHeaders())
+      .send({
+        updatedAt: created.body.updatedAt,
+        profile: { school: updatedProfile.school },
+      })
+      .expect(200);
+
+    const originalRetry = await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send(body);
+    const changedRetry = await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send({ ...body, profile: updatedProfile });
+
+    expect([originalRetry.status, changedRetry.status]).toEqual([200, 409]);
+    expect(originalRetry.body.id).toBe(created.body.id);
+    expect(changedRetry.body.code).toBe("ENROLMENT_KEY_CONFLICT");
+    const stored = await pool.query(
+      "select profile from students where id = $1",
+      [created.body.id],
+    );
+    expect(stored.rows).toEqual([{ profile: updatedProfile }]);
+    expect(Number((await pool.query(
+      "select count(*) from student_activity where student_id = $1 and action = 'enrol'",
+      [created.body.id],
+    )).rows[0].count)).toBe(1);
+  });
+
+  it("fails closed when the immutable enrolment payload snapshot is malformed", async () => {
+    const body = {
+      name: "MALFORMED SNAPSHOT STUDENT",
+      grade: "Y3",
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: emptyProfile,
+      enrolmentKey: "10000000-0000-4000-8000-000000000012",
+    };
+    const created = await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send(body)
+      .expect(201);
+    await pool.query(
+      `update student_activity
+       set details = '{}'::jsonb
+       where student_id = $1 and action = 'enrol'`,
+      [created.body.id],
+    );
+
+    const retry = await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send(body)
+      .expect(409);
+
+    expect(retry.body.code).toBe("ENROLMENT_KEY_CONFLICT");
+    expect(Number((await pool.query(
+      "select count(*) from student_activity where student_id = $1 and action = 'enrol'",
+      [created.body.id],
+    )).rows[0].count)).toBe(1);
+  });
+
   it("allows concurrent real duplicate identities when enrolment keys differ", async () => {
     const body = {
       name: "Concurrent Student",

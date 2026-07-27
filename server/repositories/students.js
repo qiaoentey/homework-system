@@ -13,18 +13,53 @@ function mapStudent(row) {
   };
 }
 
-function matchesEnrolmentPayload(student, {
+function hasExactKeys(value, keys) {
+  return value !== null
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && Object.keys(value).length === keys.length
+    && keys.every((key) => Object.hasOwn(value, key));
+}
+
+function matchesEnrolmentPayload(snapshot, {
   name,
   grade,
   branchCode,
   groupCode,
   profile,
+  enrolmentKey,
 }) {
-  return student.name === name
-    && student.grade === grade
-    && student.branch_code === branchCode
-    && student.group_code === groupCode
-    && PROFILE_FIELDS.every((field) => student.profile?.[field] === profile[field]);
+  return hasExactKeys(snapshot, [
+    "name",
+    "grade",
+    "branchCode",
+    "groupCode",
+    "profile",
+    "enrolmentKey",
+  ])
+    && hasExactKeys(snapshot.profile, PROFILE_FIELDS)
+    && snapshot.name === name
+    && snapshot.grade === grade
+    && snapshot.branchCode === branchCode
+    && snapshot.groupCode === groupCode
+    && snapshot.enrolmentKey === enrolmentKey
+    && PROFILE_FIELDS.every((field) => snapshot.profile[field] === profile[field]);
+}
+
+async function requireMatchingEnrolmentPayload(client, studentId, payload) {
+  const activities = await client.query(
+    `select details
+     from student_activity
+     where student_id = $1 and action = 'enrol'
+     order by created_at, id`,
+    [studentId],
+  );
+  if (
+    activities.rows.length !== 1
+    || !matchesEnrolmentPayload(activities.rows[0].details, payload)
+  ) {
+    throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
+  }
 }
 
 function nextUpdatedAt(previous) {
@@ -139,15 +174,14 @@ export async function enrolStudent(pool, {
     );
     if (prior.rows.length) {
       const student = prior.rows[0];
-      if (!matchesEnrolmentPayload(student, {
+      await requireMatchingEnrolmentPayload(client, student.id, {
         name,
         grade,
         branchCode,
         groupCode,
         profile,
-      })) {
-        throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
-      }
+        enrolmentKey,
+      });
       return { student: mapStudent(student), created: false };
     }
 
@@ -164,7 +198,14 @@ export async function enrolStudent(pool, {
       await client.query(
         `insert into student_activity (student_id, action, actor, details)
          values ($1, 'enrol', $2, $3)`,
-        [student.id, actor, { branchCode, groupCode, enrolmentKey }],
+        [student.id, actor, {
+          name,
+          grade,
+          branchCode,
+          groupCode,
+          profile,
+          enrolmentKey,
+        }],
       );
       return { student: mapStudent(student), created: true };
     }
@@ -179,15 +220,14 @@ export async function enrolStudent(pool, {
       throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
     }
     const student = existing.rows[0];
-    if (!matchesEnrolmentPayload(student, {
+    await requireMatchingEnrolmentPayload(client, student.id, {
       name,
       grade,
       branchCode,
       groupCode,
       profile,
-    })) {
-      throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
-    }
+      enrolmentKey,
+    });
     return { student: mapStudent(student), created: false };
   });
 }

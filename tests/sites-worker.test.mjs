@@ -539,6 +539,90 @@ for (const [field, change, headers] of enrolmentConflictCases) {
   });
 }
 
+test("binds enrolment retries to the original profile after the current profile changes", async () => {
+  await withD1(async (env) => {
+    const originalProfile = { ...emptyProfile, school: "ORIGINAL SCHOOL" };
+    const updatedProfile = { ...originalProfile, school: "UPDATED SCHOOL" };
+    const body = {
+      name: "PROFILE RETRY STUDENT",
+      grade: "Y3",
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: originalProfile,
+      enrolmentKey: "10000000-0000-4000-8000-000000000011",
+    };
+    const created = await readJson(await apiWithD1(env, "/api/students", {
+      method: "POST",
+      headers: groupHeaders(),
+      body,
+    }), 201);
+    await readJson(await apiWithD1(env, `/api/students/${created.id}/profile`, {
+      method: "PATCH",
+      headers: groupHeaders(),
+      body: {
+        updatedAt: created.updatedAt,
+        profile: { school: updatedProfile.school },
+      },
+    }));
+
+    const originalRetry = await apiWithD1(env, "/api/students", {
+      method: "POST",
+      headers: groupHeaders(),
+      body,
+    });
+    const changedRetry = await apiWithD1(env, "/api/students", {
+      method: "POST",
+      headers: groupHeaders(),
+      body: { ...body, profile: updatedProfile },
+    });
+
+    assert.deepEqual([originalRetry.status, changedRetry.status], [200, 409]);
+    assert.equal((await originalRetry.json()).id, created.id);
+    assert.equal((await changedRetry.json()).code, "ENROLMENT_KEY_CONFLICT");
+    const stored = await env.DB.prepare(
+      "SELECT profile FROM students WHERE id = ?",
+    ).bind(created.id).first();
+    assert.deepEqual(JSON.parse(stored.profile), updatedProfile);
+    const activity = await env.DB.prepare(
+      "SELECT action FROM student_activity WHERE student_id = ? AND action = 'enrol'",
+    ).bind(created.id).all();
+    assert.deepEqual(activity.results.map(({ action }) => action), ["enrol"]);
+  });
+});
+
+test("fails closed when the immutable enrolment payload snapshot is malformed", async () => {
+  await withD1(async (env) => {
+    const body = {
+      name: "MALFORMED SNAPSHOT STUDENT",
+      grade: "Y3",
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: emptyProfile,
+      enrolmentKey: "10000000-0000-4000-8000-000000000012",
+    };
+    const created = await readJson(await apiWithD1(env, "/api/students", {
+      method: "POST",
+      headers: groupHeaders(),
+      body,
+    }), 201);
+    await env.DB.prepare(
+      "UPDATE student_activity SET details = '{}' WHERE student_id = ? AND action = 'enrol'",
+    ).bind(created.id).run();
+
+    const retry = await readJson(await apiWithD1(env, "/api/students", {
+      method: "POST",
+      headers: groupHeaders(),
+      body,
+    }), 409);
+
+    assert.equal(retry.code, "ENROLMENT_KEY_CONFLICT");
+    const activity = await env.DB.prepare(
+      "SELECT action FROM student_activity WHERE student_id = ? AND action = 'enrol'",
+    ).bind(created.id).all();
+    assert.deepEqual(activity.results.map(({ action }) => action), ["enrol"]);
+  });
+});
+
 test("concurrent retries of one enrolment key create one student and one enrol activity", async () => {
   await withD1(async (env) => {
     const body = {
