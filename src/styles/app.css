@@ -903,11 +903,11 @@ button {
   }
 
   .app-shell__content:has(.entrance--branch) {
-    padding-top: 88px;
+    padding-top: 96px;
   }
 
   .app-shell__content:has(.entrance--branch) .brand-header {
-    margin-bottom: 60px;
+    margin-bottom: 52px;
   }
 
   .entrance__heading {
@@ -937,6 +937,18 @@ button {
     min-height: 84px;
     border-radius: 20px;
     font-size: 30px;
+  }
+
+  .entrance--branch .entrance__heading {
+    margin-bottom: 49px;
+  }
+
+  .entrance--branch .choice-stack {
+    gap: 25px;
+  }
+
+  .entrance--branch .choice-button {
+    min-height: 90px;
   }
 
   .login-card {
