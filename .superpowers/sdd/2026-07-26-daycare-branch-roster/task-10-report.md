@@ -17,12 +17,21 @@ Implemented local acceptance coverage, an isolated pg-mem/Vite browser harness, 
 - Focused `npm run test:e2e -- --grep "enrol, stop|failed attendance"`: 4/4 passed across desktop Chromium 1440×900 and mobile Chromium 390×844.
 - Final full verification results are recorded below after fresh commands.
 
+## Review remediation
+
+- Render Blueprint authentication variables now use `sync: false` for `GOOGLE_CLIENT_ID`, `VITE_GOOGLE_CLIENT_ID`, `ALLOWED_EMAILS`, and `EMERGENCY_PASSWORD_HASH`, so Render prompts for values without storing secrets in Git.
+- A plain `E2E_BASE_URL` selects only `smoke.spec.js`. Its browser route guard permits same-origin `GET`, `HEAD`, and `OPTIONS` and aborts `POST`, `PUT`, `PATCH`, and `DELETE` before dispatch. The full external mutation suite requires `E2E_DANGER_ALLOW_EXTERNAL_MUTATIONS=I_UNDERSTAND_THIS_MUTATES_EXTERNAL_DATA`; the mutation spec also refuses to load without that exact acknowledgement.
+- The lifecycle case now enrols with non-empty profile data, saves attendance and a message through the real UI, stops/restores the same UUID, and verifies all linked data after restoration through authenticated APIs.
+- Restore instructions use the exact target-scoped migration command `DATABASE_URL="$RESTORE_DATABASE_URL" npm run db:migrate`; they do not rely on the operator's ambient database variable.
+- The middleware Vite server disables both HMR and its WebSocket server. A live `lsof` probe showed only `127.0.0.1:4173`; port `24678` was not bound.
+- Visual comparison and production browser QA remain assigned to the main agent. No visual or production evidence was fabricated.
+
 ## Acceptance coverage
 
 - first-screen mobile bounds and exact `MK`, `STP`, `WS` order;
 - exact three teacher groups per branch and cross-branch absence;
 - MK isolation, `MK QIAO EN` exact 40, and no 基础班;
-- Enrol → stop → restore with the same UUID;
+- Enrol → profile/attendance/message → stop → restore with the same UUID and linked data;
 - failed attendance rollback and retry;
 - nonexistent search clears the profile and save/message actions;
 - logout invalidates the session;
@@ -32,10 +41,11 @@ Implemented local acceptance coverage, an isolated pg-mem/Vite browser harness, 
 
 ## Verification results
 
-- `npm test`: PASS — 14 test files, 95 tests.
+- `npm test`: PASS — 15 test files, 99 tests.
 - `npm run build`: PASS — 52 modules transformed; emitted `dist/client/index.html`, client assets, `dist/server/index.js`, and `dist/.openai/hosting.json`.
 - `npm run test:sites`: PASS — 4 Node tests.
 - `npm run test:e2e`: PASS — 18 tests, comprising nine acceptance cases in desktop Chromium 1440×900 and mobile Chromium 390×844.
+- External read-only mode (`E2E_BASE_URL=http://127.0.0.1:4173 npm run test:e2e` against the isolated harness): PASS — 6 smoke tests across both viewports, including blocked unsafe methods.
 - `git diff --check`: PASS.
 - Playwright Chromium build 1194 was installed locally as a test-runtime prerequisite; it is not a repository artifact.
 

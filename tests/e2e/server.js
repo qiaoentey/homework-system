@@ -24,6 +24,8 @@ const vite = await createViteServer({
   appType: "spa",
   server: {
     middlewareMode: true,
+    hmr: false,
+    ws: false,
   },
 });
 app.use(vite.middlewares);

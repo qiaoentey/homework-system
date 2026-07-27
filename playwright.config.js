@@ -1,9 +1,14 @@
 import { defineConfig } from "@playwright/test";
+import { selectE2ETestMatch } from "./tests/e2e/policy.js";
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:4173";
+const externalBaseUrl = process.env.E2E_BASE_URL;
+const baseURL = externalBaseUrl ?? "http://127.0.0.1:4173";
+const mutationOptIn = process.env.E2E_DANGER_ALLOW_EXTERNAL_MUTATIONS;
+const readOnlyStorageState = process.env.E2E_READ_ONLY_STORAGE_STATE;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  testMatch: selectE2ETestMatch({ externalBaseUrl, mutationOptIn }),
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
@@ -13,6 +18,9 @@ export default defineConfig({
     browserName: "chromium",
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
+    ...(externalBaseUrl && readOnlyStorageState
+      ? { storageState: readOnlyStorageState }
+      : {}),
   },
   projects: [
     {
@@ -30,7 +38,7 @@ export default defineConfig({
       },
     },
   ],
-  webServer: process.env.E2E_BASE_URL
+  webServer: externalBaseUrl
     ? undefined
     : {
         command: "node tests/e2e/server.js",

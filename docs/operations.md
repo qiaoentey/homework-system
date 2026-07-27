@@ -113,15 +113,32 @@ Record the exact production URL and whether it is a new optimized URL or a confi
 11. Message and summary: save one bounded test message, confirm newest-first display, and confirm the current-group summary refreshes after attendance.
 12. Logout: log out and confirm `/api/session` returns `401`.
 
-Run the production Playwright smoke subset only with explicit authorization:
+An external base URL runs only the dedicated read-only smoke suite. The suite
+allows same-origin `GET`, `HEAD`, and `OPTIONS` requests and blocks
+`POST`, `PUT`, `PATCH`, and `DELETE` before they reach the service:
 
 ```bash
-E2E_BASE_URL="$PRODUCTION_URL" \
-E2E_EMERGENCY_PASSWORD="$PRODUCTION_SMOKE_PASSWORD" \
-npm run test:e2e -- --grep "first screen|teacher groups|API rejects|logout"
+E2E_BASE_URL="$PRODUCTION_URL" npm run test:e2e
 ```
 
-The full local acceptance suite uses an isolated pg-mem database and must not be pointed at production because it enrols and changes students.
+An already authenticated read-only browser state may be supplied with
+`E2E_READ_ONLY_STORAGE_STATE`; otherwise the smoke suite verifies the public
+health endpoint and login entrance. Do not store that state file in Git.
+
+The full local acceptance suite uses an isolated pg-mem database. Never run
+its mutations against production. Running it against a disposable external
+test environment requires both credentials and this deliberately explicit
+acknowledgement:
+
+```bash
+E2E_BASE_URL="$DISPOSABLE_TEST_URL" \
+E2E_EMERGENCY_PASSWORD="$DISPOSABLE_TEST_PASSWORD" \
+E2E_DANGER_ALLOW_EXTERNAL_MUTATIONS=I_UNDERSTAND_THIS_MUTATES_EXTERNAL_DATA \
+npm run test:e2e
+```
+
+That opt-in enrols students, writes attendance and messages, stops/restores
+students, and must not be used with a production URL.
 
 ## Roll back a deployment
 
@@ -148,13 +165,19 @@ pg_restore \
   backups/daycare-predeploy-YYYYMMDDTHHMMSSZ.dump
 ```
 
+Run migrations against the restored target explicitly; never rely on the
+shell's ambient `DATABASE_URL`:
+
+```bash
+DATABASE_URL="$RESTORE_DATABASE_URL" npm run db:migrate
+```
+
 Then:
 
-1. run `npm run db:migrate` against `RESTORE_DATABASE_URL`;
-2. verify all nine roster counts, student UUIDs, attendance, messages, profiles, and `schema_migrations`;
-3. point the web service's `DATABASE_URL` at the validated restored database;
-4. deploy the compatible application version and run the full smoke checklist;
-5. reopen writes only after validation;
-6. record the source backup, restored database, deployment, operator, and timestamps.
+1. verify all nine roster counts, student UUIDs, attendance, messages, profiles, and `schema_migrations`;
+2. point the web service's `DATABASE_URL` at the validated restored database;
+3. deploy the compatible application version and run the full smoke checklist;
+4. reopen writes only after validation;
+5. record the source backup, restored database, deployment, operator, and timestamps.
 
 If policy requires restoring in place, take a second forensic backup first and have a database owner approve the exact `pg_restore --clean --if-exists` target command.

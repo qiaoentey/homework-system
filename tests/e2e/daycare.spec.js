@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { assertExternalMutationSafety } from "./policy.js";
+
+assertExternalMutationSafety({
+  externalBaseUrl: process.env.E2E_BASE_URL,
+  mutationOptIn: process.env.E2E_DANGER_ALLOW_EXTERNAL_MUTATIONS,
+});
 
 const CATALOG = {
   MK: [
@@ -51,6 +57,35 @@ async function listStudents(page, branchCode, groupCode, status, search = "") {
     });
     return { status: response.status, body: await response.json() };
   }, { branchCode, groupCode, status, search });
+}
+
+async function attendanceFor(page, branchCode, groupCode, date) {
+  return page.evaluate(async ({ branchCode, groupCode, date }) => {
+    const query = new URLSearchParams({
+      branch: branchCode,
+      group: groupCode,
+      date,
+    });
+    const response = await fetch(`/api/attendance?${query}`, {
+      headers: {
+        "X-Branch-Code": branchCode,
+        "X-Group-Code": groupCode,
+      },
+    });
+    return { status: response.status, body: await response.json() };
+  }, { branchCode, groupCode, date });
+}
+
+async function messagesFor(page, branchCode, groupCode, studentId) {
+  return page.evaluate(async ({ branchCode, groupCode, studentId }) => {
+    const response = await fetch(`/api/students/${studentId}/messages`, {
+      headers: {
+        "X-Branch-Code": branchCode,
+        "X-Group-Code": groupCode,
+      },
+    });
+    return { status: response.status, body: await response.json() };
+  }, { branchCode, groupCode, studentId });
 }
 
 test.beforeEach(async ({ page }) => {
@@ -111,16 +146,27 @@ test("MK roster stays branch-scoped and Qiao En has only the approved 40 student
   ))).toBe(true);
 });
 
-test("enrol, stop, and restore preserve one stable student UUID", async ({
+test("enrol, stop, and restore preserve UUID, profile, attendance, and messages", async ({
   page,
 }, testInfo) => {
   await openRoster(page, "MK", "WEN XUAN", "MK WEN XUAN");
   const name = `E2E ${testInfo.project.name.toUpperCase()} ${Date.now()}`;
+  const message = `Linked history ${testInfo.project.name}`;
+  const attendanceDate = await page.evaluate(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
 
   await page.getByRole("button", { name: "Enrol 学生" }).click();
   const enrol = page.getByRole("dialog", { name: "Enrol 学生" });
   await enrol.getByLabel("学生姓名").fill(name);
   await enrol.getByLabel("年级").selectOption("Y3");
+  await enrol.getByLabel("学校", { exact: true }).fill("E2E Academy");
+  await enrol.getByLabel("学校班级", { exact: true }).fill("3A");
+  await enrol.getByLabel("接送方式", { exact: true }).fill("Parent pickup");
   const createdResponse = page.waitForResponse((response) => (
     response.url().endsWith("/api/students") &&
     response.request().method() === "POST" &&
@@ -132,6 +178,25 @@ test("enrol, stop, and restore preserve one stable student UUID", async ({
   const enrolled = await listStudents(page, "MK", "MK WEN XUAN", "active", name);
   expect(enrolled.body.items).toHaveLength(1);
   const createdId = enrolled.body.items[0].id;
+  expect(enrolled.body.items[0].profile).toMatchObject({
+    school: "E2E Academy",
+    schoolClass: "3A",
+    pickupMethod: "Parent pickup",
+  });
+
+  const studentCard = page.getByTestId("student-card").filter({
+    has: page.getByRole("button", { name: `选择 ${name}`, exact: true }),
+  });
+  const arrive = studentCard.getByRole("button", { name: "到", exact: true });
+  await arrive.click();
+  await expect(studentCard.getByText("已保存")).toBeVisible();
+  await studentCard.getByRole("button", { name: `选择 ${name}`, exact: true }).click();
+  await page.getByRole("button", { name: "写留言" }).click();
+  const messageDialog = page.getByRole("dialog", { name: `${name} 留言` });
+  await messageDialog.getByLabel("留言内容").fill(message);
+  await messageDialog.getByRole("button", { name: "保存留言" }).click();
+  await expect(messageDialog.getByText(message)).toBeVisible();
+  await messageDialog.getByRole("button", { name: "关闭" }).click();
 
   await page.getByRole("button", { name: "停补学生" }).click();
   const stop = page.getByRole("dialog", { name: "停补学生" });
@@ -155,6 +220,33 @@ test("enrol, stop, and restore preserve one stable student UUID", async ({
   const active = await listStudents(page, "MK", "MK WEN XUAN", "active", name);
   expect(active.body.items).toHaveLength(1);
   expect(active.body.items[0].id).toBe(createdId);
+  expect(active.body.items[0].profile).toMatchObject({
+    school: "E2E Academy",
+    schoolClass: "3A",
+    pickupMethod: "Parent pickup",
+  });
+
+  const attendance = await attendanceFor(
+    page,
+    "MK",
+    "MK WEN XUAN",
+    attendanceDate,
+  );
+  expect(attendance.status).toBe(200);
+  expect(attendance.body.items).toContainEqual(expect.objectContaining({
+    studentId: createdId,
+    date: attendanceDate,
+    eventCode: "arrive",
+    active: true,
+  }));
+
+  const messages = await messagesFor(page, "MK", "MK WEN XUAN", createdId);
+  expect(messages.status).toBe(200);
+  expect(messages.body.items).toContainEqual(expect.objectContaining({
+    studentId: createdId,
+    date: attendanceDate,
+    body: message,
+  }));
 });
 
 test("failed attendance can be retried without leaving stale optimistic state", async ({
