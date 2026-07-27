@@ -4,9 +4,18 @@ const GENERIC_LOGIN_ERROR = "登录失败，请重试";
 
 export function LoginScreen({ onEmergencyLogin, onGoogleLogin }) {
   const googleButton = useRef(null);
+  const loginInFlight = useRef(false);
+  const mounted = useRef(false);
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -23,15 +32,17 @@ export function LoginScreen({ onEmergencyLogin, onGoogleLogin }) {
       window.google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "",
         callback: async ({ credential }) => {
-          if (!credential || pending) return;
+          if (!credential || loginInFlight.current) return;
+          loginInFlight.current = true;
           setPending(true);
           setError("");
           try {
             await onGoogleLogin(credential);
           } catch {
-            setError(GENERIC_LOGIN_ERROR);
+            if (mounted.current) setError(GENERIC_LOGIN_ERROR);
           } finally {
-            if (!cancelled) setPending(false);
+            loginInFlight.current = false;
+            if (mounted.current) setPending(false);
           }
         },
       });
@@ -64,21 +75,25 @@ export function LoginScreen({ onEmergencyLogin, onGoogleLogin }) {
       cancelled = true;
       script.removeEventListener("load", mountGoogleButton);
     };
-  }, [onGoogleLogin, pending]);
+  }, [onGoogleLogin]);
 
   async function submitEmergency(event) {
     event.preventDefault();
-    if (!password || pending) return;
+    if (!password || loginInFlight.current) return;
 
+    loginInFlight.current = true;
     setPending(true);
     setError("");
     try {
       await onEmergencyLogin(password);
     } catch {
-      setPassword("");
-      setError(GENERIC_LOGIN_ERROR);
+      if (mounted.current) {
+        setPassword("");
+        setError(GENERIC_LOGIN_ERROR);
+      }
     } finally {
-      setPending(false);
+      loginInFlight.current = false;
+      if (mounted.current) setPending(false);
     }
   }
 

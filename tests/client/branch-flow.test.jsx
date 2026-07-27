@@ -266,7 +266,7 @@ describe("login choices", () => {
     expect(await screen.findByRole("heading", { name: "请选择分院" })).toBeVisible();
   });
 
-  it("recovers the login form after a rejected Google credential", async () => {
+  it("recovers login methods after a deferred Google credential rejection", async () => {
     let credentialCallback;
     window.google = {
       accounts: {
@@ -278,20 +278,50 @@ describe("login choices", () => {
         },
       },
     };
-    vi.stubGlobal("fetch", vi.fn(async (url) => {
+    let rejectGoogleLogin;
+    const deferredGoogleLogin = new Promise((resolve, reject) => {
+      rejectGoogleLogin = reject;
+    });
+    let googleLoginAttempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
       if (url === "/api/session") return jsonResponse(401, { error: "Authentication required" });
-      if (url === "/api/session/google") return jsonResponse(401, { error: "Invalid Google credential" });
+      if (url === "/api/session/google") {
+        googleLoginAttempts += 1;
+        if (googleLoginAttempts === 1) return deferredGoogleLogin;
+        expect(JSON.parse(options.body)).toEqual({ credential: "later-google-id-token" });
+        return jsonResponse(204);
+      }
+      if (url === "/api/catalog") return jsonResponse(200, catalog);
       throw new Error(`Unexpected request: ${url}`);
     }));
 
     render(<App />);
     const password = await screen.findByLabelText("紧急密码");
+    fireEvent.change(password, { target: { value: "private-access" } });
     await waitFor(() => expect(credentialCallback).toBeTypeOf("function"));
+    let firstAttempt;
+    act(() => {
+      firstAttempt = credentialCallback({ credential: "bad-google-id-token" });
+    });
+
+    await waitFor(() => {
+      expect(password).toBeDisabled();
+      expect(screen.getByRole("button", { name: "登录中…" })).toBeDisabled();
+    });
+
     await act(async () => {
-      await credentialCallback({ credential: "bad-google-id-token" });
+      rejectGoogleLogin(new Error("deferred Google rejection"));
+      await firstAttempt;
     });
 
     expect(await screen.findByRole("alert")).toHaveTextContent("登录失败，请重试");
     expect(password).toBeEnabled();
+    expect(screen.getByRole("button", { name: "紧急登录" })).toBeEnabled();
+
+    await act(async () => {
+      await credentialCallback({ credential: "later-google-id-token" });
+    });
+
+    expect(await screen.findByRole("heading", { name: "请选择分院" })).toBeVisible();
   });
 });
