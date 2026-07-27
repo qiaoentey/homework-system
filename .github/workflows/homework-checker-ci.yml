@@ -5,13 +5,19 @@ on:
     paths:
       - "homework-checker/**"
       - ".github/workflows/homework-checker-ci.yml"
+      - ".github/workflows/homework-checker-pages.yml"
   pull_request:
     paths:
       - "homework-checker/**"
       - ".github/workflows/homework-checker-ci.yml"
+      - ".github/workflows/homework-checker-pages.yml"
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -38,3 +44,5 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Mobile, offline, privacy, and real-worker browser tests
         run: npm run test:e2e
+      - name: Project-base Pages browser tests
+        run: npm run test:e2e:pages

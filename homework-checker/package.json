@@ -34,7 +34,8 @@
     "jsdom": "latest",
     "playwright": "latest",
     "typescript": "latest",
-    "vitest": "latest"
+    "vitest": "latest",
+    "yaml": "^2.9.0"
   },
   "overrides": {
     "filelist": {
