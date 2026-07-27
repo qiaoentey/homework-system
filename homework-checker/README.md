@@ -2,7 +2,20 @@
 
 Offline-first, on-device support for checking a photographed primary-school mathematics worksheet. It is a conservative helper: only a clear, fully parsed mismatch with confident OCR and question location becomes red. Incomplete, low-confidence, unsupported, ambiguous, or unstated-rounding work stays orange for adult review.
 
-The app needs no login, hosted backend, analytics account, paid API, or remote OCR service. It is a static PWA and has not been deployed by this repository.
+The app needs no login, hosted backend, analytics account, paid API, or remote OCR service. It is published as a static PWA on GitHub Pages.
+
+## Use the published app
+
+Open [Homework Checker](https://qiaoentey.github.io/homework-system/). The two feature pages use static-host-safe hash links:
+
+- [Answer library](https://qiaoentey.github.io/homework-system/#/answers)
+- [Mathematics checker](https://qiaoentey.github.io/homework-system/#/scan)
+
+The first scan must be online so the browser can download and cache the local OCR model. After that first-use download, the installed app, all three routes, the bundled answer-library PDFs, and scanning work offline on the same device.
+
+Student worksheet photos remain local to the browser/device: they are never uploaded to GitHub Pages, GitHub Actions, an application server, an analytics service, or a remote OCR service.
+
+Publishing is gated by `.github/workflows/homework-checker-ci.yml`. A push to `main` first runs **Homework checker CI**, including the dependency audit and browser suite. Only a successful completed CI run for a `main` push can trigger **Homework checker Pages**, which repeats the unit tests, builds and verifies the `/homework-system/` production output, uploads the Pages artifact, and deploys it. Failed CI, pull-request runs, and non-`main` branches cannot deploy.
 
 ## Run locally
 
