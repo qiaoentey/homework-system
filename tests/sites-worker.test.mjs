@@ -140,9 +140,9 @@ test("reports Worker API health without consulting static assets", async () => {
   assert.deepEqual(await response.json(), { ok: true });
 });
 
-test("applies the Sites migration idempotently with exact active roster counts", async () => {
+test("applies the breakpoint-delimited Sites migration idempotently with exact active roster counts", async () => {
   await withD1(async (env) => {
-    env.execMigration();
+    await env.execMigration();
 
     let total = 0;
     for (const [groupCode, expected] of Object.entries(approvedCounts)) {
@@ -315,14 +315,14 @@ test("writes, lists, summarizes, and clears attendance", async () => {
   });
 });
 
-test("uses optimistic concurrency for profile updates", async () => {
+test("atomically rejects one of two concurrent profile updates with the same version", async () => {
   await withD1(async (env) => {
     const roster = await readJson(await apiWithD1(
       env,
       "/api/students?branch=MK&group=MK%20QIAO%20EN&status=active&search=Aria",
     ));
     const student = roster.items[0];
-    const updated = await readJson(await apiWithD1(
+    const seeded = await readJson(await apiWithD1(
       env,
       `/api/students/${student.id}/profile`,
       {
@@ -330,26 +330,50 @@ test("uses optimistic concurrency for profile updates", async () => {
         headers: groupHeaders("MK", "MK QIAO EN"),
         body: {
           updatedAt: student.updatedAt,
-          profile: { school: "SJK Test" },
+          profile: { pickupMethod: "Bus" },
         },
       },
     ));
-    assert.equal(updated.profile.school, "SJK Test");
-    assert.notEqual(updated.updatedAt, student.updatedAt);
+    assert.equal(seeded.profile.pickupMethod, "Bus");
 
-    const stale = await readJson(await apiWithD1(
-      env,
-      `/api/students/${student.id}/profile`,
-      {
+    const settled = await Promise.allSettled([
+      apiWithD1(env, `/api/students/${student.id}/profile`, {
         method: "PATCH",
         headers: groupHeaders("MK", "MK QIAO EN"),
         body: {
-          updatedAt: student.updatedAt,
-          profile: { school: "Stale write" },
+          updatedAt: seeded.updatedAt,
+          profile: { school: "SJK Test" },
         },
-      },
-    ), 409);
-    assert.equal(stale.code, "STUDENT_CHANGED");
+      }),
+      apiWithD1(env, `/api/students/${student.id}/profile`, {
+        method: "PATCH",
+        headers: groupHeaders("MK", "MK QIAO EN"),
+        body: {
+          updatedAt: seeded.updatedAt,
+          profile: { schoolClass: "4A" },
+        },
+      }),
+    ]);
+    assert.deepEqual(settled.map(({ status }) => status), ["fulfilled", "fulfilled"]);
+    const responses = settled.map(({ value }) => value);
+    assert.deepEqual(responses.map(({ status }) => status).sort(), [200, 409]);
+
+    const success = await responses.find(({ status }) => status === 200).json();
+    const conflict = await responses.find(({ status }) => status === 409).json();
+    assert.equal(conflict.code, "STUDENT_CHANGED");
+    assert.equal(success.profile.pickupMethod, "Bus");
+    assert.equal(
+      Number(Boolean(success.profile.school)) + Number(Boolean(success.profile.schoolClass)),
+      1,
+    );
+    assert.notEqual(success.updatedAt, seeded.updatedAt);
+
+    const stored = await readJson(await apiWithD1(
+      env,
+      "/api/students?branch=MK&group=MK%20QIAO%20EN&status=active&search=Aria",
+    ));
+    assert.deepEqual(stored.items[0].profile, success.profile);
+    assert.equal(stored.items[0].updatedAt, success.updatedAt);
   });
 });
 

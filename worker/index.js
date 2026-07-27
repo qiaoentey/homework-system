@@ -449,18 +449,26 @@ async function updateProfile(request, database, id) {
   if (invalidContext) return invalidContext;
   const scoped = await scopedStudent(database, id, context.branchCode, context.groupCode);
   if (scoped.response) return scoped.response;
-  if (Date.parse(scoped.student.updated_at) !== Date.parse(body.updatedAt)) {
-    return apiError(409, "STUDENT_CHANGED", "Student changed since it was loaded");
-  }
-  await run(
+  const result = await run(
     database,
-    "UPDATE students SET profile = ?, updated_at = ? WHERE id = ?",
+    `UPDATE students
+     SET profile = ?, updated_at = ?
+     WHERE id = ?
+       AND branch_code = ?
+       AND group_code = ?
+       AND updated_at = ?`,
     [
       JSON.stringify({ ...parseProfile(scoped.student.profile), ...body.profile }),
       timestampAfter(scoped.student.updated_at),
       id,
+      context.branchCode,
+      context.groupCode,
+      new Date(body.updatedAt).toISOString(),
     ],
   );
+  if (Number(result.meta?.changes ?? 0) !== 1) {
+    return apiError(409, "STUDENT_CHANGED", "Student changed since it was loaded");
+  }
   return json(mapStudent(await rawStudent(database, id)));
 }
 

@@ -1,9 +1,11 @@
 PRAGMA foreign_keys = ON;
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS branches (
   code TEXT PRIMARY KEY CHECK (code IN ('MK', 'STP', 'WS')),
   label TEXT NOT NULL
 );
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS teacher_groups (
   code TEXT PRIMARY KEY,
@@ -11,6 +13,7 @@ CREATE TABLE IF NOT EXISTS teacher_groups (
   label TEXT NOT NULL,
   UNIQUE (code, branch_code)
 );
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS students (
   id TEXT PRIMARY KEY,
@@ -26,6 +29,7 @@ CREATE TABLE IF NOT EXISTS students (
   FOREIGN KEY (group_code, branch_code) REFERENCES teacher_groups(code, branch_code),
   UNIQUE (group_code, source_ref)
 );
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS attendance_events (
   student_id TEXT NOT NULL REFERENCES students(id),
@@ -36,6 +40,7 @@ CREATE TABLE IF NOT EXISTS attendance_events (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   PRIMARY KEY (student_id, attendance_date, event_code)
 );
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS student_messages (
   id TEXT PRIMARY KEY,
@@ -45,6 +50,7 @@ CREATE TABLE IF NOT EXISTS student_messages (
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS student_activity (
   id TEXT PRIMARY KEY,
@@ -54,23 +60,30 @@ CREATE TABLE IF NOT EXISTS student_activity (
   details TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+--> statement-breakpoint
 
 CREATE INDEX IF NOT EXISTS students_branch_group_status_name_idx
   ON students (branch_code, group_code, status, name);
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS students_group_normalized_identity_unique
   ON students (group_code, lower(trim(name)), lower(trim(grade)));
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS attendance_events_attendance_date_idx
   ON attendance_events (attendance_date);
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS student_messages_student_date_idx
   ON student_messages (student_id, message_date);
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS student_activity_student_idx
   ON student_activity (student_id);
+--> statement-breakpoint
 
 INSERT INTO branches (code, label) VALUES
   ('MK', 'MK'),
   ('STP', 'STP'),
   ('WS', 'WS')
 ON CONFLICT (code) DO NOTHING;
+--> statement-breakpoint
 
 INSERT INTO teacher_groups (code, branch_code, label) VALUES
   ('MK HAPPY', 'MK', 'HAPPY'),
@@ -83,8 +96,7 @@ INSERT INTO teacher_groups (code, branch_code, label) VALUES
   ('WS JIA WEN', 'WS', 'JIA WEN'),
   ('WS MIXIN', 'WS', 'MIXIN')
 ON CONFLICT (code) DO NOTHING;
-
-
+--> statement-breakpoint
 INSERT INTO students
   (id, name, grade, branch_code, group_code, status, profile, source_ref)
 VALUES

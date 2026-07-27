@@ -38,24 +38,33 @@ function createPreparedStatement(database, sql, values = []) {
 
 export async function createSitesD1() {
   const database = new DatabaseSync(":memory:");
-  database.exec("PRAGMA foreign_keys = ON");
   const migration = await readFile(
     new URL("../../drizzle/0000_daycare_sites.sql", import.meta.url),
     "utf8",
   );
-  database.exec(migration);
+  const migrationStatements = migration
+    .split("--> statement-breakpoint")
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+  const DB = {
+    prepare(sql) {
+      return createPreparedStatement(database, sql);
+    },
+  };
+
+  async function applyMigration() {
+    for (const statement of migrationStatements) {
+      await DB.prepare(statement).run();
+    }
+  }
+
+  await applyMigration();
 
   return {
-    DB: {
-      prepare(sql) {
-        return createPreparedStatement(database, sql);
-      },
-    },
+    DB,
     close() {
       database.close();
     },
-    execMigration() {
-      database.exec(migration);
-    },
+    execMigration: applyMigration,
   };
 }
