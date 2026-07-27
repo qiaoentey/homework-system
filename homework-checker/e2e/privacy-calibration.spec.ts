@@ -1,5 +1,5 @@
 import { expect, test } from "playwright/test";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 type CalibrationSample = {
@@ -18,6 +18,13 @@ const samples: CalibrationSample[] = [
 
 const samplePath = (file: string) =>
   fileURLToPath(new URL(`../public/samples/${file}`, import.meta.url));
+
+// The OCR module worker is lazily imported only after a user starts checking.
+// Prefetch the exact built worker before upload so it is part of the observed
+// static baseline; do not allow arbitrary paths under /assets/.
+const ocrWorkerAssets = readdirSync(fileURLToPath(new URL("../dist/assets", import.meta.url)))
+  .filter((name) => /^ocr\.worker-[\w-]+\.js$/.test(name))
+  .map((name) => `/assets/${name}`);
 
 const expectedAnnotations = JSON.parse(readFileSync(
   fileURLToPath(new URL("../tests/fixtures/expected-annotations.json", import.meta.url)),
@@ -49,9 +56,51 @@ const levenshteinDistance = (left: string, right: string) => {
 
 const EXPECTED_ORIGIN = "http://127.0.0.1:4174";
 const STATIC_PATHS = new Set(["/", "/scan", "/manifest.webmanifest", "/registerSW.js", "/service-worker.js", "/favicon.ico"]);
-const STATIC_PREFIXES = ["/assets/", "/icons/", "/ocr/", "/pdf/"];
+const INITIAL_STATIC_PREFIXES = ["/assets/", "/icons/", "/ocr/", "/pdf/"];
+const FIXED_OCR_PATHS = new Set([
+  "/ocr/chi_tra.traineddata.gz",
+  "/ocr/eng.traineddata.gz",
+  "/ocr/msa.traineddata.gz",
+  "/ocr/tesseract-core-lstm.wasm",
+  "/ocr/tesseract-core-lstm.wasm.js",
+  "/ocr/tesseract-core-relaxedsimd-lstm.wasm",
+  "/ocr/tesseract-core-relaxedsimd-lstm.wasm.js",
+  "/ocr/tesseract-core-simd-lstm.wasm",
+  "/ocr/tesseract-core-simd-lstm.wasm.js",
+  "/ocr/tesseract-worker.min.js",
+]);
 
-const isStaticLocalPath = (path: string) => STATIC_PATHS.has(path) || STATIC_PREFIXES.some((prefix) => path.startsWith(prefix));
+const isInitialStaticPath = (path: string) => STATIC_PATHS.has(path) || INITIAL_STATIC_PREFIXES.some((prefix) => path.startsWith(prefix));
+const isStaticLocalPath = (path: string) => STATIC_PATHS.has(path) || FIXED_OCR_PATHS.has(path);
+const isAllowedPostUploadPath = (path: string, preUploadPaths: ReadonlySet<string>) =>
+  preUploadPaths.has(path) || isStaticLocalPath(path);
+
+const safelyDecode = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const sensitiveForms = (recognized: Iterable<string>) => [...new Set([...recognized]
+  .filter((text) => text.trim().length >= 6)
+  .flatMap((text) => {
+    const compact = text.replaceAll(/\s+/g, "");
+    return [text, compact, encodeURIComponent(text), encodeURIComponent(compact), encodeURI(text)];
+  }))];
+
+const containsSensitiveRecognition = (value: string, forms: readonly string[]) => {
+  const decoded = safelyDecode(value);
+  const compact = value.replaceAll(/\s+/g, "");
+  const decodedCompact = decoded.replaceAll(/\s+/g, "");
+  return forms.some((form) => value.includes(form) || decoded.includes(form) || compact.includes(form) || decodedCompact.includes(form));
+};
+
+test("rejects an OCR line smuggled under the legacy assets prefix", () => {
+  const leakedRecognition = "3, 11+ 250 ml = 1250 ml";
+  expect(isAllowedPostUploadPath(`/assets/${encodeURIComponent(leakedRecognition)}`, new Set(["/assets/index.js"]))).toBe(false);
+});
 
 const targetDetails = async (target: import("playwright/test").Locator) => target.evaluate((button) => {
   const canvas = button.parentElement?.querySelector("canvas");
@@ -89,6 +138,7 @@ test.describe("offline OCR calibration and privacy network audit", () => {
   test("uses the actual Chromium worker, marks no correct synthetic answer red, and uploads nothing", async ({ browserName, page }) => {
     test.skip(browserName !== "chromium", "OffscreenCanvas OCR calibration is measured on Chromium; the iPhone project remains covered by its normal UI E2E suite.");
     const requests: Array<{ url: string; method: string; postData: string | null }> = [];
+    const postUploadAudits: Array<{ request: { url: string; method: string; postData: string | null }; preUploadPaths: Set<string> }> = [];
     const webSocketActivity: string[] = [];
     const browserErrors: string[] = [];
     page.on("request", (request) => {
@@ -109,7 +159,19 @@ test.describe("offline OCR calibration and privacy network audit", () => {
     }> = [];
 
     for (const sample of samples) {
+      const pageStart = requests.length;
       await page.goto("/scan");
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(async (paths) => {
+        await Promise.all(paths.map((path) => fetch(path, { cache: "no-store" }).then((response) => {
+          if (!response.ok) throw new Error(`Unable to preload ${path}`);
+        })));
+      }, ocrWorkerAssets);
+      const preUploadPaths = new Set(requests.slice(pageStart)
+        .filter(({ url }) => ["http:", "https:"].includes(new URL(url).protocol))
+        .map(({ url }) => new URL(url).pathname));
+      for (const path of preUploadPaths) expect(isInitialStaticPath(path), `initial static path: ${path}`).toBe(true);
+      const uploadStart = requests.length;
       await page.getByLabel("从相册选择").setInputFiles(samplePath(sample.file));
       await expect(page.getByRole("button", { name: "开始检查" })).toBeEnabled();
       const started = performance.now();
@@ -171,13 +233,18 @@ test.describe("offline OCR calibration and privacy network audit", () => {
         exactEquationCount, expectedEquationCount: expected.length, keyCharacterAccuracy,
         recognized: actualAnnotations.map((item) => item.recognized),
       });
+      postUploadAudits.push(...requests.slice(uploadStart)
+        .filter(({ url }) => ["http:", "https:"].includes(new URL(url).protocol))
+        .map((request) => ({ request, preUploadPaths })));
     }
 
     const networkRequests = requests.filter(({ url }) => ["http:", "https:"].includes(new URL(url).protocol));
-    const sensitiveText = new Set([
+    const recognizedText = new Set(calibration.flatMap((sample) => sample.recognized));
+    const fixtureText = [
       "SYNTHETIC SAMPLE — NO PERSONAL DATA",
       ...expectedAnnotations.samples.flatMap((sample) => sample.expectedAnnotations.map((annotation) => annotation.question)),
-    ]);
+    ];
+    const allSensitiveForms = sensitiveForms([...fixtureText, ...recognizedText]);
     const requestAudit = requests.map(({ url, method, postData }) => ({
       url,
       method,
@@ -187,16 +254,19 @@ test.describe("offline OCR calibration and privacy network audit", () => {
     expect(webSocketActivity).toEqual([]);
     for (const request of networkRequests) {
       const parsed = new URL(request.url);
-      const decoded = decodeURIComponent(request.url);
       expect(parsed.origin, `same-origin request: ${request.url}`).toBe(EXPECTED_ORIGIN);
       expect(request.method, `GET-only request: ${request.url}`).toBe("GET");
       expect(request.postData, `body-free request: ${request.url}`).toBeNull();
       expect(parsed.search, `query-free request: ${request.url}`).toBe("");
       expect(parsed.hash, `hash-free request: ${request.url}`).toBe("");
-      expect(isStaticLocalPath(parsed.pathname), `allow-listed static path: ${request.url}`).toBe(true);
-      for (const text of sensitiveText) expect(decoded.includes(text), `OCR text must not leave: ${text}`).toBe(false);
-      expect(/base64|blob:/i.test(decoded), `encoded image/blob must not leave: ${request.url}`).toBe(false);
+      expect(isInitialStaticPath(parsed.pathname), `static path: ${request.url}`).toBe(true);
+      expect(containsSensitiveRecognition(`${request.url}\n${request.postData ?? ""}`, allSensitiveForms), `recognized text must not leave: ${request.url}`).toBe(false);
+      expect(/base64|blob:/i.test(`${request.url}\n${request.postData ?? ""}`), `encoded image/blob must not leave: ${request.url}`).toBe(false);
     }
+    for (const { request, preUploadPaths } of postUploadAudits) {
+      expect(isAllowedPostUploadPath(new URL(request.url).pathname, preUploadPaths), `post-upload path must be pre-observed or fixed OCR: ${request.url}`).toBe(true);
+    }
+    expect(webSocketActivity.some((record) => containsSensitiveRecognition(record, allSensitiveForms))).toBe(false);
     console.log(JSON.stringify({ calibration, networkRequestCount: networkRequests.length, localBlobRequestCount: requests.length - networkRequests.length }));
     await test.info().attach("ocr-calibration-and-network-audit.json", {
       body: JSON.stringify({ calibration, requestAudit }, null, 2),
