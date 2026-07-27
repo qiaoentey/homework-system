@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,8 +8,12 @@ const dist = path.join(root, "dist");
 const index = path.join(dist, "client", "index.html");
 const worker = path.join(root, "worker", "index.js");
 const hosting = path.join(root, ".openai", "hosting.json");
+const schema = path.join(root, "db", "schema.ts");
+const migrations = path.join(root, "drizzle");
+const packagedMigrations = path.join(dist, ".openai", "drizzle");
+const deprecatedMigrations = path.join(dist, "drizzle");
 
-for (const file of [index, worker, hosting]) {
+for (const file of [index, worker, hosting, schema, migrations]) {
   if (!existsSync(file)) throw new Error("Missing Sites build input: " + file);
 }
 
@@ -17,5 +21,10 @@ mkdirSync(path.join(dist, "server"), { recursive: true });
 mkdirSync(path.join(dist, ".openai"), { recursive: true });
 copyFileSync(worker, path.join(dist, "server", "index.js"));
 copyFileSync(hosting, path.join(dist, ".openai", "hosting.json"));
+mkdirSync(path.join(dist, "db"), { recursive: true });
+copyFileSync(schema, path.join(dist, "db", "schema.ts"));
+rmSync(deprecatedMigrations, { recursive: true, force: true });
+rmSync(packagedMigrations, { recursive: true, force: true });
+cpSync(migrations, packagedMigrations, { recursive: true });
 
-console.log("Prepared Sites build: dist/server/index.js and dist/.openai/hosting.json");
+console.log("Prepared Sites build: Worker, hosting config, schema, and D1 migrations");
