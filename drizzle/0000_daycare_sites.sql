@@ -181,7 +181,12 @@ VALUES
   ('dc010079-0000-4000-8000-000000000079', '罗巧恩', 'F1', 'MK', 'MK HAPPY', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-happy-079'),
   ('dc010080-0000-4000-8000-000000000080', '高可儿', 'F2', 'MK', 'MK HAPPY', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-happy-080'),
   ('dc010081-0000-4000-8000-000000000081', '陆垲勋', 'F3', 'MK', 'MK HAPPY', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-happy-081'),
-  ('dc010082-0000-4000-8000-000000000082', '李俊达', 'F3', 'MK', 'MK HAPPY', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-happy-082'),
+  ('dc010082-0000-4000-8000-000000000082', '李俊达', 'F3', 'MK', 'MK HAPPY', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-happy-082')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc020001-0000-4000-8000-000000000001', '卢开胜', '幼儿班', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-001'),
   ('dc020002-0000-4000-8000-000000000002', '沈宁纤', '一年级', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-002'),
   ('dc020003-0000-4000-8000-000000000003', '黄允汐', '一年级', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-003'),
@@ -221,7 +226,12 @@ VALUES
   ('dc020037-0000-4000-8000-000000000037', '黄耀德', '六年级', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-037'),
   ('dc020038-0000-4000-8000-000000000038', '陈政宇', '六年级', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-038'),
   ('dc020039-0000-4000-8000-000000000039', '叶瑀宸', '六年级', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-039'),
-  ('dc020040-0000-4000-8000-000000000040', '梁暟恩', '六年级', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-040'),
+  ('dc020040-0000-4000-8000-000000000040', '梁暟恩', '六年级', 'MK', 'MK QIAO EN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-qiao-en-040')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc030001-0000-4000-8000-000000000001', '黄宇成', 'Y1', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-001'),
   ('dc030002-0000-4000-8000-000000000002', '李宪玟', 'Y2', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-002'),
   ('dc030003-0000-4000-8000-000000000003', '郑迦谦', 'Y3', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-003'),
@@ -239,7 +249,12 @@ VALUES
   ('dc030015-0000-4000-8000-000000000015', 'Muhammad Adeeb', 'Y1', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-015'),
   ('dc030016-0000-4000-8000-000000000016', 'Faiq', 'Y2', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-016'),
   ('dc030017-0000-4000-8000-000000000017', '彭勇安', 'Y3', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-017'),
-  ('dc030018-0000-4000-8000-000000000018', '沈雯妮', 'Y3', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-018'),
+  ('dc030018-0000-4000-8000-000000000018', '沈雯妮', 'Y3', 'MK', 'MK WEN XUAN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'mk-wen-xuan-018')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc040001-0000-4000-8000-000000000001', 'HAYDEN CHIN', 'Y2', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-001'),
   ('dc040002-0000-4000-8000-000000000002', '罗维辰', 'Y2', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-002'),
   ('dc040003-0000-4000-8000-000000000003', '马洪坤', 'Y3', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-003'),
@@ -329,7 +344,12 @@ VALUES
   ('dc040087-0000-4000-8000-000000000087', '陈炫宇', 'F1', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-087'),
   ('dc040088-0000-4000-8000-000000000088', '林珈卉', 'F1', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-088'),
   ('dc040089-0000-4000-8000-000000000089', 'SHAUN', 'F1', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-089'),
-  ('dc040090-0000-4000-8000-000000000090', 'SOPHIE', 'F3', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-090'),
+  ('dc040090-0000-4000-8000-000000000090', 'SOPHIE', 'F3', 'STP', '巧恩 STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-qiao-en-090')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc050001-0000-4000-8000-000000000001', 'ABBY LEE', 'K1+K2', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-001'),
   ('dc050002-0000-4000-8000-000000000002', '徐weijun', 'K1+K2', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-002'),
   ('dc050003-0000-4000-8000-000000000003', '陈羽婕', 'K1+K2', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-003'),
@@ -450,7 +470,12 @@ VALUES
   ('dc050118-0000-4000-8000-000000000118', '苏梓恒', 'Y5', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-118'),
   ('dc050119-0000-4000-8000-000000000119', '陈杰', 'Y5', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-119'),
   ('dc050120-0000-4000-8000-000000000120', '郭振裕', 'Y6', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-120'),
-  ('dc050121-0000-4000-8000-000000000121', '郭悦颖', 'Y6', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-121'),
+  ('dc050121-0000-4000-8000-000000000121', '郭悦颖', 'Y6', 'STP', 'PS STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-ps-121')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc060001-0000-4000-8000-000000000001', '莫谨同', 'Y3', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-001'),
   ('dc060002-0000-4000-8000-000000000002', 'YOKSHITA', 'Y3', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-002'),
   ('dc060003-0000-4000-8000-000000000003', '李民峰', 'Y3', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-003'),
@@ -500,7 +525,12 @@ VALUES
   ('dc060047-0000-4000-8000-000000000047', '林俊熙', 'Y6', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-047'),
   ('dc060048-0000-4000-8000-000000000048', '黄子轩', 'Y6', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-048'),
   ('dc060049-0000-4000-8000-000000000049', '郭豪阳', 'Y6', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-049'),
-  ('dc060050-0000-4000-8000-000000000050', '李惠欣', 'Y2', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-050'),
+  ('dc060050-0000-4000-8000-000000000050', '李惠欣', 'Y2', 'STP', 'SY STP', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'stp-sy-050')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc070001-0000-4000-8000-000000000001', '萧时彬', 'K1', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-001'),
   ('dc070002-0000-4000-8000-000000000002', '杨兹洵', 'Y1', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-002'),
   ('dc070003-0000-4000-8000-000000000003', '黄觅 KIMMI', 'Y2', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-003'),
@@ -546,7 +576,12 @@ VALUES
   ('dc070043-0000-4000-8000-000000000043', '欧阳昕媛', 'Y3', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-043'),
   ('dc070044-0000-4000-8000-000000000044', '刘佩恩', 'Y4', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-044'),
   ('dc070045-0000-4000-8000-000000000045', '杨乐俊', 'Y5', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-045'),
-  ('dc070046-0000-4000-8000-000000000046', '胡慧欣', 'Y6', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-046'),
+  ('dc070046-0000-4000-8000-000000000046', '胡慧欣', 'Y6', 'WS', 'WS HUILING', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-huiling-046')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc080001-0000-4000-8000-000000000001', '蓝雨晨', 'Y3', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-001'),
   ('dc080002-0000-4000-8000-000000000002', 'Anas', 'Y4', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-002'),
   ('dc080003-0000-4000-8000-000000000003', '黄薇薇', 'Y5', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-003'),
@@ -607,7 +642,12 @@ VALUES
   ('dc080058-0000-4000-8000-000000000058', '郑乐恩', 'Y4', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-058'),
   ('dc080059-0000-4000-8000-000000000059', '阿莎恩', 'Y4', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-059'),
   ('dc080060-0000-4000-8000-000000000060', '林紫惟', 'Y4', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-060'),
-  ('dc080061-0000-4000-8000-000000000061', '林嘉俊', 'Y5', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-061'),
+  ('dc080061-0000-4000-8000-000000000061', '林嘉俊', 'Y5', 'WS', 'WS JIA WEN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-jia-wen-061')
+ON CONFLICT (group_code, source_ref) DO NOTHING;
+--> statement-breakpoint
+INSERT INTO students
+  (id, name, grade, branch_code, group_code, status, profile, source_ref)
+VALUES
   ('dc090001-0000-4000-8000-000000000001', 'Nauraa', 'Y2', 'WS', 'WS MIXIN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-mixin-001'),
   ('dc090002-0000-4000-8000-000000000002', '宋樵', 'Y3', 'WS', 'WS MIXIN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-mixin-002'),
   ('dc090003-0000-4000-8000-000000000003', 'RAGEN', 'Y4', 'WS', 'WS MIXIN', 'active', '{"school":"","schoolClass":"","usualPickupTime":"","pickupMethod":"","lateStayMonday":"","lateStayTuesday":"","lateStayWednesday":"","lateStayThursday":"","lateStayFriday":""}', 'ws-mixin-003'),

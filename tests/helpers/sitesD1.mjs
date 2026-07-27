@@ -53,7 +53,13 @@ export async function createSitesD1() {
   };
 
   async function applyMigration() {
-    for (const statement of migrationStatements) {
+    for (const [index, statement] of migrationStatements.entries()) {
+      const byteLength = new TextEncoder().encode(statement).byteLength;
+      if (byteLength > 100_000) {
+        throw new Error(
+          `D1 migration statement ${index + 1} is ${byteLength} UTF-8 bytes; limit is 100000`,
+        );
+      }
       await DB.prepare(statement).run();
     }
   }

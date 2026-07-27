@@ -140,6 +140,10 @@ test("reports Worker API health without consulting static assets", async () => {
   assert.deepEqual(await response.json(), { ok: true });
 });
 
+test("executes every breakpoint migration chunk within D1's 100000-byte limit", async () => {
+  await withD1(async () => {});
+});
+
 test("applies the breakpoint-delimited Sites migration idempotently with exact active roster counts", async () => {
   await withD1(async (env) => {
     await env.execMigration();
