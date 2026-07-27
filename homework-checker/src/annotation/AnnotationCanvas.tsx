@@ -79,7 +79,7 @@ const dimensionsFor = (image: CanvasImageSource) => {
   return { width: source.width ?? source.displayWidth ?? 0, height: source.height ?? source.displayHeight ?? 0 };
 };
 
-/** Composites only active annotations into a full-resolution JPEG for an explicit user download. */
+/** Composites only active annotations into the explicit-download normalized JPEG (maximum 1600 px side). */
 export async function exportAnnotatedImage(image: CanvasImageSource, annotations: Annotation[]): Promise<Blob> {
   const { width, height } = dimensionsFor(image);
   if (!width || !height) throw new Error("照片尚未加载，无法导出批改图。");
