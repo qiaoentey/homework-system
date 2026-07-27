@@ -1057,6 +1057,47 @@ git add .openai worker scripts tests db drizzle
 git commit -m "feat: add persistent Sites runtime"
 ```
 
+---
+
+### Task 12: Bind Enrol retries to the original student payload
+
+**Files:**
+- Modify: `server/repositories/students.js`
+- Modify: `server/routes/students.js`
+- Modify: `worker/index.js`
+- Modify: `tests/server/students.test.js`
+- Modify: `tests/sites-worker.test.mjs`
+
+**Interfaces:**
+- Preserves: retrying the same `enrolmentKey` with the same full payload returns the same student UUID
+- Produces: `409 ENROLMENT_KEY_CONFLICT` when a reused key changes name, grade, branch, group, or any profile field
+
+- [ ] **Step 1: Write failing retry-conflict tests**
+
+For both PostgreSQL and D1, create a student with one enrolment key, then retry
+that key with changed name, changed grade, and changed profile data. Each changed
+payload must return `409 ENROLMENT_KEY_CONFLICT`; the original stored student
+must remain unchanged and no second activity row may be written. Verify the
+unchanged-payload retry still returns the same UUID idempotently.
+
+- [ ] **Step 2: Implement canonical payload comparison**
+
+When an enrolment key already exists, compare the stored name, grade,
+branch/group, and all profile fields against the validated retry payload. Return
+the existing student only for an exact canonical match. Reject any mismatch with
+`ENROLMENT_KEY_CONFLICT`. Do not use name as a record key and do not weaken
+same-name/same-grade support for different enrolment keys.
+
+- [ ] **Step 3: Verify and commit**
+
+Run focused server and Sites tests red then green, then `npm test`,
+`npm run test:sites`, `npm run build`, and `npm run test:e2e`.
+
+```bash
+git add server worker tests
+git commit -m "fix: bind enrol retries to original payload"
+```
+
 ## Final Verification Checklist
 
 - [ ] `npm test` passes.
