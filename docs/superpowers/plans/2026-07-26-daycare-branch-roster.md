@@ -1098,6 +1098,44 @@ git add server worker tests
 git commit -m "fix: bind enrol retries to original payload"
 ```
 
+---
+
+### Task 13: Recover Google login after deferred failures
+
+**Files:**
+- Modify: `src/features/auth/LoginScreen.jsx`
+- Modify: `tests/client/branch-flow.test.jsx`
+
+**Interfaces:**
+- Preserves: one Google credential request at a time
+- Produces: any rejected Google login or catalog load re-enables both login methods without reloading
+
+- [ ] **Step 1: Write the failing deferred-response regression**
+
+Capture the Google Identity Services callback, keep `onGoogleLogin` pending long
+enough for React effects to rerun, reject it, and verify the error appears and
+the emergency login form is enabled. Invoke a later Google callback and verify
+it can submit again. The current implementation must fail because its
+`pending`-dependent effect cancels the active callback.
+
+- [ ] **Step 2: Decouple duplicate-submit state from the GIS effect**
+
+Keep the GIS initialize/render lifecycle dependent only on stable login
+dependencies. Track in-flight login state through a ref so callbacks reject
+duplicates without reinitializing/cancelling the effect. Always clear the ref
+and visible pending state after a mounted callback settles. Preserve unmount
+safety and emergency-login duplicate protection.
+
+- [ ] **Step 3: Verify and commit**
+
+Run the focused client test red then green, then `npm test`,
+`npm run test:sites`, `npm run build`, and `npm run test:e2e`.
+
+```bash
+git add src/features/auth/LoginScreen.jsx tests/client/branch-flow.test.jsx
+git commit -m "fix: recover deferred Google login failures"
+```
+
 ## Final Verification Checklist
 
 - [ ] `npm test` passes.
