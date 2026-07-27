@@ -160,11 +160,16 @@ describe("student enrolment", () => {
       "X-Branch-Code": "WS",
       "X-Group-Code": "WS HUILING",
     });
-    expect(JSON.parse(enrolRequest.options.body)).toEqual({
+    const submitted = JSON.parse(enrolRequest.options.body);
+    expect(submitted.enrolmentKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
+    );
+    expect(submitted).toEqual({
       name: "NEW STUDENT",
       grade: "Y3",
       branchCode: "WS",
       groupCode: "WS HUILING",
+      enrolmentKey: submitted.enrolmentKey,
       profile: {
         ...EMPTY_PROFILE,
         school: "SJKC Example",
@@ -261,6 +266,46 @@ describe("student enrolment", () => {
 
     expect(screen.queryByText("学生已加入")).not.toBeInTheDocument();
     expect(screen.queryByText("LATE WS")).not.toBeInTheDocument();
+  });
+
+  it("reuses the same enrolment key when retrying a failed save", async () => {
+    const existing = student(1, { name: "CURRENT STUDENT" });
+    const created = student(2, { name: "RETRY ENROL" });
+    const requestBodies = [];
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, {
+          items: requestBodies.length > 1 ? [existing, created] : [existing],
+          nextCursor: null,
+          total: requestBodies.length > 1 ? 2 : 1,
+        });
+      }
+      if (url === "/api/students" && options.method === "POST") {
+        requestBodies.push(JSON.parse(options.body));
+        return requestBodies.length === 1
+          ? jsonResponse(503, { error: "temporarily unavailable" })
+          : jsonResponse(201, created);
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("CURRENT STUDENT");
+    fireEvent.click(screen.getByRole("button", { name: "Enrol 学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), { target: { value: "RETRY ENROL" } });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y3" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存学生" }));
+    expect(await screen.findByText("学生加入失败，请检查资料后重试")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "保存学生" }));
+
+    expect(await screen.findByText("学生已加入")).toBeVisible();
+    expect(requestBodies).toHaveLength(2);
+    expect(requestBodies[0].enrolmentKey).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
+    );
+    expect(requestBodies[1].enrolmentKey).toBe(requestBodies[0].enrolmentKey);
   });
 });
 
@@ -566,6 +611,58 @@ describe("stop-supplement", () => {
     expect(screen.getByRole("button", { name: "确认停补" })).toBeDisabled();
     fireEvent.click(screen.getByRole("radio", { name: new RegExp(first.id) }));
     expect(screen.getByRole("button", { name: "确认停补" })).toBeEnabled();
+  });
+
+  it("resolves exact stop identities across every substring cursor page", async () => {
+    const firstExact = student(1, { name: "SAME NAME", grade: "Y3" });
+    const secondExact = student(55, { name: "SAME NAME", grade: "Y3" });
+    const firstPage = [
+      firstExact,
+      ...Array.from({ length: 49 }, (_, index) => student(index + 2, {
+        name: `SAME NAME EXTRA ${String(index + 2).padStart(2, "0")}`,
+        grade: "Y3",
+      })),
+    ];
+    const secondPage = [
+      secondExact,
+      ...Array.from({ length: 4 }, (_, index) => student(index + 56, {
+        name: `SAME NAME EXTRA ${index + 56}`,
+        grade: "Y3",
+      })),
+    ];
+    const searchUrls = [];
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const support = supportResponse(url);
+      if (support) return support;
+      if (url.startsWith("/api/students?")) {
+        const query = new URL(url, "http://test.local").searchParams;
+        if (query.get("search") === "SAME NAME") {
+          searchUrls.push(url);
+          return query.get("cursor") === "same-name-page-2"
+            ? jsonResponse(200, { items: secondPage, nextCursor: null, total: 55 })
+            : jsonResponse(200, {
+              items: firstPage,
+              nextCursor: "same-name-page-2",
+              total: 55,
+            });
+        }
+        return jsonResponse(200, { items: [firstExact], nextCursor: null, total: 1 });
+      }
+      throw new Error(`Unexpected request: GET ${url}`);
+    }));
+    renderRoster();
+
+    await screen.findByText("SAME NAME");
+    fireEvent.click(screen.getByRole("button", { name: "停补学生" }));
+    fireEvent.change(screen.getByLabelText("学生姓名"), { target: { value: "SAME NAME" } });
+    fireEvent.change(screen.getByLabelText("年级"), { target: { value: "Y3" } });
+    fireEvent.click(screen.getByRole("button", { name: "查找学生" }));
+
+    expect(await screen.findByText("找到多位学生，请选择正确的学生")).toBeVisible();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(searchUrls).toHaveLength(2);
+    expect(searchUrls[0]).not.toContain("cursor=");
+    expect(searchUrls[1]).toContain("cursor=same-name-page-2");
   });
 
   it("shows a stop mutation failure and retries the same confirmed UUID once", async () => {

@@ -189,11 +189,18 @@ export const rosterApi = {
     }),
     { branchCode, groupCode },
   ),
-  enrolStudent: ({ branchCode, groupCode, name, grade, profile }) => apiRequest(
+  enrolStudent: ({
+    branchCode,
+    groupCode,
+    name,
+    grade,
+    profile,
+    enrolmentKey,
+  }) => apiRequest(
     "/api/students",
     {
       method: "POST",
-      body: { name, grade, branchCode, groupCode, profile },
+      body: { name, grade, branchCode, groupCode, profile, enrolmentKey },
       branchCode,
       groupCode,
     },

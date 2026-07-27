@@ -68,9 +68,10 @@ The migration runner applies SQL files once and records them in `schema_migratio
 ```text
 001_initial.sql
 002_unique_student_identity.sql
+003_enrolment_idempotency.sql
 ```
 
-The current latest migration is `002_unique_student_identity.sql`. It stops before changing the schema if duplicate normalized student identities exist. Resolve reported duplicates manually while preserving student UUIDs and linked attendance, messages, profiles, and activity. A repeated successful run prints `No pending migrations.`
+The current latest migration is `003_enrolment_idempotency.sql`. It safely removes the superseded normalized name/grade identity index from an existing deployment and adds a unique nullable `enrolment_key`. Real students may share the same teacher group, name, and grade; roster import idempotence remains keyed by `(group_code, source_ref)`, while interactive Enrol retries reuse their enrolment key. Migration `002_unique_student_identity.sql` remains in history and may still stop an older database before it is superseded if that database never applied `002` and already contains normalized duplicates. Preserve every student UUID and linked activity, attendance, message, and profile row when resolving that historical preflight. A repeated successful run prints `No pending migrations.`
 
 ## Idempotent roster import
 

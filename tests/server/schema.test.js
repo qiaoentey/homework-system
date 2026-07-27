@@ -29,18 +29,31 @@ describe("initial database schema", () => {
     )).rejects.toThrow();
   });
 
-  it("atomically rejects duplicate normalized student identities, including stopped records", async () => {
+  it("allows real duplicate identities while enforcing unique enrolment keys", async () => {
     const pool = await createTestDatabase();
     pools.push(pool);
 
     await pool.query(
-      `insert into students (name, grade, branch_code, group_code, status)
-       values ('Alice Tan', 'Y3', 'MK', 'MK HAPPY', 'stopped')`,
+      `insert into students
+         (name, grade, branch_code, group_code, status, enrolment_key)
+       values ('Alice Tan', 'Y3', 'MK', 'MK HAPPY', 'stopped',
+               '10000000-0000-4000-8000-000000000001')`,
+    );
+
+    await pool.query(
+      `insert into students
+         (name, grade, branch_code, group_code, enrolment_key)
+       values (' ALICE TAN ', ' y3 ', 'MK', 'MK HAPPY',
+               '10000000-0000-4000-8000-000000000002')`,
     );
 
     await expect(pool.query(
-      `insert into students (name, grade, branch_code, group_code)
-       values (' ALICE TAN ', ' y3 ', 'MK', 'MK HAPPY')`,
+      `insert into students
+         (name, grade, branch_code, group_code, enrolment_key)
+       values ('Another Student', 'Y5', 'MK', 'MK HAPPY',
+               '10000000-0000-4000-8000-000000000001')`,
     )).rejects.toMatchObject({ code: "23505" });
+
+    expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(2);
   });
 });

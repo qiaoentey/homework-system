@@ -42,6 +42,7 @@ export function EnrolDialog({
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const nameRef = useRef(null);
+  const enrolmentKeyRef = useRef(crypto.randomUUID());
   const activeRef = useRef(true);
   const scopeRef = useRef(`${branchCode}\u0000${groupCode}`);
   scopeRef.current = `${branchCode}\u0000${groupCode}`;
@@ -68,6 +69,7 @@ export function EnrolDialog({
         name: name.trim(),
         grade,
         profile,
+        enrolmentKey: enrolmentKeyRef.current,
       });
       if (!activeRef.current || requestScope !== scopeRef.current) return;
       onEnrolled(created);

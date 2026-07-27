@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.23.1"
+  },
+  "packageManager": "npm@10.9.8",
   "scripts": {
     "dev": "concurrently \"vite\" \"node --watch server/index.js\"",
     "build": "vite build && node scripts/prepare-sites-build.mjs",
@@ -11,12 +15,13 @@
     "import:rosters": "node scripts/import-rosters.mjs",
     "test": "vitest run --exclude 'tests/e2e/**' --exclude tests/sites-worker.test.mjs",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "env -u NO_COLOR playwright test",
     "test:sites": "node --test tests/sites-worker.test.mjs"
   },
   "dependencies": {
     "@tanstack/react-virtual": "3.13.12",
     "cookie-session": "2.1.1",
+    "drizzle-orm": "0.45.2",
     "express": "5.1.0",
     "google-auth-library": "10.3.0",
     "pg": "8.16.3",

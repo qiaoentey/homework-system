@@ -8,7 +8,14 @@ import { createMessagesRouter } from "./routes/messages.js";
 import { createSessionRouter } from "./routes/session.js";
 import { createStudentsRouter } from "./routes/students.js";
 
-export function createApp({ config = loadConfig(), googleVerifier, pool } = {}) {
+export function createApp({
+  config = loadConfig(),
+  googleVerifier,
+  emergencyPasswordVerifier,
+  emergencyThrottle,
+  emergencyThrottleOptions,
+  pool,
+} = {}) {
   const app = express();
   const databasePool = pool === undefined
     ? createPool(config.databaseUrl ?? process.env.DATABASE_URL)
@@ -25,7 +32,13 @@ export function createApp({ config = loadConfig(), googleVerifier, pool } = {}) 
   }));
 
   app.get("/api/health", (_request, response) => response.json({ ok: true }));
-  app.use("/api/session", createSessionRouter({ config, googleVerifier }));
+  app.use("/api/session", createSessionRouter({
+    config,
+    googleVerifier,
+    emergencyPasswordVerifier,
+    emergencyThrottle,
+    emergencyThrottleOptions,
+  }));
   app.use("/api/catalog", createCatalogRouter());
   app.use("/api", createAttendanceRouter({ pool: databasePool }));
   app.use("/api", createMessagesRouter({ pool: databasePool }));

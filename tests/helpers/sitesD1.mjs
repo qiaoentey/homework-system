@@ -38,29 +38,59 @@ function createPreparedStatement(database, sql, values = []) {
 
 export async function createSitesD1() {
   const database = new DatabaseSync(":memory:");
-  const migration = await readFile(
-    new URL("../../drizzle/0000_daycare_sites.sql", import.meta.url),
+  const journal = JSON.parse(await readFile(
+    new URL("../../drizzle/meta/_journal.json", import.meta.url),
     "utf8",
-  );
-  const migrationStatements = migration
-    .split("--> statement-breakpoint")
-    .map((statement) => statement.trim())
-    .filter(Boolean);
+  ));
+  const migrations = await Promise.all(journal.entries.map(async ({ tag }) => ({
+    tag,
+    statements: (await readFile(
+      new URL(`../../drizzle/${tag}.sql`, import.meta.url),
+      "utf8",
+    ))
+      .split("--> statement-breakpoint")
+      .map((statement) => statement.trim())
+      .filter(Boolean),
+  })));
+  const appliedMigrations = new Set();
+  let batchTail = Promise.resolve();
   const DB = {
     prepare(sql) {
       return createPreparedStatement(database, sql);
     },
+    batch(statements) {
+      const execute = async () => {
+        database.exec("BEGIN IMMEDIATE");
+        try {
+          const results = [];
+          for (const statement of statements) results.push(await statement.run());
+          database.exec("COMMIT");
+          return results;
+        } catch (error) {
+          database.exec("ROLLBACK");
+          throw error;
+        }
+      };
+      const pending = batchTail.then(execute, execute);
+      batchTail = pending.catch(() => {});
+      return pending;
+    },
   };
 
   async function applyMigration() {
-    for (const [index, statement] of migrationStatements.entries()) {
-      const byteLength = new TextEncoder().encode(statement).byteLength;
-      if (byteLength > 100_000) {
-        throw new Error(
-          `D1 migration statement ${index + 1} is ${byteLength} UTF-8 bytes; limit is 100000`,
-        );
+    for (const migration of migrations) {
+      if (appliedMigrations.has(migration.tag)) continue;
+      for (const [index, statement] of migration.statements.entries()) {
+        const byteLength = new TextEncoder().encode(statement).byteLength;
+        if (byteLength > 100_000) {
+          throw new Error(
+            `D1 migration ${migration.tag} statement ${index + 1} is ` +
+            `${byteLength} UTF-8 bytes; limit is 100000`,
+          );
+        }
+        await DB.prepare(statement).run();
       }
-      await DB.prepare(statement).run();
+      appliedMigrations.add(migration.tag);
     }
   }
 

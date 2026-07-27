@@ -6,7 +6,7 @@
 
 **Architecture:** Start from the Product Design `prototype` template so the selected blue-and-white mock remains the visual source of truth and the build stays Sites-ready. Add an Express API in the same repository and store operational data in PostgreSQL; the React client communicates only through authenticated JSON APIs that validate the branch/group relationship on every request. Render can run the client and API as one service, while the unchanged Sites worker remains available for a frontend-only handoff.
 
-**Tech Stack:** Node.js 20, React 19, Vite 6, Express 5, PostgreSQL 16, `pg`, Zod, signed cookie sessions, Vitest, Testing Library, Supertest, `pg-mem`, TanStack Virtual, Playwright, Render.
+**Tech Stack:** Node.js 22.23.1, React 19, Vite 6, Express 5, PostgreSQL 16, `pg`, Zod, signed cookie sessions, Vitest, Testing Library, Supertest, `pg-mem`, TanStack Virtual, Playwright, Render.
 
 ## Global Constraints
 
@@ -972,7 +972,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
-        value: 20.18.0
+        value: 22.23.1
       - key: DATABASE_URL
         fromDatabase:
           name: daycare-checkin-db

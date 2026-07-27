@@ -32,6 +32,7 @@ export const students = sqliteTable("students", {
   status: text("status", { enum: ["active", "stopped"] }).notNull().default("active"),
   profile: text("profile").notNull().default("{}"),
   sourceRef: text("source_ref"),
+  enrolmentKey: text("enrolment_key"),
   createdAt: text("created_at").notNull().default(
     sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,
   ),
@@ -45,11 +46,7 @@ export const students = sqliteTable("students", {
   }).name("students_group_branch_fk"),
   check("students_status_check", sql`${table.status} in ('active', 'stopped')`),
   uniqueIndex("students_group_source_ref_unique").on(table.groupCode, table.sourceRef),
-  uniqueIndex("students_group_normalized_identity_unique").on(
-    table.groupCode,
-    sql`lower(trim(${table.name}))`,
-    sql`lower(trim(${table.grade}))`,
-  ),
+  uniqueIndex("students_enrolment_key_unique").on(table.enrolmentKey),
   index("students_branch_group_status_name_idx").on(
     table.branchCode,
     table.groupCode,

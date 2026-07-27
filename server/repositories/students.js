@@ -111,30 +111,57 @@ export async function enrolStudent(pool, {
   branchCode,
   groupCode,
   profile,
+  enrolmentKey,
   actor,
 }) {
-  try {
-    return await inTransaction(pool, async (client) => {
-      const inserted = await client.query(
-        `insert into students (name, grade, branch_code, group_code, status, profile)
-         values ($1, $2, $3, $4, 'active', $5)
-         returning id, name, grade, branch_code, group_code, status, profile, updated_at`,
-        [name, grade, branchCode, groupCode, profile],
-      );
+  return inTransaction(pool, async (client) => {
+    const prior = await client.query(
+      `select id, name, grade, branch_code, group_code, status, profile, updated_at
+       from students
+       where enrolment_key = $1`,
+      [enrolmentKey],
+    );
+    if (prior.rows.length) {
+      const student = prior.rows[0];
+      if (student.branch_code !== branchCode || student.group_code !== groupCode) {
+        throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
+      }
+      return { student: mapStudent(student), created: false };
+    }
+
+    const inserted = await client.query(
+      `insert into students
+         (name, grade, branch_code, group_code, status, profile, enrolment_key)
+       values ($1, $2, $3, $4, 'active', $5, $6)
+       on conflict (enrolment_key) do nothing
+       returning id, name, grade, branch_code, group_code, status, profile, updated_at`,
+      [name, grade, branchCode, groupCode, profile, enrolmentKey],
+    );
+    if (inserted.rows.length) {
       const student = inserted.rows[0];
       await client.query(
         `insert into student_activity (student_id, action, actor, details)
          values ($1, 'enrol', $2, $3)`,
-        [student.id, actor, { branchCode, groupCode }],
+        [student.id, actor, { branchCode, groupCode, enrolmentKey }],
       );
-      return mapStudent(student);
-    });
-  } catch (error) {
-    if (error.code === "23505") {
-      throw new StudentRepositoryError("DUPLICATE_STUDENT");
+      return { student: mapStudent(student), created: true };
     }
-    throw error;
-  }
+
+    const existing = await client.query(
+      `select id, name, grade, branch_code, group_code, status, profile, updated_at
+       from students
+       where enrolment_key = $1`,
+      [enrolmentKey],
+    );
+    if (!existing.rows.length) {
+      throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
+    }
+    const student = existing.rows[0];
+    if (student.branch_code !== branchCode || student.group_code !== groupCode) {
+      throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
+    }
+    return { student: mapStudent(student), created: false };
+  });
 }
 
 export async function stopStudent(pool, {

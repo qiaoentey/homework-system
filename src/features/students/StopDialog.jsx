@@ -62,22 +62,41 @@ export function StopDialog({
     setCandidates([]);
     setSelectedId("");
     try {
-      const response = await rosterApi.findStudents({
-        branchCode,
-        groupCode: selectedGroup,
-        status: "active",
-        search: name.trim(),
-      });
-      if (
-        !activeRef.current ||
-        request !== requestGeneration.current ||
-        requestScope !== scopeRef.current
-      ) return;
-      const exact = response.items.filter((student) => (
-        student.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase() &&
-        student.grade.trim().toLocaleLowerCase() === grade.trim().toLocaleLowerCase() &&
-        student.groupCode === selectedGroup
-      ));
+      const exactById = new Map();
+      const seenCursors = new Set();
+      let cursor;
+      do {
+        const response = await rosterApi.findStudents({
+          branchCode,
+          groupCode: selectedGroup,
+          status: "active",
+          search: name.trim(),
+          cursor,
+          limit: 50,
+        });
+        if (
+          !activeRef.current ||
+          request !== requestGeneration.current ||
+          requestScope !== scopeRef.current
+        ) return;
+        for (const student of response.items) {
+          if (
+            student.status === "active" &&
+            student.branchCode === branchCode &&
+            student.name.trim().toLocaleLowerCase() === name.trim().toLocaleLowerCase() &&
+            student.grade.trim().toLocaleLowerCase() === grade.trim().toLocaleLowerCase() &&
+            student.groupCode === selectedGroup
+          ) {
+            exactById.set(student.id, student);
+          }
+        }
+        cursor = response.nextCursor;
+        if (cursor && seenCursors.has(cursor)) {
+          throw new Error("Repeated active-student cursor");
+        }
+        if (cursor) seenCursors.add(cursor);
+      } while (cursor);
+      const exact = [...exactById.values()];
       setCandidates(exact);
       if (exact.length === 1) setSelectedId(exact[0].id);
       if (!exact.length) {

@@ -39,6 +39,7 @@ const enrolSchema = z.object({
   branchCode: branchSchema,
   groupCode: groupSchema,
   profile: fullProfileSchema,
+  enrolmentKey: uuidSchema,
 }).strict();
 
 const stopSchema = z.object({
@@ -93,7 +94,7 @@ function sendRepositoryError(response, repositoryError) {
   if (!(repositoryError instanceof StudentRepositoryError)) return false;
 
   const errors = {
-    DUPLICATE_STUDENT: [409, "Student already exists"],
+    ENROLMENT_KEY_CONFLICT: [409, "Enrolment key belongs to another student"],
     STUDENT_NOT_FOUND: [404, "Student not found"],
     IDENTITY_MISMATCH: [409, "Student identity confirmation does not match"],
     INVALID_STATUS: [409, "Student status does not allow this operation"],
@@ -164,11 +165,11 @@ export function createStudentsRouter({ pool }) {
       return error(response, 400, "WRITE_CONTEXT_MISMATCH", "Student does not match write context");
     }
 
-    const student = await enrolStudent(pool, {
+    const result = await enrolStudent(pool, {
       ...parsed.data,
       actor: request.user.email,
     });
-    return response.status(201).json(student);
+    return response.status(result.created ? 201 : 200).json(result.student);
   }));
 
   router.post("/:id/stop", route(async (request, response) => {

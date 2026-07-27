@@ -71,6 +71,7 @@ describe("student API", () => {
         branchCode: "MK",
         groupCode: "MK HAPPY",
         profile: emptyProfile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000001",
       })
       .expect(401);
   });
@@ -224,13 +225,14 @@ describe("student API", () => {
       .expect(400);
   });
 
-  it("enrols once with profile and activity in the selected branch transaction", async () => {
+  it("retries the same enrolment key onto one student and one activity", async () => {
     const body = {
       name: " NEW STUDENT ",
       grade: " Y3 ",
       branchCode: "MK",
       groupCode: "MK HAPPY",
       profile: emptyProfile,
+      enrolmentKey: "10000000-0000-4000-8000-000000000002",
     };
 
     const response = await agent
@@ -255,16 +257,17 @@ describe("student API", () => {
     );
     expect(activity.rows).toEqual([{ action: "enrol", actor: "emergency@local" }]);
 
-    await agent
+    const retried = await agent
       .post("/api/students")
       .set(studentHeaders())
       .send(body)
-      .expect(409);
+      .expect(200);
+    expect(retried.body.id).toBe(response.body.id);
     expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(1);
     expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(1);
   });
 
-  it("atomically rejects one of two concurrent duplicate enrolments", async () => {
+  it("allows concurrent real duplicate identities when enrolment keys differ", async () => {
     const body = {
       name: "Concurrent Student",
       grade: "Y3",
@@ -278,13 +281,16 @@ describe("student API", () => {
         ...body,
         name: "CONCURRENT STUDENT",
         grade: "y3",
+        enrolmentKey: "10000000-0000-4000-8000-000000000003",
       }),
-      agent.post("/api/students").set(studentHeaders()).send(body),
+      agent.post("/api/students").set(studentHeaders()).send({
+        ...body,
+        enrolmentKey: "10000000-0000-4000-8000-000000000004",
+      }),
     ]);
 
-    expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
-    expect(responses.find((response) => response.status === 409).body.code)
-      .toBe("DUPLICATE_STUDENT");
+    expect(responses.map((response) => response.status)).toEqual([201, 201]);
+    expect(new Set(responses.map((response) => response.body.id)).size).toBe(2);
     expect(Number((await pool.query(
       `select count(*)
        from students
@@ -292,15 +298,22 @@ describe("student API", () => {
          and lower(btrim(name)) = $2
          and lower(btrim(grade)) = $3`,
       ["MK HAPPY", "concurrent student", "y3"],
-    )).rows[0].count)).toBe(1);
-    expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(1);
+    )).rows[0].count)).toBe(2);
+    expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(2);
   });
 
   it("rejects invalid enrolment fields, cross-branch groups, and write context", async () => {
     await agent
       .post("/api/students")
       .set(studentHeaders())
-      .send({ name: "", grade: "", branchCode: "MK", groupCode: "", profile: emptyProfile })
+      .send({
+        name: "",
+        grade: "",
+        branchCode: "MK",
+        groupCode: "",
+        profile: emptyProfile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000005",
+      })
       .expect(400);
 
     await agent
@@ -311,6 +324,7 @@ describe("student API", () => {
         grade: "Y3",
         branchCode: "MK",
         groupCode: "MK HAPPY",
+        enrolmentKey: "10000000-0000-4000-8000-000000000006",
       })
       .expect(400);
 
@@ -325,6 +339,7 @@ describe("student API", () => {
         branchCode: "MK",
         groupCode: "MK HAPPY",
         profile: incompleteProfile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000007",
       })
       .expect(400);
 
@@ -337,6 +352,7 @@ describe("student API", () => {
         branchCode: "WS",
         groupCode: "MK HAPPY",
         profile: emptyProfile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000008",
       })
       .expect(400);
     expect(mismatch.body.code).toBe("GROUP_BRANCH_MISMATCH");
@@ -345,6 +361,19 @@ describe("student API", () => {
       .post("/api/students")
       .send({
         name: "NEW STUDENT",
+        grade: "Y3",
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+        profile: emptyProfile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000009",
+      })
+      .expect(400);
+
+    await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send({
+        name: "MISSING KEY",
         grade: "Y3",
         branchCode: "MK",
         groupCode: "MK HAPPY",

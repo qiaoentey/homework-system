@@ -16,6 +16,8 @@ function createTestApp(options = {}) {
       ...options.config,
     },
     googleVerifier: options.googleVerifier,
+    emergencyPasswordVerifier: options.emergencyPasswordVerifier,
+    emergencyThrottleOptions: options.emergencyThrottleOptions,
   });
 }
 
@@ -104,5 +106,111 @@ describe("session routes", () => {
       .expect(204);
 
     expect(response.headers["set-cookie"][0]).toMatch(/secure/i);
+  });
+
+  it("locks repeated emergency guesses before scrypt and resets the IP after success", async () => {
+    let now = 1_000;
+    let verifierCalls = 0;
+    const app = createTestApp({
+      emergencyPasswordVerifier: async (password) => {
+        verifierCalls += 1;
+        return password === "correct";
+      },
+      emergencyThrottleOptions: {
+        maxFailures: 2,
+        lockoutMs: 5_000,
+        maxEntries: 10,
+        now: () => now,
+      },
+    });
+    const agent = request.agent(app);
+
+    await agent.post("/api/session/emergency").send({ password: "guess-1" }).expect(401);
+    await agent.post("/api/session/emergency").send({ password: "guess-2" }).expect(401);
+    const blocked = await agent
+      .post("/api/session/emergency")
+      .send({ password: "correct" })
+      .expect(429);
+    expect(blocked.headers["retry-after"]).toBe("5");
+    expect(blocked.body.code).toBe("EMERGENCY_LOGIN_THROTTLED");
+    expect(verifierCalls).toBe(2);
+
+    now += 5_000;
+    await agent.post("/api/session/emergency").send({ password: "correct" }).expect(204);
+    expect(verifierCalls).toBe(3);
+    await agent.post("/api/session/emergency").send({ password: "guess-3" }).expect(401);
+    expect(verifierCalls).toBe(4);
+  });
+
+  it("uses only the single trusted production proxy hop for emergency IP limits", async () => {
+    let verifierCalls = 0;
+    const app = createTestApp({
+      config: {
+        environment: "production",
+        sessionSecret: "production-session-secret-at-least-32-bytes",
+      },
+      emergencyPasswordVerifier: async () => {
+        verifierCalls += 1;
+        return false;
+      },
+      emergencyThrottleOptions: {
+        maxFailures: 1,
+        lockoutMs: 60_000,
+        maxEntries: 10,
+        now: () => 1_000,
+      },
+    });
+
+    await request(app)
+      .post("/api/session/emergency")
+      .set("X-Forwarded-For", "203.0.113.99, 198.51.100.10")
+      .send({ password: "guess" })
+      .expect(401);
+    await request(app)
+      .post("/api/session/emergency")
+      .set("X-Forwarded-For", "192.0.2.44, 198.51.100.10")
+      .send({ password: "guess" })
+      .expect(429);
+    await request(app)
+      .post("/api/session/emergency")
+      .set("X-Forwarded-For", "192.0.2.44, 198.51.100.11")
+      .send({ password: "guess" })
+      .expect(401);
+    expect(verifierCalls).toBe(2);
+  });
+
+  it("bounds throttle memory and lazily cleans expired IP entries", async () => {
+    let now = 1_000;
+    let verifierCalls = 0;
+    const app = createTestApp({
+      config: {
+        environment: "production",
+        sessionSecret: "production-session-secret-at-least-32-bytes",
+      },
+      emergencyPasswordVerifier: async () => {
+        verifierCalls += 1;
+        return false;
+      },
+      emergencyThrottleOptions: {
+        maxFailures: 1,
+        lockoutMs: 5_000,
+        maxEntries: 2,
+        now: () => now,
+      },
+    });
+    const guessFrom = (ip) => request(app)
+      .post("/api/session/emergency")
+      .set("X-Forwarded-For", ip)
+      .send({ password: "guess" });
+
+    await guessFrom("198.51.100.1").expect(401);
+    await guessFrom("198.51.100.2").expect(401);
+    await guessFrom("198.51.100.3").expect(401);
+    await guessFrom("198.51.100.1").expect(401);
+    expect(verifierCalls).toBe(4);
+
+    now += 5_000;
+    await guessFrom("198.51.100.2").expect(401);
+    expect(verifierCalls).toBe(5);
   });
 });

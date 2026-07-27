@@ -335,12 +335,20 @@ async function enrolStudent(request, database) {
   if (invalidContext) return invalidContext;
   const body = await requestBody(request);
   if (
-    !hasOnlyKeys(body, ["name", "grade", "branchCode", "groupCode", "profile"])
+    !hasOnlyKeys(body, [
+      "name",
+      "grade",
+      "branchCode",
+      "groupCode",
+      "profile",
+      "enrolmentKey",
+    ])
     || !isNonemptyString(body.name)
     || !isNonemptyString(body.grade)
     || !BRANCHES.some(({ code }) => code === body.branchCode)
     || !GROUPS.some(({ code }) => code === body.groupCode)
     || !fullProfile(body.profile)
+    || !UUID_PATTERN.test(body.enrolmentKey)
   ) {
     return apiError(400, "INVALID_STUDENT", "Invalid student");
   }
@@ -352,31 +360,58 @@ async function enrolStudent(request, database) {
   }
 
   const id = crypto.randomUUID();
+  const activityId = crypto.randomUUID();
   const now = new Date().toISOString();
-  try {
-    await run(
-      database,
+  const results = await database.batch([
+    database.prepare(
       `INSERT INTO students
-         (id, name, grade, branch_code, group_code, status, profile, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`,
-      [
+         (id, name, grade, branch_code, group_code, status, profile,
+          enrolment_key, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+       ON CONFLICT (enrolment_key) DO NOTHING`,
+    ).bind(
         id,
         body.name.trim(),
         body.grade.trim(),
         body.branchCode,
         body.groupCode,
         JSON.stringify(body.profile),
+        body.enrolmentKey,
         now,
         now,
-      ],
-    );
-  } catch (error) {
-    if (String(error?.message).includes("UNIQUE constraint failed")) {
-      return apiError(409, "DUPLICATE_STUDENT", "Student already exists");
-    }
-    throw error;
+      ),
+    database.prepare(
+      `INSERT INTO student_activity
+         (id, student_id, action, actor, details, created_at)
+       SELECT ?, ?, 'enrol', ?, ?, ?
+       WHERE changes() = 1`,
+    ).bind(
+      activityId,
+      id,
+      operator(request).email,
+      JSON.stringify({
+        branchCode: body.branchCode,
+        groupCode: body.groupCode,
+        enrolmentKey: body.enrolmentKey,
+      }),
+      now,
+    ),
+  ]);
+  const created = Number(results[0]?.meta?.changes ?? 0) === 1;
+  const student = await first(
+    database,
+    `SELECT id, name, grade, branch_code, group_code, status, profile, updated_at
+     FROM students
+     WHERE enrolment_key = ?`,
+    [body.enrolmentKey],
+  );
+  if (!student) {
+    return apiError(409, "ENROLMENT_KEY_CONFLICT", "Enrolment key could not be resolved");
   }
-  return json(mapStudent(await rawStudent(database, id)), 201);
+  if (student.branch_code !== context.branchCode || student.group_code !== context.groupCode) {
+    return apiError(409, "ENROLMENT_KEY_CONFLICT", "Enrolment key belongs to another student");
+  }
+  return json(mapStudent(student), created ? 201 : 200);
 }
 
 async function stopStudent(request, database, id) {
@@ -408,11 +443,47 @@ async function stopStudent(request, database, id) {
   if (scoped.student.status !== "active") {
     return apiError(409, "INVALID_STATUS", "Student status does not allow this operation");
   }
-  await run(
-    database,
-    "UPDATE students SET status = 'stopped', updated_at = ? WHERE id = ?",
-    [timestampAfter(scoped.student.updated_at), id],
-  );
+  const updatedAt = timestampAfter(scoped.student.updated_at);
+  const activityId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const results = await database.batch([
+    database.prepare(
+      `UPDATE students
+       SET status = 'stopped', updated_at = ?
+       WHERE id = ?
+         AND branch_code = ?
+         AND group_code = ?
+         AND status = 'active'
+         AND name = ?
+         AND grade = ?`,
+    ).bind(
+      updatedAt,
+      id,
+      context.branchCode,
+      context.groupCode,
+      body.name.trim(),
+      body.grade.trim(),
+    ),
+    database.prepare(
+      `INSERT INTO student_activity
+         (id, student_id, action, actor, details, created_at)
+       SELECT ?, ?, 'stop', ?, ?, ?
+       WHERE changes() = 1`,
+    ).bind(
+      activityId,
+      id,
+      operator(request).email,
+      JSON.stringify({
+        name: body.name.trim(),
+        grade: body.grade.trim(),
+        groupCode: body.groupCode,
+      }),
+      now,
+    ),
+  ]);
+  if (Number(results[0]?.meta?.changes ?? 0) !== 1) {
+    return apiError(409, "INVALID_STATUS", "Student status does not allow this operation");
+  }
   return json(mapStudent(await rawStudent(database, id)));
 }
 
@@ -426,11 +497,32 @@ async function restoreStudent(request, database, id) {
   if (scoped.student.status !== "stopped") {
     return apiError(409, "INVALID_STATUS", "Student status does not allow this operation");
   }
-  await run(
-    database,
-    "UPDATE students SET status = 'active', updated_at = ? WHERE id = ?",
-    [timestampAfter(scoped.student.updated_at), id],
-  );
+  const activityId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const results = await database.batch([
+    database.prepare(
+      `UPDATE students
+       SET status = 'active', updated_at = ?
+       WHERE id = ?
+         AND branch_code = ?
+         AND group_code = ?
+         AND status = 'stopped'`,
+    ).bind(
+      timestampAfter(scoped.student.updated_at),
+      id,
+      context.branchCode,
+      context.groupCode,
+    ),
+    database.prepare(
+      `INSERT INTO student_activity
+         (id, student_id, action, actor, details, created_at)
+       SELECT ?, ?, 'restore', ?, '{}', ?
+       WHERE changes() = 1`,
+    ).bind(activityId, id, operator(request).email, now),
+  ]);
+  if (Number(results[0]?.meta?.changes ?? 0) !== 1) {
+    return apiError(409, "INVALID_STATUS", "Student status does not allow this operation");
+  }
   return json(mapStudent(await rawStudent(database, id)));
 }
 
@@ -449,24 +541,38 @@ async function updateProfile(request, database, id) {
   if (invalidContext) return invalidContext;
   const scoped = await scopedStudent(database, id, context.branchCode, context.groupCode);
   if (scoped.response) return scoped.response;
-  const result = await run(
-    database,
-    `UPDATE students
-     SET profile = ?, updated_at = ?
-     WHERE id = ?
-       AND branch_code = ?
-       AND group_code = ?
-       AND updated_at = ?`,
-    [
+  const activityId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const results = await database.batch([
+    database.prepare(
+      `UPDATE students
+       SET profile = ?, updated_at = ?
+       WHERE id = ?
+         AND branch_code = ?
+         AND group_code = ?
+         AND updated_at = ?`,
+    ).bind(
       JSON.stringify({ ...parseProfile(scoped.student.profile), ...body.profile }),
       timestampAfter(scoped.student.updated_at),
       id,
       context.branchCode,
       context.groupCode,
       new Date(body.updatedAt).toISOString(),
-    ],
-  );
-  if (Number(result.meta?.changes ?? 0) !== 1) {
+    ),
+    database.prepare(
+      `INSERT INTO student_activity
+         (id, student_id, action, actor, details, created_at)
+       SELECT ?, ?, 'profile_update', ?, ?, ?
+       WHERE changes() = 1`,
+    ).bind(
+      activityId,
+      id,
+      operator(request).email,
+      JSON.stringify({ profile: body.profile }),
+      now,
+    ),
+  ]);
+  if (Number(results[0]?.meta?.changes ?? 0) !== 1) {
     return apiError(409, "STUDENT_CHANGED", "Student changed since it was loaded");
   }
   return json(mapStudent(await rawStudent(database, id)));

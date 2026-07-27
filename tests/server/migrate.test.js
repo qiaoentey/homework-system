@@ -3,6 +3,7 @@ import { migrate } from "../../server/db/migrate.js";
 import { createTestDatabaseBefore } from "../helpers/testDatabase.js";
 
 const identityMigration = "002_unique_student_identity.sql";
+const enrolmentMigration = "003_enrolment_idempotency.sql";
 
 describe("student identity migration", () => {
   const pools = [];
@@ -36,7 +37,7 @@ describe("student identity migration", () => {
     )).rows).toEqual([{ name: "001_initial.sql" }]);
   });
 
-  it("migrates a clean legacy database and enforces trimmed case-insensitive identity", async () => {
+  it("migrates a clean legacy database through the superseded identity index", async () => {
     const pool = await createTestDatabaseBefore(identityMigration);
     pools.push(pool);
     await pool.query(
@@ -44,10 +45,35 @@ describe("student identity migration", () => {
        values ('Alice Tan', 'Y3', 'MK', 'MK HAPPY')`,
     );
 
-    expect(await migrate(pool)).toEqual([identityMigration]);
-    await expect(pool.query(
+    expect(await migrate(pool)).toEqual([identityMigration, enrolmentMigration]);
+    await pool.query(
       `insert into students (name, grade, branch_code, group_code)
        values (' ALICE TAN ', ' y3 ', 'MK', 'MK HAPPY')`,
+    );
+    expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(2);
+  });
+
+  it("upgrades an existing identity-index deployment for duplicate identities and idempotent enrolment", async () => {
+    const pool = await createTestDatabaseBefore(enrolmentMigration);
+    pools.push(pool);
+
+    expect(await migrate(pool)).toEqual([enrolmentMigration]);
+    await pool.query(
+      `insert into students
+         (name, grade, branch_code, group_code, enrolment_key)
+       values
+         ('Alice Tan', 'Y3', 'MK', 'MK HAPPY',
+          '10000000-0000-4000-8000-000000000001'),
+         (' ALICE TAN ', ' y3 ', 'MK', 'MK HAPPY',
+          '10000000-0000-4000-8000-000000000002')`,
+    );
+
+    await expect(pool.query(
+      `insert into students
+         (name, grade, branch_code, group_code, enrolment_key)
+       values ('Different Student', 'Y4', 'MK', 'MK HAPPY',
+               '10000000-0000-4000-8000-000000000001')`,
     )).rejects.toMatchObject({ code: "23505" });
+    expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(2);
   });
 });

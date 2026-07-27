@@ -378,6 +378,17 @@ test("atomically rejects one of two concurrent profile updates with the same ver
     ));
     assert.deepEqual(stored.items[0].profile, success.profile);
     assert.equal(stored.items[0].updatedAt, success.updatedAt);
+
+    const activity = await env.DB.prepare(
+      `SELECT action, actor
+       FROM student_activity
+       WHERE student_id = ?
+       ORDER BY rowid`,
+    ).bind(student.id).all();
+    assert.deepEqual(activity.results.map((row) => ({ ...row })), [
+      { action: "profile_update", actor: "owner@example.com" },
+      { action: "profile_update", actor: "owner@example.com" },
+    ]);
   });
 });
 
@@ -411,7 +422,7 @@ test("creates and lists trimmed student messages newest first", async () => {
   });
 });
 
-test("enrols once and rejects a normalized duplicate", async () => {
+test("idempotently retries one enrolment key while allowing real duplicate identities", async () => {
   await withD1(async (env) => {
     const body = {
       name: " NEW STUDENT ",
@@ -419,6 +430,7 @@ test("enrols once and rejects a normalized duplicate", async () => {
       branchCode: "MK",
       groupCode: "MK HAPPY",
       profile: emptyProfile,
+      enrolmentKey: "10000000-0000-4000-8000-000000000001",
     };
     const created = await readJson(await apiWithD1(env, "/api/students", {
       method: "POST",
@@ -428,12 +440,115 @@ test("enrols once and rejects a normalized duplicate", async () => {
     assert.equal(created.name, "NEW STUDENT");
     assert.equal(created.grade, "Y3");
 
-    const duplicate = await readJson(await apiWithD1(env, "/api/students", {
+    const retried = await readJson(await apiWithD1(env, "/api/students", {
       method: "POST",
       headers: groupHeaders(),
-      body: { ...body, name: "new student", grade: "y3" },
-    }), 409);
-    assert.equal(duplicate.code, "DUPLICATE_STUDENT");
+      body,
+    }));
+    assert.equal(retried.id, created.id);
+
+    const realDuplicate = await readJson(await apiWithD1(env, "/api/students", {
+      method: "POST",
+      headers: groupHeaders(),
+      body: {
+        ...body,
+        name: "new student",
+        grade: "y3",
+        enrolmentKey: "10000000-0000-4000-8000-000000000002",
+      },
+    }), 201);
+    assert.notEqual(realDuplicate.id, created.id);
+
+    const stored = await env.DB.prepare(
+      `SELECT id, enrolment_key
+       FROM students
+       WHERE lower(trim(name)) = 'new student'
+       ORDER BY enrolment_key`,
+    ).all();
+    assert.deepEqual(stored.results.map(({ id, enrolment_key }) => ({ id, enrolment_key })), [
+      { id: created.id, enrolment_key: "10000000-0000-4000-8000-000000000001" },
+      { id: realDuplicate.id, enrolment_key: "10000000-0000-4000-8000-000000000002" },
+    ]);
+    const activity = await env.DB.prepare(
+      "SELECT student_id, action FROM student_activity WHERE action = 'enrol' ORDER BY student_id",
+    ).all();
+    assert.deepEqual(activity.results.map(({ action }) => action), ["enrol", "enrol"]);
+  });
+});
+
+test("concurrent retries of one enrolment key create one student and one enrol activity", async () => {
+  await withD1(async (env) => {
+    const body = {
+      name: "Concurrent Retry",
+      grade: "Y3",
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: emptyProfile,
+      enrolmentKey: "10000000-0000-4000-8000-000000000003",
+    };
+    const responses = await Promise.all([
+      apiWithD1(env, "/api/students", {
+        method: "POST",
+        headers: groupHeaders(),
+        body,
+      }),
+      apiWithD1(env, "/api/students", {
+        method: "POST",
+        headers: groupHeaders(),
+        body,
+      }),
+    ]);
+    assert.deepEqual(responses.map(({ status }) => status).sort(), [200, 201]);
+    const students = await Promise.all(responses.map((response) => response.json()));
+    assert.equal(students[0].id, students[1].id);
+    const activity = await env.DB.prepare(
+      "SELECT student_id, action FROM student_activity WHERE student_id = ?",
+    ).bind(students[0].id).all();
+    assert.deepEqual(activity.results.map((row) => ({ ...row })), [{
+      student_id: students[0].id,
+      action: "enrol",
+    }]);
+  });
+});
+
+test("concurrent stop and restore transitions each record exactly one activity", async () => {
+  await withD1(async (env) => {
+    const roster = await readJson(await apiWithD1(
+      env,
+      "/api/students?branch=WS&group=WS%20HUILING&status=active&limit=1",
+    ));
+    const student = roster.items[0];
+    const headers = groupHeaders("WS", "WS HUILING");
+    const stopRequest = () => apiWithD1(env, `/api/students/${student.id}/stop`, {
+      method: "POST",
+      headers,
+      body: {
+        name: student.name,
+        grade: student.grade,
+        groupCode: student.groupCode,
+      },
+    });
+    const stopResponses = await Promise.all([stopRequest(), stopRequest()]);
+    assert.deepEqual(stopResponses.map(({ status }) => status).sort(), [200, 409]);
+
+    const restoreRequest = () => apiWithD1(env, `/api/students/${student.id}/restore`, {
+      method: "POST",
+      headers,
+      body: {},
+    });
+    const restoreResponses = await Promise.all([restoreRequest(), restoreRequest()]);
+    assert.deepEqual(restoreResponses.map(({ status }) => status).sort(), [200, 409]);
+
+    const activity = await env.DB.prepare(
+      `SELECT action, actor
+       FROM student_activity
+       WHERE student_id = ?
+       ORDER BY rowid`,
+    ).bind(student.id).all();
+    assert.deepEqual(activity.results.map((row) => ({ ...row })), [
+      { action: "stop", actor: "owner@example.com" },
+      { action: "restore", actor: "owner@example.com" },
+    ]);
   });
 });
 
@@ -512,6 +627,17 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
       { headers },
     ));
     assert.deepEqual(messages.items.map(({ body }) => body), ["Persistent note"]);
+    const activity = await env.DB.prepare(
+      `SELECT action, actor
+       FROM student_activity
+       WHERE student_id = ?
+       ORDER BY rowid`,
+    ).bind(original.id).all();
+    assert.deepEqual(activity.results.map((row) => ({ ...row })), [
+      { action: "profile_update", actor: "owner@example.com" },
+      { action: "stop", actor: "owner@example.com" },
+      { action: "restore", actor: "owner@example.com" },
+    ]);
   });
 });
 
@@ -585,7 +711,11 @@ test("emits the files required by Sites packaging", async () => {
   await access(new URL("../dist/.openai/hosting.json", import.meta.url));
   await access(new URL("../dist/db/schema.ts", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/0000_daycare_sites.sql", import.meta.url));
+  await access(new URL("../dist/.openai/drizzle/0001_enrolment_idempotency.sql", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/meta/_journal.json", import.meta.url));
+  const packagedSchema = await import("../dist/db/schema.ts");
+  assert.ok(packagedSchema.students);
+  assert.ok(packagedSchema.studentActivity);
   assert.deepEqual(JSON.parse(await readFile(
     new URL("../dist/.openai/hosting.json", import.meta.url),
     "utf8",
