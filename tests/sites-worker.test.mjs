@@ -19,6 +19,21 @@ const emptyProfile = {
   lateStayThursday: "",
   lateStayFriday: "",
 };
+const enrolmentConflictCases = [
+  ["name", { name: "ANOTHER STUDENT" }, groupHeaders()],
+  ["grade", { grade: "Y4" }, groupHeaders()],
+  ["group", { groupCode: "MK QIAO EN" }, groupHeaders("MK", "MK QIAO EN")],
+  [
+    "branch and group",
+    { branchCode: "WS", groupCode: "WS HUILING" },
+    groupHeaders("WS", "WS HUILING"),
+  ],
+  ...Object.keys(emptyProfile).map((field) => [
+    `profile.${field}`,
+    { profile: { ...emptyProfile, [field]: `changed ${field}` } },
+    groupHeaders(),
+  ]),
+];
 const approvedCounts = {
   "MK HAPPY": 82,
   "MK QIAO EN": 40,
@@ -475,6 +490,54 @@ test("idempotently retries one enrolment key while allowing real duplicate ident
     assert.deepEqual(activity.results.map(({ action }) => action), ["enrol", "enrol"]);
   });
 });
+
+for (const [field, change, headers] of enrolmentConflictCases) {
+  test(`rejects a reused enrolment key when ${field} changes without altering the original enrolment`, async () => {
+    await withD1(async (env) => {
+      const body = {
+        name: "ORIGINAL STUDENT",
+        grade: "Y3",
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+        profile: emptyProfile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000010",
+      };
+      const created = await readJson(await apiWithD1(env, "/api/students", {
+        method: "POST",
+        headers: groupHeaders(),
+        body,
+      }), 201);
+
+      const conflict = await readJson(await apiWithD1(env, "/api/students", {
+        method: "POST",
+        headers,
+        body: { ...body, ...change },
+      }), 409);
+      assert.equal(conflict.code, "ENROLMENT_KEY_CONFLICT");
+
+      const stored = await env.DB.prepare(
+        `SELECT id, name, grade, branch_code, group_code, profile
+         FROM students
+         WHERE enrolment_key = ?`,
+      ).bind(body.enrolmentKey).all();
+      assert.deepEqual(stored.results.map((row) => ({
+        ...row,
+        profile: JSON.parse(row.profile),
+      })), [{
+        id: created.id,
+        name: body.name,
+        grade: body.grade,
+        branch_code: body.branchCode,
+        group_code: body.groupCode,
+        profile: body.profile,
+      }]);
+      const activity = await env.DB.prepare(
+        "SELECT action FROM student_activity WHERE student_id = ?",
+      ).bind(created.id).all();
+      assert.deepEqual(activity.results.map(({ action }) => action), ["enrol"]);
+    });
+  });
+}
 
 test("concurrent retries of one enrolment key create one student and one enrol activity", async () => {
   await withD1(async (env) => {

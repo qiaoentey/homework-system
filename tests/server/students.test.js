@@ -6,6 +6,21 @@ import { createTestDatabase } from "../helpers/testDatabase.js";
 
 const emergencyPasswordHash = "task-4-test-salt:330dbd3ebcf20a4b02e6fc954a0677540e9a27cfc5ff51d956659ec11877e06fb426131601c8a7765cdd2f51a908b9013eb463625f6123e097ff762fe5b53b00";
 const emptyProfile = Object.fromEntries(PROFILE_FIELDS.map((field) => [field, ""]));
+const enrolmentConflictCases = [
+  ["name", { name: "ANOTHER STUDENT" }, studentHeaders()],
+  ["grade", { grade: "Y4" }, studentHeaders()],
+  ["group", { groupCode: "MK QIAO EN" }, studentHeaders("MK", "MK QIAO EN")],
+  [
+    "branch and group",
+    { branchCode: "WS", groupCode: "WS HUILING" },
+    studentHeaders("WS", "WS HUILING"),
+  ],
+  ...PROFILE_FIELDS.map((field) => [
+    `profile.${field}`,
+    { profile: { ...emptyProfile, [field]: `changed ${field}` } },
+    studentHeaders(),
+  ]),
+];
 
 function studentHeaders(branchCode = "MK", groupCode = "MK HAPPY") {
   return {
@@ -266,6 +281,51 @@ describe("student API", () => {
     expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(1);
     expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(1);
   });
+
+  it.each(enrolmentConflictCases)(
+    "rejects a reused enrolment key when %s changes without altering the original enrolment",
+    async (_field, change, headers) => {
+      const body = {
+        name: "ORIGINAL STUDENT",
+        grade: "Y3",
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+        profile: emptyProfile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000010",
+      };
+      const created = await agent
+        .post("/api/students")
+        .set(studentHeaders())
+        .send(body)
+        .expect(201);
+
+      const conflict = await agent
+        .post("/api/students")
+        .set(headers)
+        .send({ ...body, ...change })
+        .expect(409);
+
+      expect(conflict.body.code).toBe("ENROLMENT_KEY_CONFLICT");
+      const stored = await pool.query(
+        `select id, name, grade, branch_code, group_code, profile
+         from students
+         where enrolment_key = $1`,
+        [body.enrolmentKey],
+      );
+      expect(stored.rows).toEqual([{
+        id: created.body.id,
+        name: body.name,
+        grade: body.grade,
+        branch_code: body.branchCode,
+        group_code: body.groupCode,
+        profile: body.profile,
+      }]);
+      expect(Number((await pool.query(
+        "select count(*) from student_activity where student_id = $1 and action = 'enrol'",
+        [created.body.id],
+      )).rows[0].count)).toBe(1);
+    },
+  );
 
   it("allows concurrent real duplicate identities when enrolment keys differ", async () => {
     const body = {

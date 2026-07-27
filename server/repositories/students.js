@@ -1,3 +1,5 @@
+import { PROFILE_FIELDS } from "../domain/profile.js";
+
 function mapStudent(row) {
   return {
     id: row.id,
@@ -9,6 +11,20 @@ function mapStudent(row) {
     profile: row.profile,
     updatedAt: new Date(row.updated_at).toISOString(),
   };
+}
+
+function matchesEnrolmentPayload(student, {
+  name,
+  grade,
+  branchCode,
+  groupCode,
+  profile,
+}) {
+  return student.name === name
+    && student.grade === grade
+    && student.branch_code === branchCode
+    && student.group_code === groupCode
+    && PROFILE_FIELDS.every((field) => student.profile?.[field] === profile[field]);
 }
 
 function nextUpdatedAt(previous) {
@@ -123,7 +139,13 @@ export async function enrolStudent(pool, {
     );
     if (prior.rows.length) {
       const student = prior.rows[0];
-      if (student.branch_code !== branchCode || student.group_code !== groupCode) {
+      if (!matchesEnrolmentPayload(student, {
+        name,
+        grade,
+        branchCode,
+        groupCode,
+        profile,
+      })) {
         throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
       }
       return { student: mapStudent(student), created: false };
@@ -157,7 +179,13 @@ export async function enrolStudent(pool, {
       throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
     }
     const student = existing.rows[0];
-    if (student.branch_code !== branchCode || student.group_code !== groupCode) {
+    if (!matchesEnrolmentPayload(student, {
+      name,
+      grade,
+      branchCode,
+      groupCode,
+      profile,
+    })) {
       throw new StudentRepositoryError("ENROLMENT_KEY_CONFLICT");
     }
     return { student: mapStudent(student), created: false };

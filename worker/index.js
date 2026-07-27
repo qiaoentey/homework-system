@@ -221,6 +221,15 @@ function fullProfile(value) {
     && PROFILE_FIELDS.every((field) => typeof value[field] === "string");
 }
 
+function matchesEnrolmentPayload(student, body) {
+  const profile = parseProfile(student.profile);
+  return student.name === body.name.trim()
+    && student.grade === body.grade.trim()
+    && student.branch_code === body.branchCode
+    && student.group_code === body.groupCode
+    && PROFILE_FIELDS.every((field) => profile[field] === body.profile[field]);
+}
+
 function partialProfile(value) {
   return hasOnlyKeys(value, PROFILE_FIELDS, [])
     && Object.keys(value).length > 0
@@ -408,7 +417,7 @@ async function enrolStudent(request, database) {
   if (!student) {
     return apiError(409, "ENROLMENT_KEY_CONFLICT", "Enrolment key could not be resolved");
   }
-  if (student.branch_code !== context.branchCode || student.group_code !== context.groupCode) {
+  if (!matchesEnrolmentPayload(student, body)) {
     return apiError(409, "ENROLMENT_KEY_CONFLICT", "Enrolment key belongs to another student");
   }
   return json(mapStudent(student), created ? 201 : 200);
