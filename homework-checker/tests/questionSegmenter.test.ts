@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { analyzeQuestions } from "../src/math/analyzeQuestions";
 import { segmentQuestions } from "../src/scanner/questionSegmenter";
 import type { OcrLine } from "../src/scanner/ocr.types";
 
@@ -81,6 +82,89 @@ describe("segmentQuestions", () => {
     expect(segmentQuestions([lowLineConfidence])[0].locationConfidence).toBeGreaterThanOrEqual(0.8);
   });
 
+  it("lets a clear high-confidence incorrect region become red through production segmentation", () => {
+    const questions = segmentQuestions([
+      line("1. 47 + 28 = 65", 20, 40, 300, 40),
+    ]);
+
+    expect(questions[0].locationConfidence).toBeGreaterThanOrEqual(0.8);
+    expect(analyzeQuestions(questions)[0].severity).toBe("error");
+  });
+
+  it("keeps an overlapping fragmented region out of red through production segmentation", () => {
+    const questions = segmentQuestions([
+      line("1. 47 + 28 =", 20, 40, 260, 40),
+      line("65", 240, 45, 70, 40),
+    ]);
+
+    expect(questions[0].locationConfidence).toBeLessThan(0.8);
+    expect(analyzeQuestions(questions)[0].severity).toBe("review");
+  });
+
+  it("scores a barely separated unnumbered boundary below the location gate", () => {
+    const questions = segmentQuestions([
+      line("47 + 28 = 75", 20, 40, 260, 40),
+      line("90 - 36 = 54", 20, 153, 260, 40),
+    ]);
+
+    expect(questions).toHaveLength(2);
+    expect(questions.every((question) => question.locationConfidence < 0.8)).toBe(true);
+  });
+
+  it("scores a borderline horizontal gutter as uncertain column association", () => {
+    const questions = segmentQuestions([
+      line("1. 47 + 28 = 75", 20, 40, 220, 40),
+      line("2. 90 - 36 = 54", 402, 40, 220, 40),
+    ]);
+
+    expect(questions).toHaveLength(2);
+    expect(questions.every((question) => question.locationConfidence < 0.8)).toBe(true);
+  });
+
+  it("scores a gutter just below the column split as ambiguous grouping", () => {
+    const questions = segmentQuestions([
+      line("1. 47 + 28 =", 20, 40, 220, 40),
+      line("65", 399, 40, 70, 40),
+    ]);
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].locationConfidence).toBeLessThan(0.8);
+    expect(analyzeQuestions(questions)[0].severity).toBe("review");
+  });
+
+  it("keeps vertically overlapping numbered groups out of red", () => {
+    const questions = segmentQuestions([
+      line("1. 47 + 28 = 65", 20, 40, 300, 40),
+      line("2. 90 - 36 = 44", 20, 68, 300, 40),
+    ]);
+
+    expect(questions).toHaveLength(2);
+    expect(questions.every((question) => question.locationConfidence < 0.8)).toBe(true);
+    expect(analyzeQuestions(questions).every((annotation) => annotation.severity === "review")).toBe(true);
+  });
+
+  it("keeps same-column overlaps out of red in a two-column reading order", () => {
+    const questions = segmentQuestions([
+      line("1. 47 + 28 = 65", 0, 0, 220, 40),
+      line("2. 90 - 36 = 44", 500, 0, 220, 40),
+      line("3. 18 + 17 = 25", 0, 28, 220, 40),
+      line("4. 81 - 29 = 42", 500, 28, 220, 40),
+    ]);
+
+    expect(questions).toHaveLength(4);
+    expect(questions.every((question) => question.locationConfidence < 0.8)).toBe(true);
+    expect(analyzeQuestions(questions).every((annotation) => annotation.severity === "review")).toBe(true);
+  });
+
+  it("keeps critical digit and operator confidence as an independent red gate after segmentation", () => {
+    const uncertainCriticalLine = line("1. 47 + 28 = 65", 20, 40, 300, 40);
+    uncertainCriticalLine.criticalConfidence = 84;
+    const questions = segmentQuestions([uncertainCriticalLine]);
+
+    expect(questions[0].locationConfidence).toBeGreaterThanOrEqual(0.8);
+    expect(analyzeQuestions(questions)[0].severity).toBe("review");
+  });
+
   it("uses a horizontal gutter as a column boundary", () => {
     const lines = [
       line("1. 8 + 5 = 13", 0, 0, 250, 40),
@@ -90,6 +174,7 @@ describe("segmentQuestions", () => {
     ];
 
     expect(segmentQuestions(lines).map((question) => question.lines[0].text)).toEqual(lines.map((item) => item.text));
+    expect(segmentQuestions(lines).every((question) => question.locationConfidence >= 0.8)).toBe(true);
   });
 
   it("treats an OCR empty line as an unnumbered question boundary", () => {
