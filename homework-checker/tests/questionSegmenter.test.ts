@@ -5,6 +5,7 @@ import type { OcrLine } from "../src/scanner/ocr.types";
 const line = (text: string, x: number, y: number, width: number, height: number): OcrLine => ({
   text,
   confidence: 90,
+  criticalConfidence: 90,
   box: { x, y, width, height },
 });
 
@@ -56,6 +57,28 @@ describe("segmentQuestions", () => {
     ];
 
     expect(segmentQuestions(lines).map((question) => question.lines[0].text)).toEqual(lines.map((item) => item.text));
+  });
+
+  it("does not mistake leading decimals or thousands separators for question labels", () => {
+    const lines = [
+      line("1.5 + 2.5 = 4", 0, 0, 260, 40),
+      line("1,000 + 500 = 1,500", 0, 130, 340, 40),
+    ];
+
+    expect(segmentQuestions(lines).map((question) => question.lines[0].text)).toEqual(lines.map((item) => item.text));
+  });
+
+  it("keeps critical OCR and geometric location confidence as independent signals", () => {
+    const lowLineConfidence = line("1) 47 + 28 = 65", 20, 40, 300, 40);
+    lowLineConfidence.confidence = 40;
+    lowLineConfidence.criticalConfidence = 96;
+
+    expect(segmentQuestions([lowLineConfidence])[0]).toMatchObject({
+      confidence: 40,
+      criticalConfidence: 96,
+      locationConfidence: expect.any(Number),
+    });
+    expect(segmentQuestions([lowLineConfidence])[0].locationConfidence).toBeGreaterThanOrEqual(0.8);
   });
 
   it("uses a horizontal gutter as a column boundary", () => {

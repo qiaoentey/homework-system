@@ -1,4 +1,5 @@
 export type SessionAsset = {
+  file: File;
   url: string;
   release: () => void;
 };
@@ -8,6 +9,7 @@ export function createSessionAsset(file: File): SessionAsset {
   let released = false;
 
   return {
+    file,
     url,
     release: () => {
       if (released) return;

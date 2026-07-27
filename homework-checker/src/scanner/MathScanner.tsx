@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
-import { AnnotationCanvas, exportAnnotatedImage } from "../annotation/AnnotationCanvas";
+import { AnnotationCanvas, exportOriginalAnnotatedImage } from "../annotation/AnnotationCanvas";
 import {
   createAnnotationState,
   dismissAnnotation,
+  restoreAnnotation,
   restoreRecognizedText,
   updateRecognizedText,
   type AnnotationState,
 } from "../annotation/annotationModel";
 import { createSessionAsset, type SessionAsset } from "../privacy/sessionAssets";
+import { mapCropLinesToImage, pixelAlignedCrop } from "./coordinates";
 import { prepareImage, type PreparedImage, type Rect } from "./imagePipeline";
-import type { OcrWorkerEvent, QuestionRegion } from "./ocr.types";
+import type { OcrLine, OcrWorkerEvent, QuestionRegion } from "./ocr.types";
 import { segmentQuestions } from "./questionSegmenter";
 
 const closeBitmap = (prepared: PreparedImage | null) => prepared?.release();
@@ -22,6 +24,8 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
   const assetRef = useRef<SessionAsset | null>(null);
   const preparedRef = useRef<PreparedImage | null>(null);
   const ocrWorkerRef = useRef<Worker | null>(null);
+  const preparationAbortRef = useRef<AbortController | null>(null);
+  const exportAbortRef = useRef<AbortController | null>(null);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const requestId = useRef(0);
   const exportRequestId = useRef(0);
@@ -36,6 +40,7 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [editedText, setEditedText] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [manualSelection, setManualSelection] = useState(false);
   const [selection, setSelection] = useState<Rect | null>(null);
 
@@ -50,9 +55,13 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
     assetRef.current?.release();
     closeBitmap(preparedRef.current);
     ocrWorkerRef.current?.terminate();
+    preparationAbortRef.current?.abort();
+    exportAbortRef.current?.abort();
     assetRef.current = null;
     preparedRef.current = null;
     ocrWorkerRef.current = null;
+    preparationAbortRef.current = null;
+    exportAbortRef.current = null;
   }, []);
 
   useEffect(() => releaseCurrent, [releaseCurrent]);
@@ -67,6 +76,7 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
     setSelectedAnnotationId(null);
     setEditedText("");
     setExportError(null);
+    setIsExporting(false);
     setManualSelection(false);
     setSelection(null);
     const nextAsset = createSessionAsset(file);
@@ -74,23 +84,30 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
     assetRef.current = nextAsset;
     setAsset(nextAsset);
     setIsPreparing(true);
+    const preparationController = new AbortController();
+    preparationAbortRef.current = preparationController;
 
     try {
-      const prepared = await prepareImage(file);
+      const prepared = await prepareImage(file, 1600, { signal: preparationController.signal });
       if (requestId.current !== activeRequest || assetRef.current !== nextAsset) {
         closeBitmap(prepared);
         return;
       }
       preparedRef.current = prepared;
-    } catch {
+    } catch (reason) {
       if (requestId.current === activeRequest) {
         nextAsset.release();
         assetRef.current = null;
         setAsset(null);
-        setError("无法处理这张照片，请重新拍摄或选择另一张图片。");
+        if (!(reason instanceof DOMException && reason.name === "AbortError")) {
+          setError("无法处理这张照片，请重新拍摄或选择另一张图片。");
+        }
       }
     } finally {
-      if (requestId.current === activeRequest) setIsPreparing(false);
+      if (requestId.current === activeRequest) {
+        preparationAbortRef.current = null;
+        setIsPreparing(false);
+      }
     }
   }, [releaseCurrent]);
 
@@ -112,6 +129,7 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
     setSelectedAnnotationId(null);
     setEditedText("");
     setExportError(null);
+    setIsExporting(false);
     setManualSelection(false);
     setSelection(null);
   };
@@ -127,7 +145,9 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
   };
 
   const imageDataFor = (prepared: PreparedImage, region?: Rect) => {
-    const source = region ?? { x: 0, y: 0, width: prepared.width, height: prepared.height };
+    const source = region
+      ? pixelAlignedCrop(region, prepared)
+      : { x: 0, y: 0, width: prepared.width, height: prepared.height };
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(source.width));
     canvas.height = Math.max(1, Math.round(source.height));
@@ -144,7 +164,11 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
       canvas.width,
       canvas.height,
     );
-    return context.getImageData(0, 0, canvas.width, canvas.height);
+    return {
+      image: context.getImageData(0, 0, canvas.width, canvas.height),
+      source,
+      raster: { width: canvas.width, height: canvas.height },
+    };
   };
 
   const recognize = useCallback((region?: Rect) => {
@@ -162,12 +186,18 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
         ocrWorkerRef.current = worker;
       }
 
+      const preparedImage = imageDataFor(prepared, region);
+      const linesInImageSpace = (lines: OcrLine[]) => region
+        ? mapCropLinesToImage(lines, preparedImage.source, preparedImage.raster)
+        : lines;
+
       worker.onmessage = (event: MessageEvent<OcrWorkerEvent>) => {
         const message = event.data;
         if (message.type === "progress") {
           setOcrStage(`${message.stage}… ${Math.round(message.progress * 100)}%`);
         } else if (message.type === "result") {
-          const regions = segmentQuestions(message.lines);
+          const regions = segmentQuestions(linesInImageSpace(message.lines))
+            .map((question) => region ? { ...question, locationConfidence: 1 } : question);
           setOcrStage(null);
           setQuestions(regions);
           setAnnotationState(regions.length ? createAnnotationState(regions) : null);
@@ -185,12 +215,11 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
       worker.onerror = () => failOcrWorker(worker, "本机文字识别进程已停止，请重试。");
       worker.onmessageerror = () => failOcrWorker(worker, "本机识别数据无法读取，请重新开始检查。");
 
-      const image = imageDataFor(prepared, region);
       worker.postMessage({
         type: "recognize",
-        image,
+        image: preparedImage.image,
         languages: ["eng", "msa", "chi_tra"],
-      }, [image.data.buffer as ArrayBuffer]);
+      }, [preparedImage.image.data.buffer as ArrayBuffer]);
     } catch (reason) {
       failOcrWorker(worker, reason instanceof Error
         ? `无法启动本机文字识别：${reason.message}`
@@ -200,12 +229,10 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
 
   const originalAnnotations = annotationState?.annotations ?? [];
   const imageSize = preparedRef.current
-    ? preparedRef.current.toOriginal({ x: 0, y: 0, width: preparedRef.current.width, height: preparedRef.current.height })
+    ? { width: preparedRef.current.width, height: preparedRef.current.height }
     : null;
   const previewUrl = preparedRef.current?.displayUrl ?? asset?.url;
-  const annotations = preparedRef.current
-    ? originalAnnotations.map((annotation) => ({ ...annotation, box: preparedRef.current!.toOriginal(annotation.box) }))
-    : [];
+  const annotations = originalAnnotations;
   const selectedIndex = originalAnnotations.findIndex((annotation) => annotation.id === selectedAnnotationId);
   const selectedAnnotation = selectedIndex < 0 ? null : originalAnnotations[selectedIndex];
   const activeErrors = originalAnnotations.filter((annotation) => !annotation.dismissed && annotation.severity === "error");
@@ -237,46 +264,61 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
     setAnnotationState(dismissAnnotation(annotationState, selectedAnnotationId));
   };
 
+  const restoreMarker = () => {
+    if (!annotationState || !selectedAnnotationId) return;
+    setAnnotationState(restoreAnnotation(annotationState, selectedAnnotationId));
+  };
+
   const downloadAnnotatedImage = async () => {
-    if (!asset || !imageSize) return;
+    const prepared = preparedRef.current;
+    if (!asset || !prepared) return;
     const requestedAsset = asset;
     const exportRequest = ++exportRequestId.current;
     const isCurrentExport = () => exportRequestId.current === exportRequest && assetRef.current === requestedAsset;
     setExportError(null);
-    const image = new Image();
-    image.onload = async () => {
+    setIsExporting(true);
+    const controller = new AbortController();
+    exportAbortRef.current?.abort();
+    exportAbortRef.current = controller;
+    try {
+      const blob = await exportOriginalAnnotatedImage(
+        requestedAsset.file,
+        { width: prepared.width, height: prepared.height },
+        annotations,
+        { signal: controller.signal },
+      );
       if (!isCurrentExport()) return;
+      const url = URL.createObjectURL(blob);
+      const timestamp = new Date();
+      const stamp = `${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, "0")}${String(timestamp.getDate()).padStart(2, "0")}-${String(timestamp.getHours()).padStart(2, "0")}${String(timestamp.getMinutes()).padStart(2, "0")}`;
+      const link = document.createElement("a");
+      const revokeDownloadUrl = () => {
+        const timer = downloadUrlTimers.current.get(url);
+        if (timer !== undefined) window.clearTimeout(timer);
+        downloadUrlTimers.current.delete(url);
+        URL.revokeObjectURL(url);
+      };
+      const timer = window.setTimeout(revokeDownloadUrl, DOWNLOAD_URL_REVOKE_DELAY_MS);
+      downloadUrlTimers.current.set(url, timer);
+      link.href = url;
+      link.download = `数学批改-${stamp}.jpg`;
       try {
-        const blob = await exportAnnotatedImage(image, annotations);
-        if (!isCurrentExport()) return;
-        const url = URL.createObjectURL(blob);
-        const timestamp = new Date();
-        const stamp = `${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, "0")}${String(timestamp.getDate()).padStart(2, "0")}-${String(timestamp.getHours()).padStart(2, "0")}${String(timestamp.getMinutes()).padStart(2, "0")}`;
-        const link = document.createElement("a");
-        const revokeDownloadUrl = () => {
-          const timer = downloadUrlTimers.current.get(url);
-          if (timer !== undefined) window.clearTimeout(timer);
-          downloadUrlTimers.current.delete(url);
-          URL.revokeObjectURL(url);
-        };
-        const timer = window.setTimeout(revokeDownloadUrl, DOWNLOAD_URL_REVOKE_DELAY_MS);
-        downloadUrlTimers.current.set(url, timer);
-        link.href = url;
-        link.download = `数学批改-${stamp}.jpg`;
-        try {
-          link.click();
-        } catch (reason) {
-          revokeDownloadUrl();
-          throw reason;
-        }
+        link.click();
       } catch (reason) {
-        if (isCurrentExport()) setExportError(reason instanceof Error ? reason.message : "无法导出批改图。");
+        revokeDownloadUrl();
+        throw reason;
       }
-    };
-    image.onerror = () => {
-      if (isCurrentExport()) setExportError("照片无法加载，无法导出批改图。");
-    };
-    image.src = previewUrl ?? asset.url;
+    } catch (reason) {
+      if (
+        isCurrentExport()
+        && !(reason instanceof DOMException && reason.name === "AbortError")
+      ) setExportError(reason instanceof Error ? reason.message : "无法导出批改图。");
+    } finally {
+      if (isCurrentExport()) {
+        exportAbortRef.current = null;
+        setIsExporting(false);
+      }
+    }
   };
 
   const pointInImage = (event: PointerEvent<HTMLDivElement>) => {
@@ -315,12 +357,12 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
     const start = dragStart.current;
     dragStart.current = null;
     if (!start || !point) return;
-    const region = {
+    const region = pixelAlignedCrop({
       x: Math.min(start.x, point.x),
       y: Math.min(start.y, point.y),
       width: Math.abs(point.x - start.x),
       height: Math.abs(point.y - start.y),
-    };
+    }, preparedRef.current ?? { width: 0, height: 0 });
     if (region.width < 12 || region.height < 12) {
       setError("请选择完整的一题范围后再识别。");
       return;
@@ -334,6 +376,9 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
       <p className="eyebrow">数学功课检查</p>
       <h1 id="scan-title">拍照检查数学</h1>
       <p>拍下完整、光线充足的作业页；我们会在本机调整图片，方便接下来的检查。</p>
+      <p className="scanner__model-note">
+        首次使用检查时需联网下载约 26 MB 的本机识别模型；完成首次下载后可离线使用。
+      </p>
 
       <div className="scanner__actions">
         <label className="primary-action scanner__input-action">
@@ -354,6 +399,10 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
         <section className="scanner__preview" aria-label="照片预览">
           <div
             className={`scanner__image-frame${manualSelection ? " scanner__image-frame--selecting" : ""}`}
+            style={imageSize ? {
+              aspectRatio: `${imageSize.width} / ${imageSize.height}`,
+              maxWidth: `${Math.min(imageSize.width, imageSize.width * 420 / imageSize.height)}px`,
+            } : undefined}
             onPointerDown={onSelectionStart}
             onPointerMove={onSelectionMove}
             onPointerUp={onSelectionEnd}
@@ -389,7 +438,33 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
         <section className="scanner__results" aria-labelledby="annotation-results-title">
           <h2 id="annotation-results-title">检查结果</h2>
           <p className="scanner__result-summary">发现 {activeErrors.length} 个确定错误{activeReviews.length ? `，${activeReviews.length} 个需要复核` : ""}</p>
-          <button type="button" className="scan-start" onClick={() => void downloadAnnotatedImage()}>下载批改图</button>
+          <ol className="scanner__result-list">
+            {originalAnnotations.map((annotation, index) => {
+              const stateLabel = annotation.dismissed
+                ? "已取消"
+                : annotation.severity === "error"
+                  ? "错误"
+                  : annotation.severity === "review"
+                    ? "需复核"
+                    : "正确";
+              return (
+                <li key={annotation.id}>
+                  <button
+                    type="button"
+                    className="scanner__result-action"
+                    aria-label={`打开第 ${index + 1} 题结果（${stateLabel}）`}
+                    onClick={() => selectAnnotation(annotation.id)}
+                  >
+                    <span>第 {index + 1} 题</span>
+                    <span>{stateLabel}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+          <button type="button" className="scan-start" disabled={isExporting} onClick={() => void downloadAnnotatedImage()}>
+            {isExporting ? "正在导出原图…" : "下载批改图"}
+          </button>
           {exportError && <p role="alert" className="scanner__error">{exportError}</p>}
         </section>
       )}
@@ -407,8 +482,10 @@ export function MathScanner({ workerFactory }: { workerFactory?: OcrWorkerFactor
           {selectedAnnotation.expected && <p>建议答案：{selectedAnnotation.expected}</p>}
           <div className="annotation-drawer__actions">
             <button type="button" className="scan-start" onClick={saveRecognizedText}>系统读错了</button>
-            <button type="button" className="filter-button" onClick={restoreRecognized}>恢复</button>
-            <button type="button" className="filter-button" onClick={cancelAnnotation} disabled={selectedAnnotation.dismissed}>取消标记</button>
+            <button type="button" className="filter-button" onClick={restoreRecognized}>恢复识别内容</button>
+            {selectedAnnotation.dismissed
+              ? <button type="button" className="filter-button" onClick={restoreMarker}>恢复标记</button>
+              : <button type="button" className="filter-button" onClick={cancelAnnotation}>取消标记</button>}
           </div>
         </aside>
       )}

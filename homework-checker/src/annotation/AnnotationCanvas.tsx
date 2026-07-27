@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Annotation, AnnotationSeverity } from "../math/analyzeQuestions";
+import { MAX_SOURCE_PIXELS } from "../scanner/imagePipeline";
 
 const colorFor: Record<AnnotationSeverity, string> = {
   error: "#D92D20",
@@ -104,4 +105,37 @@ export async function exportAnnotatedImage(image: CanvasImageSource, annotations
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("无法生成批改图。")), "image/jpeg", 0.92);
   });
+}
+
+/** Decodes the unchanged color File only after explicit export and maps normalized marks once. */
+export async function exportOriginalAnnotatedImage(
+  file: File,
+  normalized: { width: number; height: number },
+  annotations: Annotation[],
+  options: { signal?: AbortSignal } = {},
+): Promise<Blob> {
+  if (options.signal?.aborted) throw new DOMException("Image export was canceled.", "AbortError");
+  const source = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    if (options.signal?.aborted) throw new DOMException("Image export was canceled.", "AbortError");
+    if (source.width * source.height > MAX_SOURCE_PIXELS) {
+      throw new Error("原始照片过大，无法安全导出批改图。");
+    }
+    const scaleX = source.width / normalized.width;
+    const scaleY = source.height / normalized.height;
+    const sourceAnnotations = annotations.map((annotation) => ({
+      ...annotation,
+      box: {
+        x: annotation.box.x * scaleX,
+        y: annotation.box.y * scaleY,
+        width: annotation.box.width * scaleX,
+        height: annotation.box.height * scaleY,
+      },
+    }));
+    const blob = await exportAnnotatedImage(source, sourceAnnotations);
+    if (options.signal?.aborted) throw new DOMException("Image export was canceled.", "AbortError");
+    return blob;
+  } finally {
+    source.close?.();
+  }
 }

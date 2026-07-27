@@ -1,6 +1,13 @@
 export type Grade = 1 | 2 | 3;
 export type Subject = "华文" | "国语" | "数学" | "科学";
-export type VideoLink = { label: string; duration: string; videoId: string };
+export type VideoLink = {
+  label: string;
+  duration: string;
+  videoId: string;
+  /** External availability is deliberately not implied by catalog inclusion. */
+  linkStatus: "external-unverified";
+  catalogReviewedOn: string;
+};
 export type AnswerResource = {
   id: string;
   grade: Grade;
@@ -11,7 +18,13 @@ export type AnswerResource = {
 
 const videos = (
   entries: ReadonlyArray<readonly [label: string, duration: string, videoId: string]>,
-): VideoLink[] => entries.map(([label, duration, videoId]) => ({ label, duration, videoId }));
+): VideoLink[] => entries.map(([label, duration, videoId]) => ({
+  label,
+  duration,
+  videoId,
+  linkStatus: "external-unverified",
+  catalogReviewedOn: "2026-07-27",
+}));
 
 const pdfPath = (grade: Grade, subject: Subject) =>
   `/pdf/${grade}年级_${subject}_活动本答案影片索引.pdf`;

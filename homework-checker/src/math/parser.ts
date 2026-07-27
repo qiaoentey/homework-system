@@ -2,18 +2,37 @@ import Decimal from "decimal.js";
 import Fraction from "fraction.js";
 import { tokenize, type Token, type UnitCode } from "./tokenize";
 
-export type NumericValue =
-  | { kind: "decimal"; value: Decimal }
-  | { kind: "fraction"; value: Fraction };
+export type NumericValue = {
+  kind: "rational";
+  value: Fraction;
+  display: "decimal" | "fraction";
+  decimalPlaces?: number;
+};
 
 export type ExprNode =
   | { type: "value"; value: NumericValue; unit?: UnitCode }
+  | { type: "variable"; name: "x" }
   | { type: "unary"; operator: "+" | "-"; operand: ExprNode }
   | { type: "binary"; operator: "+" | "-" | "*" | "/"; left: ExprNode; right: ExprNode };
 
-export type ParsedEquation = { expression: ExprNode; studentAnswer: NumericValue; unit?: UnitCode };
+export type ArithmeticEquation = {
+  kind: "arithmetic";
+  expression: ExprNode;
+  studentAnswer: NumericValue;
+  unit?: UnitCode;
+};
+
+export type LinearEquation = {
+  kind: "linear";
+  left: ExprNode;
+  right: ExprNode;
+  variable: "x";
+  studentAnswer: NumericValue;
+};
+
+export type ParsedEquation = ArithmeticEquation | LinearEquation;
 export type ParseError = {
-  code: "invalid-character" | "invalid-number" | "unexpected-token" | "missing-equals" | "trailing-token";
+  code: "invalid-character" | "invalid-number" | "unexpected-token" | "missing-equals" | "trailing-token" | "too-complex";
   position: number;
 };
 export type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
@@ -24,18 +43,58 @@ class ParseFailure extends Error {
   }
 }
 
+const numberValue = (source: string): NumericValue => {
+  const decimalPlaces = source.includes(".") ? source.length - source.indexOf(".") - 1 : 0;
+  return {
+    kind: "rational",
+    value: new Fraction(source),
+    display: "decimal",
+    decimalPlaces,
+  };
+};
+
+const negated = (value: NumericValue): NumericValue => ({ ...value, value: value.value.neg() });
+
 class EquationParser {
   private index = 0;
 
   constructor(private readonly tokens: Token[]) {}
 
   parse(): ParsedEquation {
-    const expression = this.expression();
+    const left = this.expression();
     if (this.current()?.type !== "equals") this.fail("missing-equals");
     this.index += 1;
-    const answer = this.signedValue();
+    const right = this.expression();
+
+    if (this.current()?.type === "separator") {
+      this.index += 1;
+      const variable = this.current();
+      if (variable?.type !== "variable") this.fail("unexpected-token");
+      this.index += 1;
+      if (this.current()?.type !== "equals") this.fail("missing-equals");
+      this.index += 1;
+      const answer = this.signedValue();
+      if (answer.unit) this.fail("unexpected-token");
+      if (this.current()) this.fail("trailing-token");
+      if (!containsVariable(left) && !containsVariable(right)) this.fail("unexpected-token");
+      return {
+        kind: "linear",
+        left,
+        right,
+        variable: variable.value,
+        studentAnswer: answer.value,
+      };
+    }
+
     if (this.current()) this.fail("trailing-token");
-    return { expression, studentAnswer: answer.value, unit: answer.unit };
+    if (containsVariable(left) || containsVariable(right)) this.fail("unexpected-token");
+    const answer = answerFrom(right, (code) => this.fail(code));
+    return {
+      kind: "arithmetic",
+      expression: left,
+      studentAnswer: answer.value,
+      unit: answer.unit,
+    };
   }
 
   private expression(): ExprNode {
@@ -71,6 +130,10 @@ class EquationParser {
       this.index += 1;
       return node;
     }
+    if (token?.type === "variable") {
+      this.index += 1;
+      return { type: "variable", name: token.value };
+    }
     return { type: "value", ...this.value() };
   }
 
@@ -80,11 +143,20 @@ class EquationParser {
     if (!token || (token.type !== "number" && token.type !== "fraction")) this.fail("unexpected-token");
     this.index += 1;
     let value: NumericValue = token.type === "fraction"
-      ? { kind: "fraction", value: new Fraction(`${token.numerator}/${token.denominator}`) }
-      : { kind: "decimal", value: new Decimal(token.value) };
+      ? {
+          kind: "rational",
+          value: new Fraction(`${token.numerator}/${token.denominator}`),
+          display: "fraction",
+        }
+      : numberValue(token.value);
     if (this.current()?.type === "percent") {
       this.index += 1;
-      value = { kind: "decimal", value: toDecimal(value).dividedBy(100) };
+      value = {
+        kind: "rational",
+        value: value.value.div(100),
+        display: "decimal",
+        decimalPlaces: value.decimalPlaces,
+      };
     }
     const suffix = this.consumeUnit();
     if (unit && suffix && unit !== suffix) this.fail("unexpected-token");
@@ -97,13 +169,7 @@ class EquationParser {
     if (operator?.type !== "operator" || (operator.value !== "+" && operator.value !== "-")) return this.value();
     this.index += 1;
     const answer = this.value();
-    if (operator.value === "+") return answer;
-    return {
-      ...answer,
-      value: answer.value.kind === "fraction"
-        ? { kind: "fraction", value: answer.value.value.neg() }
-        : { kind: "decimal", value: answer.value.value.negated() },
-    };
+    return operator.value === "+" ? answer : { ...answer, value: negated(answer.value) };
   }
 
   private consumeUnit() {
@@ -122,14 +188,38 @@ class EquationParser {
   }
 }
 
-export const toDecimal = (value: NumericValue) => value.kind === "decimal"
-  ? value.value
-  : new Decimal(value.value.s.toString()).times(value.value.n.toString()).dividedBy(value.value.d.toString());
+const containsVariable = (node: ExprNode): boolean => {
+  if (node.type === "variable") return true;
+  if (node.type === "value") return false;
+  if (node.type === "unary") return containsVariable(node.operand);
+  return containsVariable(node.left) || containsVariable(node.right);
+};
 
-/** Parses only the documented equation grammar; it never evaluates source text. */
+const answerFrom = (
+  node: ExprNode,
+  fail: (code: ParseError["code"]) => never,
+): { value: NumericValue; unit?: UnitCode } => {
+  if (node.type === "value") return { value: node.value, unit: node.unit };
+  if (node.type === "unary" && node.operand.type === "value") {
+    return {
+      value: node.operator === "-" ? negated(node.operand.value) : node.operand.value,
+      unit: node.operand.unit,
+    };
+  }
+  return fail("unexpected-token");
+};
+
+export const toDecimal = (value: NumericValue) =>
+  new Decimal(value.value.s.toString())
+    .times(value.value.n.toString())
+    .dividedBy(value.value.d.toString());
+
+/** Parses only the documented arithmetic and bounded one-variable grammar. */
 export function parseEquation(text: string): Result<ParsedEquation, ParseError> {
+  if (text.length > 160) return { ok: false, error: { code: "too-complex", position: 160 } };
   const tokenized = tokenize(text);
   if (!tokenized.ok) return tokenized;
+  if (tokenized.value.length > 64) return { ok: false, error: { code: "too-complex", position: 0 } };
   try {
     return { ok: true, value: new EquationParser(tokenized.value).parse() };
   } catch (error) {

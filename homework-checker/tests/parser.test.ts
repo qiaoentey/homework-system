@@ -39,6 +39,22 @@ describe("parseEquation", () => {
     expect(parseEquation("six x seven = 42")).toMatchObject({ ok: false });
   });
 
+  it("parses only an explicit bounded one-variable solution form", () => {
+    expect(parseEquation("x + 3 = 7, x = 4")).toMatchObject({
+      ok: true,
+      value: { kind: "linear", variable: "x" },
+    });
+    expect(parseEquation("x + 3 = 7")).toMatchObject({ ok: false });
+    expect(parseEquation("y + 3 = 7, y = 4")).toMatchObject({ ok: false });
+  });
+
+  it("rejects oversized or deeply nested equations at the grammar boundary", () => {
+    expect(parseEquation(`${"(".repeat(40)}1${")".repeat(40)} = 1`))
+      .toMatchObject({ ok: false, error: { code: "too-complex" } });
+    expect(parseEquation(`${"1 + ".repeat(50)}1 = 51`))
+      .toMatchObject({ ok: false, error: { code: "too-complex" } });
+  });
+
   it("rejects executable text", () => {
     expect(parseEquation("alert(1)")).toMatchObject({ ok: false });
     expect(parseEquation("1 + 1 = window.location")).toMatchObject({ ok: false });

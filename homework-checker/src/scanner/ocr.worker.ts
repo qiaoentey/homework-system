@@ -7,16 +7,32 @@ const OFFLINE_LANGUAGES = ["eng", "msa", "chi_tra"];
 
 const send = (event: OcrWorkerEvent) => self.postMessage(event);
 
-const toLine = (line: Tesseract.Line): OcrLine => ({
-  text: line.text,
-  confidence: line.confidence,
-  box: {
-    x: line.bbox.x0,
-    y: line.bbox.y0,
-    width: line.bbox.x1 - line.bbox.x0,
-    height: line.bbox.y1 - line.bbox.y0,
-  },
-});
+const CRITICAL_SYMBOL = /[0-9+\-*/×÷=.%xX]/;
+
+export const toOcrLine = (line: Tesseract.Line): OcrLine => {
+  const criticalConfidences = line.words.flatMap((word) => {
+    const symbolConfidences = (word.symbols ?? [])
+      .filter((symbol) => CRITICAL_SYMBOL.test(symbol.text))
+      .map((symbol) => symbol.confidence);
+    if (symbolConfidences.length) return symbolConfidences;
+    return CRITICAL_SYMBOL.test(word.text) ? [word.confidence] : [];
+  });
+  const criticalConfidence = Math.min(
+    ...(criticalConfidences.length ? criticalConfidences : [line.confidence]),
+  );
+
+  return {
+    text: line.text,
+    confidence: line.confidence,
+    criticalConfidence,
+    box: {
+      x: line.bbox.x0,
+      y: line.bbox.y0,
+      width: line.bbox.x1 - line.bbox.x0,
+      height: line.bbox.y1 - line.bbox.y0,
+    },
+  };
+};
 
 let initializedWorker: Promise<Tesseract.Worker> | undefined;
 let activeWorker: Tesseract.Worker | undefined;
@@ -77,7 +93,7 @@ const recognize = async ({ image }: OcrRequest) => {
   send({ type: "progress", stage: "识别文字", progress: 0.6 });
   const result = await worker.recognize(canvas, {}, { blocks: true });
   const lines = result.data.blocks?.flatMap((block) => block.paragraphs.flatMap((paragraph) => paragraph.lines))
-    .map(toLine)
+    .map(toOcrLine)
     .filter((line) => line.text.trim()) ?? [];
   send({ type: "result", lines });
 };

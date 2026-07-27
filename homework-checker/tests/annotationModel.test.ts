@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createAnnotationState,
   dismissAnnotation,
+  restoreAnnotation,
   restoreRecognizedText,
   updateRecognizedText,
 } from "../src/annotation/annotationModel";
@@ -9,9 +10,11 @@ import type { QuestionRegion } from "../src/scanner/ocr.types";
 
 const region = (id: string, text: string): QuestionRegion => ({
   id,
-  lines: [{ text, confidence: 96, box: { x: 0, y: 0, width: 200, height: 30 } }],
+  lines: [{ text, confidence: 96, criticalConfidence: 96, box: { x: 0, y: 0, width: 200, height: 30 } }],
   box: { x: 0, y: 0, width: 200, height: 30 },
   confidence: 96,
+  criticalConfidence: 96,
+  locationConfidence: 0.96,
 });
 
 describe("annotationModel", () => {
@@ -49,5 +52,21 @@ describe("annotationModel", () => {
       originalRecognized: "47 + 28 = 65",
     });
     expect(dismissed.regionsByAnnotationId["question-1"]).toBe(state.regionsByAnnotationId["question-1"]);
+  });
+
+  it("restores a dismissed annotation without changing its current correction", () => {
+    const state = updateRecognizedText(
+      createAnnotationState([region("question-1", "47 + 28 = 65")]),
+      "question-1",
+      "47 + 28 = 75",
+    );
+    const restored = restoreAnnotation(dismissAnnotation(state, "question-1"), "question-1");
+
+    expect(restored.annotations[0]).toMatchObject({
+      dismissed: false,
+      recognized: "47 + 28 = 75",
+      originalRecognized: "47 + 28 = 65",
+      severity: "pass",
+    });
   });
 });

@@ -6,6 +6,7 @@ const exifRotatedFixture = fileURLToPath(new URL("./fixtures/exif-orientation-6.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const nativeCreateImageBitmap = window.createImageBitmap.bind(window);
+    const NativeWorker = window.Worker;
     const decodedBitmaps: Array<{ width: number; height: number }> = [];
     Object.defineProperty(window, "createImageBitmap", {
       configurable: true,
@@ -26,14 +27,21 @@ test.beforeEach(async ({ page }) => {
         this.onmessage?.({
           data: {
             type: "result",
-            lines: [{ text: "1 + 1 = 3", confidence: 96, box: { x: 0, y: 0, width: 1, height: 1 } }],
+            lines: [{ text: "1 + 1 = 3", confidence: 96, criticalConfidence: 96, box: { x: 0, y: 0, width: 1, height: 1 } }],
           },
         } as MessageEvent);
       }
 
       terminate() {}
     }
-    Object.defineProperty(window, "Worker", { configurable: true, value: FixedOcrWorker });
+    const RoutedWorker = new Proxy(NativeWorker, {
+      construct(target, args) {
+        return String(args[0]).includes("imagePreprocess.worker")
+          ? Reflect.construct(target, args)
+          : new FixedOcrWorker();
+      },
+    });
+    Object.defineProperty(window, "Worker", { configurable: true, value: RoutedWorker });
   });
 });
 

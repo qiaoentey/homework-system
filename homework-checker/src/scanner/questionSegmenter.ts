@@ -4,11 +4,16 @@ import type { Rect } from "./imagePipeline";
 // Primary-school worksheets commonly number items with a full stop, a closing
 // parenthesis, or Chinese enumeration punctuation. OCR also occasionally turns
 // `、` into `，`, so accept that conservative variant as a question boundary.
-const QUESTION_NUMBER = /^\s*(\d{1,3})[.)、，,]\s*/;
+const QUESTION_NUMBER = /^\s*(\d{1,3})(?:[)、]\s*|[.，,]\s+)/;
 
 type VisualRow = {
   lines: OcrLine[];
   box: Rect;
+};
+
+type QuestionGroup = {
+  lines: OcrLine[];
+  locationConfidence: number;
 };
 
 const median = (values: number[]) => {
@@ -54,12 +59,21 @@ const visualRows = (lines: OcrLine[], averageHeight: number): VisualRow[] => {
   });
 };
 
-const makeQuestion = (index: number, lines: OcrLine[]): QuestionRegion => ({
-  id: `question-${index + 1}`,
-  lines,
-  box: mergeBox(lines),
-  confidence: Math.round(lines.reduce((total, line) => total + line.confidence, 0) / lines.length),
-});
+const CRITICAL_TEXT = /[0-9+\-*/×÷=.%xX]/;
+
+const makeQuestion = (index: number, group: QuestionGroup): QuestionRegion => {
+  const criticalLines = group.lines.filter((line) => CRITICAL_TEXT.test(line.text));
+  return {
+    id: `question-${index + 1}`,
+    lines: group.lines,
+    box: mergeBox(group.lines),
+    confidence: Math.round(group.lines.reduce((total, line) => total + line.confidence, 0) / group.lines.length),
+    criticalConfidence: criticalLines.length
+      ? Math.min(...criticalLines.map((line) => line.criticalConfidence))
+      : 0,
+    locationConfidence: group.locationConfidence,
+  };
+};
 
 export function segmentQuestions(lines: OcrLine[]): QuestionRegion[] {
   const visibleLines = lines.filter((line) => line.text.trim() && line.box.width > 0 && line.box.height > 0);
@@ -68,8 +82,8 @@ export function segmentQuestions(lines: OcrLine[]): QuestionRegion[] {
   const averageHeight = median(visibleLines.map((line) => line.box.height));
   const rows = visualRows(visibleLines, averageHeight);
   const numbered = rows.some((row) => row.lines.some((line) => QUESTION_NUMBER.test(line.text)));
-  const groups: OcrLine[][] = [];
-  let current: OcrLine[] | undefined;
+  const groups: QuestionGroup[] = [];
+  let current: QuestionGroup | undefined;
 
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
@@ -80,7 +94,7 @@ export function segmentQuestions(lines: OcrLine[]): QuestionRegion[] {
 
     if (numbered) {
       if (startsNumberedQuestion) {
-        current = [];
+        current = { lines: [], locationConfidence: 0.96 };
         groups.push(current);
       } else if (!current || verticalGap > averageHeight * 1.8) {
         // Keep worksheet headers, directions and footers out of numbered
@@ -89,10 +103,18 @@ export function segmentQuestions(lines: OcrLine[]): QuestionRegion[] {
         continue;
       }
     } else if (!current || startsUnnumberedQuestion) {
-      current = [];
+      const gapRatio = averageHeight ? verticalGap / averageHeight : 0;
+      current = {
+        lines: [],
+        locationConfidence: rows.length === 1
+          ? 0.9
+          : startsUnnumberedQuestion
+            ? Math.min(0.96, 0.82 + Math.max(0, gapRatio - 1.8) * 0.08)
+            : 0.82,
+      };
       groups.push(current);
     }
-    current?.push(...row.lines);
+    current?.lines.push(...row.lines);
   }
 
   return groups.map((group, index) => makeQuestion(index, group));

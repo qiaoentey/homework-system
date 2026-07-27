@@ -25,9 +25,9 @@ p { color: var(--muted); line-height: 1.6; }
 .scanner__input-action { position: relative; cursor: pointer; }
 .scanner__input-action input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .scanner__preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; padding: 18px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
-.scanner__image-frame { position: relative; line-height: 0; }
+.scanner__image-frame { position: relative; width: 100%; margin: 0 auto; overflow: hidden; border-radius: 10px; background: #edf0f7; line-height: 0; }
 .scanner__image-frame--selecting { cursor: crosshair; touch-action: none; }
-.scanner__image-frame img { width: 100%; max-height: 420px; object-fit: contain; border-radius: 10px; background: #edf0f7; }
+.scanner__image-frame > img { display: block; width: 100%; height: 100%; object-fit: fill; border-radius: 10px; }
 .scanner__selection { position: absolute; display: block; border: 3px solid #3056d3; background: rgb(48 86 211 / 18%); pointer-events: none; }
 .scanner__controls { display: flex; flex-wrap: wrap; gap: 10px; }
 .scan-start { min-height: 44px; padding: 0 16px; border: 1px solid var(--primary); border-radius: 999px; background: var(--primary); color: white; cursor: pointer; font-weight: 700; }
@@ -37,6 +37,8 @@ p { color: var(--muted); line-height: 1.6; }
 .scanner__results { display: grid; gap: 14px; margin-top: 20px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
 .scanner__results h2 { margin: 0; }
 .scanner__result-summary { margin: 0; color: var(--ink); font-weight: 800; }
+.scanner__result-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.scanner__result-action { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; font-weight: 750; }
 .annotation-canvas { position: relative; width: 100%; margin: 0 auto; overflow: hidden; border-radius: 10px; background: #edf0f7; line-height: 0; }
 .annotation-canvas img, .annotation-canvas canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-height: none; }
 .annotation-canvas img { object-fit: fill; }
@@ -67,6 +69,9 @@ legend { margin-bottom: 9px; font-weight: 750; }
 .video-list a { justify-content: space-between; background: #f3f6ff; color: var(--primary-dark); }
 .video-list span:last-child { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem; }
 button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.pwa-update { position: fixed; z-index: 20; right: 16px; bottom: 16px; display: grid; gap: 12px; width: min(420px, calc(100% - 32px)); padding: 16px; border: 2px solid var(--primary); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+.pwa-update p { margin: 0; color: var(--ink); }
+.pwa-update > div { display: flex; flex-wrap: wrap; gap: 8px; }
 
 @media (max-width: 560px) {
   .page-shell { width: min(100% - 24px, 920px); padding-top: 24px; }

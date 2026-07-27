@@ -8,11 +8,20 @@ type CalibrationSample = {
 };
 
 type Box = { x: number; y: number; width: number; height: number };
-type ExpectedAnnotation = { question: string; severity: "error" | "review" | "pass"; box: Box };
+type ExpectedAnnotation = {
+  question: string;
+  outcome: "correct" | "wrong" | "unjudgeable";
+  severity: "error" | "review" | "pass";
+  maxOcrDistance?: number;
+  box: Box;
+};
 
 const samples: CalibrationSample[] = [
   { file: "grade1-addition.jpg", expectedQuestionCount: 3 },
+  { file: "grade2-arithmetic.jpg", expectedQuestionCount: 3 },
   { file: "grade3-units.jpg", expectedQuestionCount: 3 },
+  { file: "grade4-decimals.jpg", expectedQuestionCount: 3 },
+  { file: "grade5-equations.jpg", expectedQuestionCount: 3 },
   { file: "grade6-fractions.jpg", expectedQuestionCount: 3 },
 ];
 
@@ -22,8 +31,8 @@ const samplePath = (file: string) =>
 // The OCR module worker is lazily imported only after a user starts checking.
 // Prefetch the exact built worker before upload so it is part of the observed
 // static baseline; do not allow arbitrary paths under /assets/.
-const ocrWorkerAssets = readdirSync(fileURLToPath(new URL("../dist/assets", import.meta.url)))
-  .filter((name) => /^ocr\.worker-[\w-]+\.js$/.test(name))
+const localWorkerAssets = readdirSync(fileURLToPath(new URL("../dist/assets", import.meta.url)))
+  .filter((name) => /^(?:ocr|imagePreprocess)\.worker-[\w-]+\.js$/.test(name))
   .map((name) => `/assets/${name}`);
 
 const expectedAnnotations = JSON.parse(readFileSync(
@@ -32,7 +41,7 @@ const expectedAnnotations = JSON.parse(readFileSync(
 )) as { samples: Array<{ file: string; expectedAnnotations: ExpectedAnnotation[] }> };
 
 const normalizedEquation = (text: string) => text
-  .replace(/^\s*\d{1,3}[.)、，,]\s*/, "")
+  .replace(/^\s*\d{1,3}(?:[)、]\s*|[.，,]\s+)/, "")
   .replaceAll(/\s/g, "")
   .replaceAll("×", "x");
 
@@ -135,7 +144,7 @@ const waitForOcrResult = async (page: import("playwright/test").Page, browserErr
 test.describe("offline OCR calibration and privacy network audit", () => {
   test.setTimeout(180_000);
 
-  test("uses the actual Chromium worker, marks no correct synthetic answer red, and uploads nothing", async ({ browserName, page }) => {
+  test("uses the actual Chromium workers with true-red sensitivity, zero false red, and no upload", async ({ browserName, page }) => {
     test.skip(browserName !== "chromium", "OffscreenCanvas OCR calibration is measured on Chromium; the iPhone project remains covered by its normal UI E2E suite.");
     const requests: Array<{ url: string; method: string; postData: string | null }> = [];
     const postUploadAudits: Array<{ request: { url: string; method: string; postData: string | null }; preUploadPaths: Set<string> }> = [];
@@ -155,8 +164,12 @@ test.describe("offline OCR calibration and privacy network audit", () => {
     page.on("pageerror", (error) => browserErrors.push(error.message));
     const calibration: Array<{
       file: string; elapsedMs: number; questionCount: number; redCount: number; reviewCount: number;
+      trueRedCount: number; falseRedCount: number; unjudgeableReviewCount: number;
       exactEquationCount: number; expectedEquationCount: number; keyCharacterAccuracy: number; recognized: string[];
     }> = [];
+    let totalTrueRed = 0;
+    let totalFalseRed = 0;
+    let totalUnjudgeableReview = 0;
 
     for (const sample of samples) {
       const pageStart = requests.length;
@@ -166,7 +179,7 @@ test.describe("offline OCR calibration and privacy network audit", () => {
         await Promise.all(paths.map((path) => fetch(path, { cache: "no-store" }).then((response) => {
           if (!response.ok) throw new Error(`Unable to preload ${path}`);
         })));
-      }, ocrWorkerAssets);
+      }, localWorkerAssets);
       const preUploadPaths = new Set(requests.slice(pageStart)
         .filter(({ url }) => ["http:", "https:"].includes(new URL(url).protocol))
         .map(({ url }) => new URL(url).pathname));
@@ -203,16 +216,27 @@ test.describe("offline OCR calibration and privacy network audit", () => {
         / expectedEquations.join("").length;
 
       const unmatched = new Set(actualAnnotations.keys());
+      let trueRedCount = 0;
+      let falseRedCount = 0;
+      let unjudgeableReviewCount = 0;
       for (const expectedAnnotation of expected) {
         const expectedText = normalizedEquation(expectedAnnotation.question);
         const match = [...unmatched]
           .map((index) => ({ index, distance: levenshteinDistance(expectedText, normalizedEquation(actualAnnotations[index].recognized)) }))
           .sort((left, right) => left.distance - right.distance)[0];
         expect(match, `${sample.file} must have a one-to-one target for ${expectedAnnotation.question}`).toBeDefined();
-        expect(match!.distance, `${sample.file} OCR target must correspond to ${expectedAnnotation.question}`).toBeLessThanOrEqual(1);
+        expect(match!.distance, `${sample.file} OCR target must correspond to ${expectedAnnotation.question}`)
+          .toBeLessThanOrEqual(expectedAnnotation.maxOcrDistance ?? 1);
         unmatched.delete(match!.index);
         const actualAnnotation = actualAnnotations[match!.index];
-        expect(actualAnnotation.severity, `${sample.file} severity for ${expectedAnnotation.question}`).toBe(expectedAnnotation.severity);
+        if (expectedAnnotation.outcome === "correct") {
+          expect(actualAnnotation.severity, `${sample.file} correct answer must never be red`).not.toBe("error");
+        } else {
+          expect(actualAnnotation.severity, `${sample.file} severity for ${expectedAnnotation.question}`).toBe(expectedAnnotation.severity);
+        }
+        if (expectedAnnotation.outcome === "wrong" && actualAnnotation.severity === "error") trueRedCount += 1;
+        if (expectedAnnotation.outcome === "correct" && actualAnnotation.severity === "error") falseRedCount += 1;
+        if (expectedAnnotation.outcome === "unjudgeable" && actualAnnotation.severity === "review") unjudgeableReviewCount += 1;
         for (const coordinate of ["x", "y", "width", "height"] as const) {
           expect(
             Math.abs(actualAnnotation.box[coordinate] - expectedAnnotation.box[coordinate]),
@@ -226,10 +250,14 @@ test.describe("offline OCR calibration and privacy network audit", () => {
       // orange review marker is acceptable; a correct calibration answer must
       // never become a red error. Expected equations remain test data only and
       // are not passed to application code.
-      expect(redCount, `${sample.file} must have no red false positive`).toBe(0);
+      expect(falseRedCount, `${sample.file} must have no red false positive`).toBe(0);
       expect(questionCount, `${sample.file} should yield recognizable questions`).toBeGreaterThanOrEqual(sample.expectedQuestionCount);
+      totalTrueRed += trueRedCount;
+      totalFalseRed += falseRedCount;
+      totalUnjudgeableReview += unjudgeableReviewCount;
       calibration.push({
         file: sample.file, elapsedMs: Math.round(elapsedMs), questionCount, redCount, reviewCount,
+        trueRedCount, falseRedCount, unjudgeableReviewCount,
         exactEquationCount, expectedEquationCount: expected.length, keyCharacterAccuracy,
         recognized: actualAnnotations.map((item) => item.recognized),
       });
@@ -237,6 +265,9 @@ test.describe("offline OCR calibration and privacy network audit", () => {
         .filter(({ url }) => ["http:", "https:"].includes(new URL(url).protocol))
         .map((request) => ({ request, preUploadPaths })));
     }
+    expect(totalTrueRed, "calibration must prove at least one deliberate wrong answer becomes red").toBeGreaterThanOrEqual(1);
+    expect(totalFalseRed, "calibration must keep every correct answer out of red").toBe(0);
+    expect(totalUnjudgeableReview, "calibration must keep at least one unjudgeable answer orange").toBeGreaterThanOrEqual(1);
 
     const networkRequests = requests.filter(({ url }) => ["http:", "https:"].includes(new URL(url).protocol));
     const recognizedText = new Set(calibration.flatMap((sample) => sample.recognized));
@@ -272,5 +303,15 @@ test.describe("offline OCR calibration and privacy network audit", () => {
       body: JSON.stringify({ calibration, requestAudit }, null, 2),
       contentType: "application/json",
     });
+  });
+
+  test("runs the real preprocessing and OCR workers in current WebKit", async ({ browserName, page }) => {
+    test.skip(browserName !== "webkit", "This smoke specifically checks the current WebKit worker stack.");
+    await page.goto("/scan");
+    await page.getByLabel("从相册选择").setInputFiles(samplePath("grade2-arithmetic.jpg"));
+    await expect(page.getByRole("button", { name: "开始检查" })).toBeEnabled();
+    await page.getByRole("button", { name: "开始检查" }).click();
+    await waitForOcrResult(page, []);
+    await expect(page.locator(".annotation-canvas__target")).toHaveCount(3);
   });
 });

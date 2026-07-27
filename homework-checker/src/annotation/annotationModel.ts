@@ -48,3 +48,13 @@ export function dismissAnnotation(state: AnnotationState, id: string): Annotatio
   annotations[index] = { ...annotations[index], dismissed: true };
   return { ...state, annotations };
 }
+
+/** Makes a dismissed annotation active again without discarding teacher edits. */
+export function restoreAnnotation(state: AnnotationState, id: string): AnnotationState {
+  const index = state.annotations.findIndex((annotation) => annotation.id === id);
+  if (index < 0) return state;
+
+  const annotations = [...state.annotations];
+  annotations[index] = { ...annotations[index], dismissed: false };
+  return { ...state, annotations };
+}

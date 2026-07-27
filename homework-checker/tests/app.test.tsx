@@ -7,6 +7,7 @@ import { MathScanner, type OcrWorkerFactory } from "../src/scanner/MathScanner";
 
 vi.mock("../src/scanner/imagePipeline", () => ({
   prepareImage: vi.fn(),
+  MAX_SOURCE_PIXELS: 12_000_000,
 }));
 
 vi.mock("../src/privacy/sessionAssets", () => ({
@@ -19,6 +20,8 @@ const preparedImage = {
   bitmap: {} as ImageBitmap,
   width: 800,
   height: 1000,
+  sourceWidth: 2400,
+  sourceHeight: 3000,
   displayUrl: "blob:prepared",
   release: vi.fn(),
   toOriginal: (rect: { x: number; y: number; width: number; height: number }) => rect,
@@ -32,7 +35,7 @@ const fakeOcrWorker = (text: string): OcrWorkerFactory => () => {
     postMessage: () => queueMicrotask(() => worker.onmessage?.(new MessageEvent("message", {
       data: {
         type: "result",
-        lines: [{ text, confidence: 96, box: { x: 40, y: 90, width: 360, height: 60 } }],
+        lines: [{ text, confidence: 96, criticalConfidence: 96, box: { x: 40, y: 90, width: 360, height: 60 } }],
       },
     }))),
     terminate: vi.fn(),
@@ -46,6 +49,12 @@ const selectImage = async (input: HTMLElement, name: string) => {
 
 describe("App", () => {
   beforeEach(() => window.history.replaceState({}, "", "/"));
+
+  it("explains that the first local OCR run needs a connection before later offline use", () => {
+    render(<MathScanner workerFactory={fakeOcrWorker("1 + 1 = 2")} />);
+    expect(screen.getByText(/首次使用.*联网.*识别模型/)).toBeVisible();
+    expect(screen.getByText(/完成首次下载后.*离线/)).toBeVisible();
+  });
 
   it("opens grade 1 mathematics from the answer library", async () => {
     const user = userEvent.setup();
@@ -74,6 +83,28 @@ describe("App", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: "开始检查" }));
 
     expect(await screen.findByText("发现 1 个确定错误")).toBeVisible();
+    expect(screen.getByRole("button", { name: "查看第 1 题错误" })).toBeVisible();
+  });
+
+  it("keeps a 44px result action available so a canceled marker can be restored", async () => {
+    vi.mocked(prepareImage).mockResolvedValue(preparedImage);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage: vi.fn(),
+      getImageData: () => ({ data: new Uint8ClampedArray(800 * 1000 * 4), width: 800, height: 1000 }) as ImageData,
+      clearRect: vi.fn(), save: vi.fn(), restore: vi.fn(), strokeRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D);
+
+    render(<MathScanner workerFactory={fakeOcrWorker("47 + 28 = 65")} />);
+    await selectImage(screen.getByLabelText("从相册选择"), "math-page.jpg");
+    await waitFor(() => expect(screen.getByRole("button", { name: "开始检查" })).toBeEnabled());
+    await userEvent.setup().click(screen.getByRole("button", { name: "开始检查" }));
+    const resultAction = await screen.findByRole("button", { name: "打开第 1 题结果（错误）" });
+    expect(resultAction).toHaveClass("scanner__result-action");
+
+    await userEvent.setup().click(resultAction);
+    await userEvent.setup().click(screen.getByRole("button", { name: "取消标记" }));
+    expect(screen.queryByRole("button", { name: "查看第 1 题错误" })).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "恢复标记" }));
     expect(screen.getByRole("button", { name: "查看第 1 题错误" })).toBeVisible();
   });
 });

@@ -23,9 +23,10 @@ export type UnitCode = KnownUnitCode | "unknown";
 export type Token =
   | { type: "number"; value: string; position: number }
   | { type: "fraction"; numerator: string; denominator: string; position: number }
+  | { type: "variable"; value: "x"; position: number }
   | { type: "unit"; value: UnitCode; position: number }
   | { type: "operator"; value: "+" | "-" | "*" | "/"; position: number }
-  | { type: "percent" | "leftParen" | "rightParen" | "equals"; position: number };
+  | { type: "percent" | "leftParen" | "rightParen" | "equals" | "separator"; position: number };
 
 export type TokenizeError = { code: "invalid-character" | "invalid-number"; position: number };
 export type TokenizeResult = { ok: true; value: Token[] } | { ok: false; error: TokenizeError };
@@ -41,7 +42,12 @@ const isStandaloneMultiplicationX = (source: string, index: number) => {
   if (source[index].toLowerCase() !== "x") return false;
   const before = source.slice(0, index).trimEnd().at(-1);
   const after = source.slice(index + 1).trimStart()[0];
-  return Boolean(before && after && !isLetter(source[index - 1]) && !isLetter(source[index + 1]));
+  return Boolean(
+    before
+    && after
+    && /[0-9A-Za-z)²%]/.test(before)
+    && /[0-9(R]/.test(after),
+  );
 };
 
 const normalizeNumber = (raw: string) => {
@@ -64,7 +70,10 @@ export function tokenize(source: string): TokenizeResult {
     if (isDigit(character)) {
       const position = index;
       let raw = "";
-      while (isDigit(source[index]) || source[index] === "," || source[index] === ".") raw += source[index++];
+      while (
+        isDigit(source[index])
+        || ((source[index] === "," || source[index] === ".") && isDigit(source[index + 1]))
+      ) raw += source[index++];
       const normalized = normalizeNumber(raw);
       if (!normalized) return { ok: false, error: { code: "invalid-number", position } };
       if (source[index] === "/" && /^\d+$/.test(normalized) && isDigit(source[index + 1])) {
@@ -79,6 +88,10 @@ export function tokenize(source: string): TokenizeResult {
     }
     if (character.toLowerCase() === "x" && isStandaloneMultiplicationX(source, index)) {
       tokens.push({ type: "operator", value: "*", position: index++ });
+      continue;
+    }
+    if (character.toLowerCase() === "x") {
+      tokens.push({ type: "variable", value: "x", position: index++ });
       continue;
     }
     if (isLetter(character)) {
@@ -102,6 +115,7 @@ export function tokenize(source: string): TokenizeResult {
     else if (character === ")") tokens.push({ type: "rightParen", position: index++ });
     else if (character === "=") tokens.push({ type: "equals", position: index++ });
     else if (character === "%") tokens.push({ type: "percent", position: index++ });
+    else if (character === "," || character === ";") tokens.push({ type: "separator", position: index++ });
     else return { ok: false, error: { code: "invalid-character", position: index } };
   }
   return { ok: true, value: tokens };

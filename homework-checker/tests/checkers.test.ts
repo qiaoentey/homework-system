@@ -32,6 +32,50 @@ describe("checkEquation", () => {
     expect(check("1/3 m × 3 = 1 m")).toMatchObject({ status: "correct", expected: "1 m" });
   });
 
+  it.each([
+    "1/3 × 3 = 1",
+    "1/3 ÷ 2 = 1/6",
+    "1/3 + 2 = 7/3",
+    "1/3 + 0.5 = 5/6",
+    "12.5% × 8 = 1",
+    "0.1 + 1/5 = 0.3",
+  ])("never marks the supported correct mixed equation %s as incorrect", (equation) => {
+    expect(check(equation).status).toBe("correct");
+  });
+
+  it("rounds a currency result to sen before comparing and displaying it", () => {
+    expect(check("RM 10 / 3 = RM 3.33")).toMatchObject({
+      status: "correct",
+      expected: "RM 3.33",
+    });
+    expect(check("RM 10 / 3 = RM 3.32")).toMatchObject({
+      status: "incorrect",
+      expected: "RM 3.33",
+    });
+  });
+
+  it("reviews an inexact decimal division when no rounding precision is stated", () => {
+    expect(check("1 / 3 = 0.33")).toMatchObject({
+      status: "uncertain",
+      expected: undefined,
+      reason: expect.stringMatching(/round/i),
+    });
+  });
+
+  it.each([
+    ["x + 3 = 7, x = 4", "4"],
+    ["2 × x + 3 = 11, x = 4", "4"],
+    ["x / 2 = 3, x = 6", "6"],
+    ["3/4 × x = 3, x = 4", "4"],
+  ])("checks the bounded one-variable equation %s", (equation, expected) => {
+    expect(check(equation)).toMatchObject({ status: "correct", expected });
+  });
+
+  it("reviews non-linear and non-unique equations instead of guessing", () => {
+    expect(check("x × x = 4, x = 2")).toMatchObject({ status: "uncertain", expected: undefined });
+    expect(check("x + 1 = x + 1, x = 5")).toMatchObject({ status: "uncertain", expected: undefined });
+  });
+
   it("uses parentheses to change precedence", () => {
     expect(check("(2 + 3) × 4 = 20")).toMatchObject({ status: "correct" });
     expect(check("(2 + 3) × 4 = 14")).toMatchObject({ status: "incorrect" });
