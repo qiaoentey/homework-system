@@ -83,7 +83,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "一年级" }));
     await user.click(screen.getByRole("button", { name: "数学" }));
     expect(screen.getByRole("link", { name: "打开一年级数学 PDF" }))
-      .toHaveAttribute("href", "/pdf/1年级_数学_活动本答案影片索引.pdf");
+      .toHaveAttribute("href", "pdf/1年级_数学_活动本答案影片索引.pdf");
   });
 
   it("shows an editable result after local OCR finds a definite error", async () => {

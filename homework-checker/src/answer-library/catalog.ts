@@ -27,7 +27,7 @@ const videos = (
 }));
 
 const pdfPath = (grade: Grade, subject: Subject) =>
-  `/pdf/${grade}年级_${subject}_活动本答案影片索引.pdf`;
+  `pdf/${grade}年级_${subject}_活动本答案影片索引.pdf`;
 
 const resource = (
   id: string,

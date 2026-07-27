@@ -5,6 +5,9 @@ describe("answer catalog", () => {
   it("contains exactly 12 unique grade-subject PDF paths", () => {
     expect(ANSWER_RESOURCES).toHaveLength(12);
     expect(new Set(ANSWER_RESOURCES.map((item) => item.pdfPath)).size).toBe(12);
+    expect(ANSWER_RESOURCES.every((item) =>
+      item.pdfPath.startsWith("pdf/") && !item.pdfPath.startsWith("/pdf/")
+    )).toBe(true);
   });
 
   it("keeps the complete external-video inventory intentional and status-labelled", () => {

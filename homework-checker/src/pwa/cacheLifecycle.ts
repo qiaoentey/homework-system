@@ -1,11 +1,15 @@
-const APP_ROUTES = new Set(["/", "/scan", "/answers"]);
+import { normalizeBasePath } from "./deploymentPaths";
+
 export const OCR_CACHE_PREFIX = "homework-checker-ocr-";
 
 export const isAppShellNavigation = (
   url: URL,
   mode: RequestMode,
   origin: string,
-) => mode === "navigate" && url.origin === origin && APP_ROUTES.has(url.pathname);
+  basePath: string,
+) => mode === "navigate"
+  && url.origin === origin
+  && url.pathname === normalizeBasePath(basePath);
 
 export const obsoleteOcrCacheNames = (
   names: readonly string[],

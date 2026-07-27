@@ -1,9 +1,11 @@
 /// <reference lib="webworker" />
 
 import { createWorker, OEM } from "tesseract.js";
+import { pathInBase } from "../pwa/deploymentPaths";
 import type { OcrLine, OcrRequest, OcrWorkerEvent } from "./ocr.types";
 
 const OFFLINE_LANGUAGES = ["eng", "msa", "chi_tra"];
+const OCR_ROOT = pathInBase(import.meta.env.BASE_URL, "ocr");
 
 const send = (event: OcrWorkerEvent) => self.postMessage(event);
 
@@ -48,13 +50,13 @@ export async function terminateFailedOcrWorker(worker: Pick<Tesseract.Worker, "t
 const getWorker = async () => {
   if (!initializedWorker) {
     initializedWorker = createWorker(OFFLINE_LANGUAGES, OEM.LSTM_ONLY, {
-      langPath: "/ocr",
-      workerPath: "/ocr/tesseract-worker.min.js",
+      langPath: OCR_ROOT,
+      workerPath: `${OCR_ROOT}/tesseract-worker.min.js`,
       // Tesseract's default Blob wrapper cannot import an absolute public URL
       // reliably when it is itself spawned from this module worker. Spawn the
       // bundled same-origin worker directly so this remains fully offline.
       workerBlobURL: false,
-      corePath: "/ocr",
+      corePath: OCR_ROOT,
       cacheMethod: "none",
       logger: ({ status, progress }) => {
         const isRecognizing = status.toLowerCase().includes("recognizing");

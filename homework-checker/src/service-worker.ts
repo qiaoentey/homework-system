@@ -11,9 +11,12 @@ import {
   OCR_CACHE_PREFIX,
   type ServiceWorkerUpdateScope,
 } from "./pwa/cacheLifecycle";
+import { normalizeBasePath, pathInBase } from "./pwa/deploymentPaths";
 
 const serviceWorker = self as unknown as ServiceWorkerGlobalScope;
 const OCR_CACHE_NAME = `${OCR_CACHE_PREFIX}${__OCR_CACHE_VERSION__}`;
+const BASE_PATH = normalizeBasePath(import.meta.env.BASE_URL);
+const OCR_PATH = pathInBase(BASE_PATH, "ocr/");
 
 setCacheNameDetails({ prefix: "homework-checker", suffix: "app" });
 precacheAndRoute((self as unknown as { __WB_MANIFEST: Array<string | { url: string; revision?: string }> }).__WB_MANIFEST);
@@ -29,15 +32,20 @@ installServiceWorkerUpdateLifecycle(
 );
 
 registerRoute(
-  ({ request, url }) => isAppShellNavigation(url, request.mode, serviceWorker.location.origin),
-  createHandlerBoundToURL("index.html"),
+  ({ request, url }) => isAppShellNavigation(
+    url,
+    request.mode,
+    serviceWorker.location.origin,
+    BASE_PATH,
+  ),
+  createHandlerBoundToURL(pathInBase(BASE_PATH, "index.html")),
 );
 
 // OCR resources are intentionally excluded from the install precache (~26 MB).
 // They are added only after a successful first scan, and blob: photo URLs never
 // match this same-origin route.
 registerRoute(
-  ({ url }) => url.origin === serviceWorker.location.origin && url.pathname.startsWith("/ocr/"),
+  ({ url }) => url.origin === serviceWorker.location.origin && url.pathname.startsWith(OCR_PATH),
   new CacheFirst({
     cacheName: OCR_CACHE_NAME,
     plugins: [new CacheableResponsePlugin({ statuses: [200] })],
