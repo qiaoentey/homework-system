@@ -35,5 +35,10 @@
     "playwright": "latest",
     "typescript": "latest",
     "vitest": "latest"
+  },
+  "overrides": {
+    "filelist": {
+      "minimatch": "10.2.5"
+    }
   }
 }
