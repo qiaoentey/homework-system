@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 import { parseRosterCsv, ROSTER_FILES } from "../scripts/import-rosters.mjs";
+import { readSession } from "../worker/auth.js";
 import worker from "../worker/index.js";
 import { createSitesD1 } from "./helpers/sitesD1.mjs";
 
@@ -286,6 +287,20 @@ test("rejects a tampered password-session cookie", async () => {
       headers: { cookie: `${cookie.slice(0, -1)}${replacement}` },
     });
     assert.equal(response.status, 401);
+  });
+});
+
+test("rejects an expired password-session cookie", async () => {
+  await withD1(async (env) => {
+    const cookie = await loginCookie(env.DB);
+    const identity = await readSession(
+      new Request("https://example.test/api/session", {
+        headers: { cookie },
+      }),
+      workerEnv({ DB: env.DB }),
+      Date.now() + (12 * 60 * 60 * 1000) + 1_000,
+    );
+    assert.equal(identity, null);
   });
 });
 
