@@ -75,11 +75,7 @@ export async function apiRequest(path, {
 
 export const sessionApi = {
   current: () => apiRequest("/api/session"),
-  googleLogin: (credential) => apiRequest("/api/session/google", {
-    method: "POST",
-    body: { credential },
-  }),
-  emergencyLogin: (password) => apiRequest("/api/session/emergency", {
+  passwordLogin: (password) => apiRequest("/api/session/password", {
     method: "POST",
     body: { password },
   }),

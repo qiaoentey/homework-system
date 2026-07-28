@@ -193,62 +193,25 @@ describe("API boundary", () => {
   });
 });
 
-describe("login choices", () => {
+describe("shared password login", () => {
   afterEach(() => {
     cleanup();
-    delete window.google;
     vi.unstubAllGlobals();
   });
 
-  it("posts only the emergency password, disables duplicate submit, and clears failures", async () => {
-    let finishEmergency;
-    const emergencyResponse = new Promise((resolve) => {
-      finishEmergency = resolve;
+  it("uses one account-free password form and recovers after a failed attempt", async () => {
+    let finishFirstLogin;
+    const firstLoginResponse = new Promise((resolve) => {
+      finishFirstLogin = resolve;
     });
-    let emergencyRequest;
+    const passwordRequests = [];
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
       if (url === "/api/session") return jsonResponse(401, { error: "Authentication required" });
-      if (url === "/api/session/emergency") {
-        emergencyRequest = JSON.parse(options.body);
-        return emergencyResponse;
-      }
-      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
-    }));
-
-    render(<App />);
-    const password = await screen.findByLabelText("紧急密码");
-    fireEvent.change(password, { target: { value: "private-access" } });
-    fireEvent.click(screen.getByRole("button", { name: "紧急登录" }));
-
-    await waitFor(() => expect(screen.getByRole("button", { name: "登录中…" })).toBeDisabled());
-    expect(emergencyRequest).toEqual({ password: "private-access" });
-
-    await act(async () => {
-      finishEmergency(jsonResponse(401, { error: "Invalid emergency password" }));
-    });
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("登录失败，请重试");
-    expect(password).toHaveValue("");
-    expect(screen.queryByText("Invalid emergency password")).not.toBeInTheDocument();
-  });
-
-  it("sends a Google Identity Services credential and opens the branch entrance", async () => {
-    let credentialCallback;
-    window.google = {
-      accounts: {
-        id: {
-          initialize(options) {
-            credentialCallback = options.callback;
-          },
-          renderButton() {},
-        },
-      },
-    };
-    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
-      if (url === "/api/session") return jsonResponse(401, { error: "Authentication required" });
-      if (url === "/api/session/google") {
-        expect(JSON.parse(options.body)).toEqual({ credential: "google-id-token" });
-        return jsonResponse(204);
+      if (url === "/api/session/password") {
+        passwordRequests.push(JSON.parse(options.body));
+        return passwordRequests.length === 1
+          ? firstLoginResponse
+          : jsonResponse(204);
       }
       if (url === "/api/catalog") return jsonResponse(200, catalog);
       throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
@@ -256,72 +219,32 @@ describe("login choices", () => {
 
     render(<App />);
     expect(await screen.findByRole("heading", { name: "登录点名系统" })).toBeVisible();
-    expect(screen.getByLabelText("Google 登录")).toBeVisible();
-    await waitFor(() => expect(credentialCallback).toBeTypeOf("function"));
+    expect(screen.getByText("请输入系统密码")).toBeVisible();
+    expect(screen.queryByLabelText("Google 登录")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("紧急密码")).not.toBeInTheDocument();
 
-    await act(async () => {
-      await credentialCallback({ credential: "google-id-token" });
-    });
-
-    expect(await screen.findByRole("heading", { name: "请选择分院" })).toBeVisible();
-  });
-
-  it("recovers login methods after a deferred Google credential rejection", async () => {
-    let credentialCallback;
-    window.google = {
-      accounts: {
-        id: {
-          initialize(options) {
-            credentialCallback = options.callback;
-          },
-          renderButton() {},
-        },
-      },
-    };
-    let rejectGoogleLogin;
-    const deferredGoogleLogin = new Promise((resolve, reject) => {
-      rejectGoogleLogin = reject;
-    });
-    let googleLoginAttempts = 0;
-    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
-      if (url === "/api/session") return jsonResponse(401, { error: "Authentication required" });
-      if (url === "/api/session/google") {
-        googleLoginAttempts += 1;
-        if (googleLoginAttempts === 1) return deferredGoogleLogin;
-        expect(JSON.parse(options.body)).toEqual({ credential: "later-google-id-token" });
-        return jsonResponse(204);
-      }
-      if (url === "/api/catalog") return jsonResponse(200, catalog);
-      throw new Error(`Unexpected request: ${url}`);
-    }));
-
-    render(<App />);
-    const password = await screen.findByLabelText("紧急密码");
+    const password = screen.getByLabelText("系统密码");
     fireEvent.change(password, { target: { value: "private-access" } });
-    await waitFor(() => expect(credentialCallback).toBeTypeOf("function"));
-    let firstAttempt;
-    act(() => {
-      firstAttempt = credentialCallback({ credential: "bad-google-id-token" });
-    });
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
 
-    await waitFor(() => {
-      expect(password).toBeDisabled();
-      expect(screen.getByRole("button", { name: "登录中…" })).toBeDisabled();
-    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "登录中…" })).toBeDisabled());
+    expect(passwordRequests).toEqual([{ password: "private-access" }]);
 
     await act(async () => {
-      rejectGoogleLogin(new Error("deferred Google rejection"));
-      await firstAttempt;
+      finishFirstLogin(jsonResponse(401, { error: "Invalid password" }));
     });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("登录失败，请重试");
+    expect(await screen.findByRole("alert")).toHaveTextContent("密码错误，请重试");
+    expect(password).toHaveValue("");
     expect(password).toBeEnabled();
-    expect(screen.getByRole("button", { name: "紧急登录" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "登录" })).toBeDisabled();
 
-    await act(async () => {
-      await credentialCallback({ credential: "later-google-id-token" });
-    });
-
+    fireEvent.change(password, { target: { value: "later-access" } });
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
     expect(await screen.findByRole("heading", { name: "请选择分院" })).toBeVisible();
+    expect(passwordRequests).toEqual([
+      { password: "private-access" },
+      { password: "later-access" },
+    ]);
   });
 });

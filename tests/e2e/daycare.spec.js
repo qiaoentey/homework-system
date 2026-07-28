@@ -23,12 +23,14 @@ const CATALOG = {
     { label: "MIXIN", code: "WS MIXIN" },
   ],
 };
-const emergencyPassword = process.env.E2E_EMERGENCY_PASSWORD ?? "test-access";
+const accessPassword = process.env.E2E_ACCESS_PASSWORD
+  ?? process.env.E2E_EMERGENCY_PASSWORD
+  ?? "test-access";
 
 async function login(page) {
   await page.goto("/");
-  await page.getByLabel("紧急密码").fill(emergencyPassword);
-  await page.getByRole("button", { name: "紧急登录" }).click();
+  await page.getByLabel("系统密码").fill(accessPassword);
+  await page.getByRole("button", { name: "登录", exact: true }).click();
   await expect(page.getByRole("heading", { name: "请选择分院" })).toBeVisible();
 }
 

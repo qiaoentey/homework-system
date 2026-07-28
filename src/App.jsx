@@ -40,13 +40,8 @@ export function App() {
     };
   }, [openEntrance]);
 
-  const loginWithEmergency = useCallback(async (password) => {
-    await sessionApi.emergencyLogin(password);
-    await openEntrance();
-  }, [openEntrance]);
-
-  const loginWithGoogle = useCallback(async (credential) => {
-    await sessionApi.googleLogin(credential);
+  const loginWithPassword = useCallback(async (password) => {
+    await sessionApi.passwordLogin(password);
     await openEntrance();
   }, [openEntrance]);
 
@@ -79,8 +74,7 @@ export function App() {
           </div>
         ) : (
           <LoginScreen
-            onEmergencyLogin={loginWithEmergency}
-            onGoogleLogin={loginWithGoogle}
+            onPasswordLogin={loginWithPassword}
           />
         )}
       </AppShell>

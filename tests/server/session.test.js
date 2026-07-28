@@ -22,6 +22,22 @@ function createTestApp(options = {}) {
 }
 
 describe("session routes", () => {
+  it("creates the existing secure session through the password endpoint", async () => {
+    const agent = request.agent(createTestApp());
+
+    const login = await agent
+      .post("/api/session/password")
+      .send({ password: "test-access" })
+      .expect(204);
+
+    expect(login.headers["set-cookie"]).toEqual(expect.arrayContaining([
+      expect.stringMatching(/httponly/i),
+    ]));
+    expect((await agent.get("/api/session").expect(200)).body).toEqual({
+      email: "emergency@local",
+    });
+  });
+
   it("rejects an incorrect emergency password without creating a session", async () => {
     const agent = request.agent(createTestApp());
 

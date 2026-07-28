@@ -39,7 +39,7 @@ export function createSessionRouter({
     }
   });
 
-  router.post("/emergency", async (request, response) => {
+  async function passwordLogin(request, response) {
     const ip = request.ip || request.socket.remoteAddress || "unknown";
     const retryAfter = throttle.retryAfter(ip);
     if (retryAfter > 0) {
@@ -62,7 +62,10 @@ export function createSessionRouter({
     throttle.reset(ip);
     request.session.user = { email: EMERGENCY_EMAIL };
     return response.status(204).end();
-  });
+  }
+
+  router.post("/password", passwordLogin);
+  router.post("/emergency", passwordLogin);
 
   router.get("/", requireSession, (request, response) => response.json(request.user));
 
