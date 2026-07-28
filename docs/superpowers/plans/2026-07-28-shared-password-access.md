@@ -43,6 +43,7 @@
 **Files:**
 - Create: `worker/auth.js`
 - Create: `drizzle/0002_shared_password_access.sql`
+- Modify: `worker/index.js`
 - Modify: `drizzle/meta/_journal.json`
 - Modify: `db/schema.ts`
 - Test: `tests/sites-worker.test.mjs`
@@ -170,6 +171,10 @@ The payload is exactly:
 7. delete the row after a successful password;
 8. issue the signed cookie.
 
+Import `authenticatePassword` in `worker/index.js` and route only
+`POST /api/session/password` to it. Task 2 adds the protected-route guard after
+these authentication primitives pass.
+
 - [ ] **Step 5: Run the focused Worker tests**
 
 Run:
@@ -184,7 +189,7 @@ tests may still fail until Task 2 replaces them.
 - [ ] **Step 6: Commit Task 1**
 
 ```bash
-git add worker/auth.js drizzle/0002_shared_password_access.sql drizzle/meta/_journal.json db/schema.ts tests/sites-worker.test.mjs
+git add worker/auth.js worker/index.js drizzle/0002_shared_password_access.sql drizzle/meta/_journal.json db/schema.ts tests/sites-worker.test.mjs
 git commit -m "feat: add shared password sessions"
 ```
 
