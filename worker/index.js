@@ -1,6 +1,9 @@
-import { authenticatePassword } from "./auth.js";
-
-const LOCAL_OPERATOR_EMAIL = "sites-owner@private.local";
+import {
+  authenticatePassword,
+  clearSessionCookie,
+  readSession,
+  SHARED_OPERATOR_EMAIL,
+} from "./auth.js";
 const BRANCHES = [
   { code: "MK", label: "MK" },
   { code: "STP", label: "STP" },
@@ -58,11 +61,8 @@ function apiError(status, code, message) {
   return json({ code, error: message }, status);
 }
 
-function operator(request) {
-  return {
-    email: request.headers.get("oai-authenticated-user-email")?.trim()
-      || LOCAL_OPERATOR_EMAIL,
-  };
+function operator() {
+  return { email: SHARED_OPERATOR_EMAIL };
 }
 
 function isRecord(value) {
@@ -816,13 +816,17 @@ async function handleApi(request, env, url) {
   if (pathname === "/api/session/password" && request.method === "POST") {
     return authenticatePassword(request, env);
   }
-  if (pathname === "/api/session" && request.method === "GET") return json(operator(request));
-  if (pathname === "/api/session" && request.method === "DELETE") return empty();
-  if (
-    ["/api/session/google", "/api/session/emergency"].includes(pathname)
-    && request.method === "POST"
-  ) {
-    return empty();
+
+  const identity = await readSession(request, env);
+  if (!identity) {
+    return apiError(401, "AUTHENTICATION_REQUIRED", "Authentication required");
+  }
+  if (pathname === "/api/session" && request.method === "GET") return json(identity);
+  if (pathname === "/api/session" && request.method === "DELETE") {
+    return new Response(null, {
+      status: 204,
+      headers: { "set-cookie": clearSessionCookie() },
+    });
   }
   if (pathname === "/api/catalog" && request.method === "GET") return json(catalogResponse());
   const databaseRoute = ["/api/students", "/api/attendance", "/api/summary"].includes(pathname)

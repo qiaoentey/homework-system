@@ -65,6 +65,8 @@ function workerEnv(env = {}) {
   };
 }
 
+const loginCookieByDatabase = new WeakMap();
+
 async function passwordLogin(DB, password, address = "203.0.113.10", env = {}) {
   return worker.fetch(
     new Request("https://example.test/api/session/password", {
@@ -79,23 +81,32 @@ async function passwordLogin(DB, password, address = "203.0.113.10", env = {}) {
   );
 }
 
+async function loginCookie(DB) {
+  if (!loginCookieByDatabase.has(DB)) {
+    loginCookieByDatabase.set(DB, passwordLogin(DB, TEST_PASSWORD).then((response) => {
+      assert.equal(response.status, 204);
+      return response.headers.get("set-cookie").split(";", 1)[0];
+    }));
+  }
+  return loginCookieByDatabase.get(DB);
+}
+
 async function apiWithD1(env, path, {
   method = "GET",
   body,
   headers = {},
+  authenticated = true,
 } = {}) {
+  const cookie = authenticated ? await loginCookie(env.DB) : null;
   return worker.fetch(new Request(`https://example.test${path}`, {
     method,
     headers: {
-      "oai-authenticated-user-email": "owner@example.com",
+      ...(cookie ? { cookie } : {}),
       ...headers,
       ...(body === undefined ? {} : { "content-type": "application/json" }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  }), {
-    ASSETS: noAssetFallback,
-    DB: env.DB,
-  });
+  }), workerEnv({ DB: env.DB }));
 }
 
 function groupHeaders(branchCode = "MK", groupCode = "MK HAPPY") {
@@ -207,61 +218,96 @@ test("fails closed when shared-password secrets are missing", async () => {
   });
 });
 
-test("serves the private Sites operator session and fixed branch catalog before assets", async () => {
-  const session = await api("/api/session", {
-    headers: { "oai-authenticated-user-email": "owner@example.com" },
-  });
-  assert.equal(session.status, 200);
-  assert.deepEqual(await session.json(), { email: "owner@example.com" });
-
-  const catalog = await api("/api/catalog");
-  assert.equal(catalog.status, 200);
-  assert.deepEqual(await catalog.json(), {
-    branches: [
-      {
-        code: "MK",
-        label: "MK",
-        groups: [
-          { code: "MK HAPPY", label: "HAPPY" },
-          { code: "MK QIAO EN", label: "QIAO EN" },
-          { code: "MK WEN XUAN", label: "WEN XUAN" },
-        ],
-      },
-      {
-        code: "STP",
-        label: "STP",
-        groups: [
-          { code: "巧恩 STP", label: "巧恩" },
-          { code: "PS STP", label: "PS" },
-          { code: "SY STP", label: "SY" },
-        ],
-      },
-      {
-        code: "WS",
-        label: "WS",
-        groups: [
-          { code: "WS HUILING", label: "HUILING" },
-          { code: "WS JIA WEN", label: "JIA WEN" },
-          { code: "WS MIXIN", label: "MIXIN" },
-        ],
-      },
-    ],
+test("rejects protected reads and writes without a password session", async () => {
+  await withD1(async (env) => {
+    for (const [path, method] of [
+      ["/api/session", "GET"],
+      ["/api/catalog", "GET"],
+      ["/api/students?branch=MK&group=MK%20HAPPY&status=active", "GET"],
+      ["/api/students", "POST"],
+    ]) {
+      const response = await apiWithD1(env, path, {
+        method,
+        authenticated: false,
+      });
+      assert.equal(response.status, 401, `${method} ${path}`);
+    }
   });
 });
 
-test("keeps private-site login and logout calls client-compatible no-ops", async () => {
-  for (const [path, method] of [
-    ["/api/session/google", "POST"],
-    ["/api/session/emergency", "POST"],
-    ["/api/session", "DELETE"],
-  ]) {
-    const response = await api(path, {
-      method,
-      headers: { "content-type": "application/json" },
-      body: method === "POST" ? "{}" : undefined,
+test("serves the shared operator session and fixed branch catalog after password login", async () => {
+  await withD1(async (env) => {
+    const session = await apiWithD1(env, "/api/session");
+    assert.equal(session.status, 200);
+    assert.deepEqual(await session.json(), { email: "shared-access@local" });
+
+    const catalog = await apiWithD1(env, "/api/catalog");
+    assert.equal(catalog.status, 200);
+    assert.deepEqual(await catalog.json(), {
+      branches: [
+        {
+          code: "MK",
+          label: "MK",
+          groups: [
+            { code: "MK HAPPY", label: "HAPPY" },
+            { code: "MK QIAO EN", label: "QIAO EN" },
+            { code: "MK WEN XUAN", label: "WEN XUAN" },
+          ],
+        },
+        {
+          code: "STP",
+          label: "STP",
+          groups: [
+            { code: "巧恩 STP", label: "巧恩" },
+            { code: "PS STP", label: "PS" },
+            { code: "SY STP", label: "SY" },
+          ],
+        },
+        {
+          code: "WS",
+          label: "WS",
+          groups: [
+            { code: "WS HUILING", label: "HUILING" },
+            { code: "WS JIA WEN", label: "JIA WEN" },
+            { code: "WS MIXIN", label: "MIXIN" },
+          ],
+        },
+      ],
     });
+  });
+});
+
+test("rejects a tampered password-session cookie", async () => {
+  await withD1(async (env) => {
+    const cookie = await loginCookie(env.DB);
+    const replacement = cookie.endsWith("a") ? "b" : "a";
+    const response = await apiWithD1(env, "/api/catalog", {
+      authenticated: false,
+      headers: { cookie: `${cookie.slice(0, -1)}${replacement}` },
+    });
+    assert.equal(response.status, 401);
+  });
+});
+
+test("logout clears the password session cookie", async () => {
+  await withD1(async (env) => {
+    const response = await apiWithD1(env, "/api/session", { method: "DELETE" });
     assert.equal(response.status, 204);
-  }
+    assert.match(response.headers.get("set-cookie"), /Max-Age=0/u);
+    assert.match(response.headers.get("set-cookie"), /Expires=Thu, 01 Jan 1970/u);
+  });
+});
+
+test("does not expose obsolete Google or emergency login routes", async () => {
+  await withD1(async (env) => {
+    for (const path of ["/api/session/google", "/api/session/emergency"]) {
+      const response = await apiWithD1(env, path, {
+        method: "POST",
+        body: {},
+      });
+      assert.equal(response.status, 404);
+    }
+  });
 });
 
 test("reports Worker API health without consulting static assets", async () => {
@@ -516,8 +562,8 @@ test("atomically rejects one of two concurrent profile updates with the same ver
        ORDER BY rowid`,
     ).bind(student.id).all();
     assert.deepEqual(activity.results.map((row) => ({ ...row })), [
-      { action: "profile_update", actor: "owner@example.com" },
-      { action: "profile_update", actor: "owner@example.com" },
+      { action: "profile_update", actor: "shared-access@local" },
+      { action: "profile_update", actor: "shared-access@local" },
     ]);
   });
 });
@@ -537,7 +583,7 @@ test("creates and lists trimmed student messages newest first", async () => {
       body: { date: "2026-07-26", body: "  Bring workbook.  " },
     }), 201);
     assert.equal(oldMessage.body, "Bring workbook.");
-    assert.equal(oldMessage.createdBy, "owner@example.com");
+    assert.equal(oldMessage.createdBy, "shared-access@local");
 
     await readJson(await apiWithD1(env, path, {
       method: "POST",
@@ -808,8 +854,8 @@ test("concurrent stop and restore transitions each record exactly one activity",
        ORDER BY rowid`,
     ).bind(student.id).all();
     assert.deepEqual(activity.results.map((row) => ({ ...row })), [
-      { action: "stop", actor: "owner@example.com" },
-      { action: "restore", actor: "owner@example.com" },
+      { action: "stop", actor: "shared-access@local" },
+      { action: "restore", actor: "shared-access@local" },
     ]);
   });
 });
@@ -896,9 +942,9 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
        ORDER BY rowid`,
     ).bind(original.id).all();
     assert.deepEqual(activity.results.map((row) => ({ ...row })), [
-      { action: "profile_update", actor: "owner@example.com" },
-      { action: "stop", actor: "owner@example.com" },
-      { action: "restore", actor: "owner@example.com" },
+      { action: "profile_update", actor: "shared-access@local" },
+      { action: "stop", actor: "shared-access@local" },
+      { action: "restore", actor: "shared-access@local" },
     ]);
   });
 });
@@ -942,13 +988,15 @@ test("falls back to index.html for an unknown app route", async () => {
 });
 
 test("does not turn missing API or write requests into the app shell", async () => {
-  for (const [request, expectedAssetCalls] of [
+  for (const [request, expectedStatus, expectedAssetCalls] of [
     [
       new Request("https://example.test/api/missing", { headers: { accept: "application/json" } }),
+      401,
       0,
     ],
     [
       new Request("https://example.test/flow", { method: "POST", headers: { accept: "text/html" } }),
+      404,
       1,
     ],
   ]) {
@@ -962,7 +1010,7 @@ test("does not turn missing API or write requests into the app shell", async () 
       },
     });
 
-    assert.equal(response.status, 404);
+    assert.equal(response.status, expectedStatus);
     assert.equal(calls, expectedAssetCalls);
   }
 });
@@ -970,19 +1018,22 @@ test("does not turn missing API or write requests into the app shell", async () 
 test("emits the files required by Sites packaging", async () => {
   await access(new URL("../dist/client/index.html", import.meta.url));
   await access(new URL("../dist/server/index.js", import.meta.url));
+  await access(new URL("../dist/server/auth.js", import.meta.url));
   await access(new URL("../dist/.openai/hosting.json", import.meta.url));
   await access(new URL("../dist/db/schema.ts", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/0000_daycare_sites.sql", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/0001_enrolment_idempotency.sql", import.meta.url));
+  await access(new URL("../dist/.openai/drizzle/0002_shared_password_access.sql", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/meta/_journal.json", import.meta.url));
   const packagedSchema = await import("../dist/db/schema.ts");
   assert.ok(packagedSchema.students);
   assert.ok(packagedSchema.studentActivity);
-  assert.deepEqual(JSON.parse(await readFile(
+  assert.ok(packagedSchema.accessLoginAttempts);
+  const hosting = JSON.parse(await readFile(
     new URL("../dist/.openai/hosting.json", import.meta.url),
     "utf8",
-  )), {
-    d1: "DB",
-    r2: null,
-  });
+  ));
+  assert.equal(hosting.project_id, "appgprj_6a673e3afe2c819186da12047e199e5d");
+  assert.equal(hosting.d1, "DB");
+  assert.equal(hosting.r2, null);
 });
