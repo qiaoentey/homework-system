@@ -8,6 +8,10 @@ import { createSitesD1 } from "./helpers/sitesD1.mjs";
 const noAssetFallback = {
   fetch: async () => new Response("missing", { status: 404 }),
 };
+const TEST_PASSWORD = "Teacher-Access-2026";
+const TEST_PASSWORD_SHA256 =
+  "65e22250c5caa9cd6cfd98ec3f07f32834141d3c86ff0637cdc271c703aec702";
+const TEST_SESSION_SECRET = "test-session-secret-with-at-least-32-random-bytes";
 const emptyProfile = {
   school: "",
   schoolClass: "",
@@ -52,6 +56,29 @@ async function api(path, options = {}) {
   });
 }
 
+function workerEnv(env = {}) {
+  return {
+    ASSETS: noAssetFallback,
+    ACCESS_PASSWORD_SHA256: TEST_PASSWORD_SHA256,
+    ACCESS_SESSION_SECRET: TEST_SESSION_SECRET,
+    ...env,
+  };
+}
+
+async function passwordLogin(DB, password, address = "203.0.113.10", env = {}) {
+  return worker.fetch(
+    new Request("https://example.test/api/session/password", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "cf-connecting-ip": address,
+      },
+      body: JSON.stringify({ password }),
+    }),
+    workerEnv({ DB, ...env }),
+  );
+}
+
 async function apiWithD1(env, path, {
   method = "GET",
   body,
@@ -91,6 +118,94 @@ async function withD1(operation) {
     env.close();
   }
 }
+
+test("accepts the shared password and issues a secure host-only cookie", async () => {
+  await withD1(async ({ DB }) => {
+    const response = await passwordLogin(DB, TEST_PASSWORD);
+    assert.equal(response.status, 204);
+    const cookie = response.headers.get("set-cookie");
+    assert.match(cookie, /__Host-daycare_session=/u);
+    assert.match(cookie, /HttpOnly/u);
+    assert.match(cookie, /Secure/u);
+    assert.match(cookie, /SameSite=Strict/u);
+    assert.match(cookie, /Path=\//u);
+    assert.match(cookie, /Max-Age=43200/u);
+  });
+});
+
+test("rejects malformed and incorrect shared passwords without a session", async () => {
+  await withD1(async ({ DB }) => {
+    const malformed = await worker.fetch(
+      new Request("https://example.test/api/session/password", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": "203.0.113.11",
+        },
+        body: JSON.stringify({ password: TEST_PASSWORD, extra: true }),
+      }),
+      workerEnv({ DB }),
+    );
+    assert.equal(malformed.status, 400);
+
+    const incorrect = await passwordLogin(DB, "incorrect", "203.0.113.12");
+    assert.equal(incorrect.status, 401);
+    assert.equal(incorrect.headers.get("set-cookie"), null);
+  });
+});
+
+test("locks the fifth failed password attempt and returns retry guidance", async () => {
+  await withD1(async ({ DB }) => {
+    for (let attempt = 1; attempt < 5; attempt += 1) {
+      const response = await passwordLogin(DB, "incorrect", "203.0.113.13");
+      assert.equal(response.status, 401);
+    }
+
+    const locked = await passwordLogin(DB, "incorrect", "203.0.113.13");
+    assert.equal(locked.status, 429);
+    assert.match(locked.headers.get("retry-after"), /^\d+$/u);
+  });
+});
+
+test("successful password login clears earlier failures for the address", async () => {
+  await withD1(async ({ DB }) => {
+    for (let attempt = 1; attempt < 5; attempt += 1) {
+      assert.equal(
+        (await passwordLogin(DB, "incorrect", "203.0.113.14")).status,
+        401,
+      );
+    }
+
+    assert.equal(
+      (await passwordLogin(DB, TEST_PASSWORD, "203.0.113.14")).status,
+      204,
+    );
+
+    for (let attempt = 1; attempt < 5; attempt += 1) {
+      assert.equal(
+        (await passwordLogin(DB, "incorrect", "203.0.113.14")).status,
+        401,
+      );
+    }
+  });
+});
+
+test("fails closed when shared-password secrets are missing", async () => {
+  await withD1(async ({ DB }) => {
+    const response = await worker.fetch(
+      new Request("https://example.test/api/session/password", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "cf-connecting-ip": "203.0.113.15",
+        },
+        body: JSON.stringify({ password: TEST_PASSWORD }),
+      }),
+      { ASSETS: noAssetFallback, DB },
+    );
+    assert.equal(response.status, 503);
+  });
+});
 
 test("serves the private Sites operator session and fixed branch catalog before assets", async () => {
   const session = await api("/api/session", {

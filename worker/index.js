@@ -1,3 +1,5 @@
+import { authenticatePassword } from "./auth.js";
+
 const LOCAL_OPERATOR_EMAIL = "sites-owner@private.local";
 const BRANCHES = [
   { code: "MK", label: "MK" },
@@ -811,6 +813,9 @@ async function createMessage(request, database, id) {
 async function handleApi(request, env, url) {
   const { pathname } = url;
   if (pathname === "/api/health" && request.method === "GET") return json({ ok: true });
+  if (pathname === "/api/session/password" && request.method === "POST") {
+    return authenticatePassword(request, env);
+  }
   if (pathname === "/api/session" && request.method === "GET") return json(operator(request));
   if (pathname === "/api/session" && request.method === "DELETE") return empty();
   if (

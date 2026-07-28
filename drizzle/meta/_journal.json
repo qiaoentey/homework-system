@@ -15,6 +15,13 @@
       "when": 1785146400000,
       "tag": "0001_enrolment_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785232800000,
+      "tag": "0002_shared_password_access",
+      "breakpoints": true
     }
   ]
 }

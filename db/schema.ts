@@ -101,3 +101,13 @@ export const studentActivity = sqliteTable("student_activity", {
   ),
   index("student_activity_student_idx").on(table.studentId),
 ]);
+
+export const accessLoginAttempts = sqliteTable("access_login_attempts", {
+  addressHash: text("address_hash").primaryKey(),
+  failures: integer("failures").notNull(),
+  windowStartedAt: integer("window_started_at").notNull(),
+  lockedUntil: integer("locked_until").notNull().default(0),
+  updatedAt: integer("updated_at").notNull(),
+}, (table) => [
+  index("access_login_attempts_updated_at_idx").on(table.updatedAt),
+]);
