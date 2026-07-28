@@ -50,7 +50,7 @@
 **Interfaces:**
 - Consumes: Worker environment keys `ACCESS_PASSWORD_SHA256`, `ACCESS_SESSION_SECRET`, and `DB`.
 - Produces:
-  - `authenticatePassword(request, env, now?) -> Promise<{ response?: Response, email?: string }>`
+  - `authenticatePassword(request, env, now?) -> Promise<Response>`
   - `readSession(request, env, now?) -> Promise<{ email: string } | null>`
   - `sessionCookie(value, maxAge) -> string`
   - `clearSessionCookie() -> string`
