@@ -9,7 +9,7 @@
   "packageManager": "npm@10.9.8",
   "scripts": {
     "dev": "concurrently \"vite\" \"node --watch server/index.js\"",
-    "build": "vite build && node scripts/prepare-sites-build.mjs",
+    "build": "vite build && vite build --config vite.worker.config.mjs && node scripts/prepare-sites-build.mjs",
     "start": "node server/index.js",
     "db:migrate": "node server/db/migrate.js",
     "import:rosters": "node scripts/import-rosters.mjs",

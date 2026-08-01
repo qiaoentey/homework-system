@@ -6,8 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(root, "dist");
 const index = path.join(dist, "client", "index.html");
-const worker = path.join(root, "worker");
-const workerIndex = path.join(worker, "index.js");
+const workerIndex = path.join(dist, "server", "index.js");
 const hosting = path.join(root, ".openai", "hosting.json");
 const schema = path.join(root, "db", "schema.ts");
 const migrations = path.join(root, "drizzle");
@@ -18,8 +17,6 @@ for (const file of [index, workerIndex, hosting, schema, migrations]) {
   if (!existsSync(file)) throw new Error("Missing Sites build input: " + file);
 }
 
-rmSync(path.join(dist, "server"), { recursive: true, force: true });
-cpSync(worker, path.join(dist, "server"), { recursive: true });
 mkdirSync(path.join(dist, ".openai"), { recursive: true });
 copyFileSync(hosting, path.join(dist, ".openai", "hosting.json"));
 mkdirSync(path.join(dist, "db"), { recursive: true });
@@ -28,4 +25,4 @@ rmSync(deprecatedMigrations, { recursive: true, force: true });
 rmSync(packagedMigrations, { recursive: true, force: true });
 cpSync(migrations, packagedMigrations, { recursive: true });
 
-console.log("Prepared Sites build: Worker, hosting config, schema, and D1 migrations");
+console.log("Prepared Sites build: bundled Worker, hosting config, schema, and D1 migrations");

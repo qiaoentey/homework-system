@@ -1111,7 +1111,7 @@ test("does not turn missing API or write requests into the app shell", async () 
 test("emits the files required by Sites packaging", async () => {
   await access(new URL("../dist/client/index.html", import.meta.url));
   await access(new URL("../dist/server/index.js", import.meta.url));
-  await access(new URL("../dist/server/auth.js", import.meta.url));
+  await assert.rejects(access(new URL("../dist/server/auth.js", import.meta.url)));
   await access(new URL("../dist/.openai/hosting.json", import.meta.url));
   await access(new URL("../dist/db/schema.ts", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/0000_daycare_sites.sql", import.meta.url));
@@ -1122,6 +1122,12 @@ test("emits the files required by Sites packaging", async () => {
   assert.ok(packagedSchema.students);
   assert.ok(packagedSchema.studentActivity);
   assert.ok(packagedSchema.accessLoginAttempts);
+  const workerBundle = await readFile(
+    new URL("../dist/server/index.js", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(workerBundle, /from\s+["']jose["']/u);
+  assert.match(workerBundle, /\/api\/session\/google/u);
   const hosting = JSON.parse(await readFile(
     new URL("../dist/.openai/hosting.json", import.meta.url),
     "utf8",
