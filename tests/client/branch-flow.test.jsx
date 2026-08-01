@@ -191,6 +191,24 @@ describe("API boundary", () => {
       },
     });
   });
+
+  it("encodes a Chinese teacher group into a browser-safe request header", async () => {
+    let request;
+    vi.stubGlobal("fetch", vi.fn(async (url, options) => {
+      request = new Request(`https://example.test${url}`, options);
+      return jsonResponse(204);
+    }));
+
+    await expect(apiRequest("/api/students/student-id/profile", {
+      method: "PATCH",
+      body: { updatedAt: "2026-08-01T00:00:00.000Z", profile: { school: "Test" } },
+      branchCode: "STP",
+      groupCode: "巧恩 STP",
+    })).resolves.toBeNull();
+
+    expect(request.headers.get("X-Branch-Code")).toBe("STP");
+    expect(request.headers.get("X-Group-Code")).toBe(encodeURIComponent("巧恩 STP"));
+  });
 });
 
 describe("Google account login", () => {

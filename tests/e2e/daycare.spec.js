@@ -149,6 +149,12 @@ test("MK roster stays branch-scoped and Qiao En has only the approved 40 student
   ))).toBe(true);
 });
 
+test("Qiao En STP loads all 90 students through browser-safe headers", async ({ page }) => {
+  await openRoster(page, "STP", "巧恩", "巧恩 STP");
+  await expect(page.getByText("只显示当前老师的在读学生 · 共 90 名")).toBeVisible();
+  await expect(page.getByText("名单载入失败，请重试")).toHaveCount(0);
+});
+
 test("enrol, stop, and restore preserve UUID, profile, attendance, and messages", async ({
   page,
 }, testInfo) => {

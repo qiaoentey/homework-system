@@ -30,6 +30,10 @@ async function readPayload(response) {
   }
 }
 
+function browserSafeHeader(value) {
+  return /^[\u0000-\u00ff]*$/u.test(value) ? value : encodeURIComponent(value);
+}
+
 export async function apiRequest(path, {
   method = "GET",
   body,
@@ -48,8 +52,8 @@ export async function apiRequest(path, {
   const requestHeaders = { ...headers };
   if (body !== undefined) requestHeaders["Content-Type"] = "application/json";
   if (branchCode && groupCode) {
-    requestHeaders["X-Branch-Code"] = branchCode;
-    requestHeaders["X-Group-Code"] = groupCode;
+    requestHeaders["X-Branch-Code"] = browserSafeHeader(branchCode);
+    requestHeaders["X-Group-Code"] = browserSafeHeader(groupCode);
   }
 
   let response;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSession } from "../auth/session.js";
 import { ATTENDANCE_EVENTS } from "../domain/attendance.js";
 import { BRANCHES, GROUPS } from "../domain/catalog.js";
+import { decodeHeaderValue } from "../http/headers.js";
 import {
   AttendanceRepositoryError,
   clearAttendanceDate,
@@ -39,8 +40,8 @@ function readGroupContext(request) {
     branchCode: branchSchema,
     groupCode: groupSchema,
   }).strict().safeParse({
-    branchCode: request.get("X-Branch-Code"),
-    groupCode: request.get("X-Group-Code"),
+    branchCode: decodeHeaderValue(request.get("X-Branch-Code")),
+    groupCode: decodeHeaderValue(request.get("X-Group-Code")),
   });
   if (!parsed.success) return { error: "WRITE_CONTEXT_REQUIRED" };
   if (!validateGroupBranch(parsed.data.branchCode, parsed.data.groupCode)) {

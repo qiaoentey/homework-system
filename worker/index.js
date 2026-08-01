@@ -91,9 +91,18 @@ function validIsoDate(value) {
     && !Number.isNaN(Date.parse(value));
 }
 
+function decodeHeaderValue(value) {
+  if (typeof value !== "string") return null;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
 function readContext(request) {
-  const branchCode = request.headers.get("X-Branch-Code");
-  const groupCode = request.headers.get("X-Group-Code");
+  const branchCode = decodeHeaderValue(request.headers.get("X-Branch-Code"));
+  const groupCode = decodeHeaderValue(request.headers.get("X-Group-Code"));
   if (!BRANCHES.some(({ code }) => code === branchCode) || !GROUPS.some(({ code }) => code === groupCode)) {
     return { error: "WRITE_CONTEXT_REQUIRED" };
   }

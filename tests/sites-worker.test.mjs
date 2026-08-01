@@ -585,6 +585,31 @@ test("writes, lists, summarizes, and clears attendance", async () => {
   });
 });
 
+test("decodes a browser-safe Chinese group header for Qiao En STP writes", async () => {
+  await withD1(async (env) => {
+    const roster = await readJson(await apiWithD1(
+      env,
+      "/api/students?branch=STP&group=%E5%B7%A7%E6%81%A9%20STP&status=active&limit=1",
+    ));
+    const student = roster.items[0];
+    const event = await readJson(await apiWithD1(
+      env,
+      `/api/students/${student.id}/attendance/2026-08-01/arrive`,
+      {
+        method: "PUT",
+        headers: {
+          "X-Branch-Code": "STP",
+          "X-Group-Code": encodeURIComponent("巧恩 STP"),
+        },
+        body: { active: true },
+      },
+    ));
+
+    assert.equal(event.studentId, student.id);
+    assert.equal(event.updatedBy, TEST_ALLOWED_EMAIL);
+  });
+});
+
 test("atomically rejects one of two concurrent profile updates with the same version", async () => {
   await withD1(async (env) => {
     const roster = await readJson(await apiWithD1(
