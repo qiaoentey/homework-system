@@ -22,6 +22,14 @@ function createTestApp(options = {}) {
 }
 
 describe("session routes", () => {
+  it("publishes only the Google client ID needed by the login screen", async () => {
+    const response = await request(createTestApp()).get("/api/session/config").expect(200);
+
+    expect(response.body).toEqual({
+      googleClientId: "test-client.apps.googleusercontent.com",
+    });
+  });
+
   it("creates the existing secure session through the password endpoint", async () => {
     const agent = request.agent(createTestApp());
 

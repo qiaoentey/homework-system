@@ -215,6 +215,20 @@ button {
   box-shadow: 0 0 0 3px rgba(23, 104, 209, 0.12);
 }
 
+.google-login-button {
+  display: flex;
+  min-height: 44px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.login-pending {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
 .primary-button {
   min-height: 52px;
   border: 0;

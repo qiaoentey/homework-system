@@ -75,9 +75,10 @@ export async function apiRequest(path, {
 
 export const sessionApi = {
   current: () => apiRequest("/api/session"),
-  passwordLogin: (password) => apiRequest("/api/session/password", {
+  googleConfig: () => apiRequest("/api/session/config"),
+  googleLogin: (credential) => apiRequest("/api/session/google", {
     method: "POST",
-    body: { password },
+    body: { credential },
   }),
   logout: () => apiRequest("/api/session", { method: "DELETE" }),
   catalog: () => apiRequest("/api/catalog"),

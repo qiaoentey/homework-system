@@ -193,23 +193,39 @@ describe("API boundary", () => {
   });
 });
 
-describe("shared password login", () => {
+describe("Google account login", () => {
   afterEach(() => {
     cleanup();
+    document.getElementById("google-identity-services")?.remove();
     vi.unstubAllGlobals();
   });
 
-  it("uses one account-free password form and recovers after a failed attempt", async () => {
+  it("shows only the official Google button and recovers after a rejected credential", async () => {
     let finishFirstLogin;
     const firstLoginResponse = new Promise((resolve) => {
       finishFirstLogin = resolve;
     });
-    const passwordRequests = [];
+    let googleCallback;
+    const renderButton = vi.fn((container) => {
+      const button = document.createElement("button");
+      button.textContent = "使用 Google 登录";
+      container.append(button);
+    });
+    const initialize = vi.fn((options) => {
+      googleCallback = options.callback;
+    });
+    vi.stubGlobal("google", {
+      accounts: { id: { initialize, renderButton } },
+    });
+    const googleRequests = [];
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
       if (url === "/api/session") return jsonResponse(401, { error: "Authentication required" });
-      if (url === "/api/session/password") {
-        passwordRequests.push(JSON.parse(options.body));
-        return passwordRequests.length === 1
+      if (url === "/api/session/config") {
+        return jsonResponse(200, { googleClientId: "test-client.apps.googleusercontent.com" });
+      }
+      if (url === "/api/session/google") {
+        googleRequests.push(JSON.parse(options.body));
+        return googleRequests.length === 1
           ? firstLoginResponse
           : jsonResponse(204);
       }
@@ -219,32 +235,54 @@ describe("shared password login", () => {
 
     render(<App />);
     expect(await screen.findByRole("heading", { name: "登录点名系统" })).toBeVisible();
-    expect(screen.getByText("请输入系统密码")).toBeVisible();
-    expect(screen.queryByLabelText("Google 登录")).not.toBeInTheDocument();
+    expect(screen.getByText("请使用授权的 Google 帐号登录")).toBeVisible();
+    expect(screen.getByLabelText("Google 登录")).toBeVisible();
+    expect(screen.queryByLabelText("系统密码")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("紧急密码")).not.toBeInTheDocument();
-
-    const password = screen.getByLabelText("系统密码");
-    fireEvent.change(password, { target: { value: "private-access" } });
-    fireEvent.click(screen.getByRole("button", { name: "登录" }));
-
-    await waitFor(() => expect(screen.getByRole("button", { name: "登录中…" })).toBeDisabled());
-    expect(passwordRequests).toEqual([{ password: "private-access" }]);
+    expect(initialize).toHaveBeenCalledWith(expect.objectContaining({
+      client_id: "test-client.apps.googleusercontent.com",
+      callback: expect.any(Function),
+    }));
+    expect(renderButton).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      finishFirstLogin(jsonResponse(401, { error: "Invalid password" }));
+      googleCallback({ credential: "first-google-token" });
+    });
+    expect(googleRequests).toEqual([{ credential: "first-google-token" }]);
+    expect(await screen.findByText("登录中…")).toBeVisible();
+
+    await act(async () => {
+      finishFirstLogin(jsonResponse(401, { error: "Invalid Google credential" }));
     });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("密码错误，请重试");
-    expect(password).toHaveValue("");
-    expect(password).toBeEnabled();
-    expect(screen.getByRole("button", { name: "登录" })).toBeDisabled();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Google 登录失败，请重试");
 
-    fireEvent.change(password, { target: { value: "later-access" } });
-    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    await act(async () => {
+      await googleCallback({ credential: "second-google-token" });
+    });
     expect(await screen.findByRole("heading", { name: "请选择分院" })).toBeVisible();
-    expect(passwordRequests).toEqual([
-      { password: "private-access" },
-      { password: "later-access" },
+    expect(googleRequests).toEqual([
+      { credential: "first-google-token" },
+      { credential: "second-google-token" },
     ]);
+  });
+
+  it("shows retry guidance when the Google script cannot load", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url === "/api/session") return jsonResponse(401, { error: "Authentication required" });
+      if (url === "/api/session/config") {
+        return jsonResponse(200, { googleClientId: "test-client.apps.googleusercontent.com" });
+      }
+      throw new Error(`Unexpected request: GET ${url}`);
+    }));
+
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "登录点名系统" })).toBeVisible();
+    const script = document.getElementById("google-identity-services");
+    expect(script).toHaveAttribute("src", "https://accounts.google.com/gsi/client?hl=zh_CN");
+    fireEvent.error(script);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Google 登录暂时无法载入，请刷新重试",
+    );
   });
 });

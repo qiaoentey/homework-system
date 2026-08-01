@@ -10,6 +10,7 @@ import { flowReducer, initialFlowState } from "./state/flowReducer.js";
 export function App() {
   const [flow, dispatch] = useReducer(flowReducer, initialFlowState);
   const [catalog, setCatalog] = useState(null);
+  const [googleClientId, setGoogleClientId] = useState("");
   const [booting, setBooting] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -28,7 +29,20 @@ export function App() {
         await sessionApi.current();
         if (!cancelled) await openEntrance();
       } catch (error) {
-        if (!cancelled && error.status !== 401) setLoadError("系统暂时无法载入，请重试");
+        if (cancelled) return;
+        if (error.status === 401) {
+          try {
+            const config = await sessionApi.googleConfig();
+            if (typeof config?.googleClientId !== "string" || !config.googleClientId) {
+              throw new Error("Google client ID is unavailable");
+            }
+            if (!cancelled) setGoogleClientId(config.googleClientId);
+          } catch {
+            if (!cancelled) setLoadError("系统暂时无法载入，请重试");
+          }
+        } else {
+          setLoadError("系统暂时无法载入，请重试");
+        }
       } finally {
         if (!cancelled) setBooting(false);
       }
@@ -40,8 +54,8 @@ export function App() {
     };
   }, [openEntrance]);
 
-  const loginWithPassword = useCallback(async (password) => {
-    await sessionApi.passwordLogin(password);
+  const loginWithGoogle = useCallback(async (credential) => {
+    await sessionApi.googleLogin(credential);
     await openEntrance();
   }, [openEntrance]);
 
@@ -74,7 +88,8 @@ export function App() {
           </div>
         ) : (
           <LoginScreen
-            onPasswordLogin={loginWithPassword}
+            googleClientId={googleClientId}
+            onGoogleLogin={loginWithGoogle}
           />
         )}
       </AppShell>

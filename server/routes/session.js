@@ -19,6 +19,10 @@ export function createSessionRouter({
   const throttle = emergencyThrottle
     ?? createEmergencyThrottle(emergencyThrottleOptions);
 
+  router.get("/config", (_request, response) => response.json({
+    googleClientId: config.googleClientId,
+  }));
+
   router.post("/google", async (request, response) => {
     if (typeof request.body?.credential !== "string" || !request.body.credential) {
       return response.status(400).json({ error: "Google credential is required" });
