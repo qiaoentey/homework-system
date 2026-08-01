@@ -12,7 +12,7 @@
 
 - Produce exactly 12 PDFs: Grades 1-3 x Chinese, Malay, Mathematics, and Science.
 - Use the filename pattern `<grade>年级_<subject>_活动本答案参考.pdf`.
-- Do not download, store, capture, or republish third-party video frames, audio, thumbnails, or textbook pages.
+- Use only the official YouTube player. Transient, non-persistent browser visual frames are allowed solely for human review; do not download video, save frames to files, add frames to Git/reports/PDFs, extract audio/thumbnails, or republish textbook/video imagery.
 - Use independently written answers, checking notes, rubrics, and short examples; do not copy full model essays.
 - Mark uncertain, open-ended, drawing, experiment, or unreadable items as `review` instead of inventing a unique answer.
 - Keep the app free, login-free, server-free, and compatible with the `/homework-system/` GitHub Pages base path.
@@ -331,7 +331,7 @@ Expected: FAIL because the three mathematics JSON files do not exist.
 
 - [ ] **Step 3: Review the source videos without downloading them**
 
-Open each primary video in the official YouTube player. Seek through every page transition from the opening answer page through the final answer page, record `reviewedThroughSeconds`, and enter only independently organized page/question locations, answers, short calculations, units, and teacher-checking notes. Do not save screenshots or copy textbook question text.
+Open each primary video in the official YouTube player. Seek through every page transition from the opening answer page through the final answer page, record `reviewedThroughSeconds`, and enter only independently organized page/question locations, answers, short calculations, units, and teacher-checking notes. Browser screenshots may be viewed transiently but must not be written to disk, attached to reports, committed, or reused in PDFs. Do not copy textbook question text.
 
 - [ ] **Step 4: Encode mathematics-specific answer rules**
 
