@@ -1,3 +1,5 @@
+import { createRemoteJWKSet, jwtVerify } from "jose";
+
 export const SESSION_COOKIE = "__Host-daycare_session";
 export const SHARED_OPERATOR_EMAIL = "shared-access@local";
 
@@ -8,6 +10,10 @@ const LOCK_MS = 15 * 60 * 1000;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
+const GOOGLE_ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
+const GOOGLE_JWKS = createRemoteJWKSet(
+  new URL("https://www.googleapis.com/oauth2/v3/certs"),
+);
 
 function json(payload, status = 200, headers = {}) {
   return new Response(JSON.stringify(payload), {
@@ -23,12 +29,29 @@ function apiError(status, code, message, headers = {}) {
   return json({ code, error: message }, status, headers);
 }
 
-function validConfiguration(env) {
+function normalizedEmail(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function validSessionSecret(env) {
+  return typeof env?.ACCESS_SESSION_SECRET === "string"
+    && env.ACCESS_SESSION_SECRET.length >= 32;
+}
+
+function validPasswordConfiguration(env) {
   return Boolean(
-    env?.DB
+    validSessionSecret(env)
+    && env?.DB
     && /^[0-9a-f]{64}$/u.test(env.ACCESS_PASSWORD_SHA256 ?? "")
-    && typeof env.ACCESS_SESSION_SECRET === "string"
-    && env.ACCESS_SESSION_SECRET.length >= 32,
+  );
+}
+
+function validGoogleConfiguration(env) {
+  return Boolean(
+    validSessionSecret(env)
+    && typeof env?.GOOGLE_CLIENT_ID === "string"
+    && env.GOOGLE_CLIENT_ID.endsWith(".apps.googleusercontent.com")
+    && normalizedEmail(env.GOOGLE_ALLOWED_EMAIL),
   );
 }
 
@@ -87,9 +110,9 @@ async function hmac(secret, value) {
   return new Uint8Array(await crypto.subtle.sign("HMAC", key, textEncoder.encode(value)));
 }
 
-async function signedSession(secret, now) {
+async function signedSession(secret, email, now) {
   const payload = base64urlEncode(textEncoder.encode(JSON.stringify({
-    email: SHARED_OPERATOR_EMAIL,
+    email,
     exp: Math.floor(now / 1000) + SESSION_SECONDS,
   })));
   const signature = base64urlEncode(await hmac(secret, payload));
@@ -118,6 +141,18 @@ function exactPasswordBody(body) {
     && typeof body.password === "string"
     && body.password.length > 0
     && body.password.length <= 128,
+  );
+}
+
+function exactGoogleBody(body) {
+  return Boolean(
+    body
+    && typeof body === "object"
+    && !Array.isArray(body)
+    && Object.keys(body).length === 1
+    && typeof body.credential === "string"
+    && body.credential.length > 0
+    && body.credential.length <= 16_384,
   );
 }
 
@@ -151,7 +186,11 @@ export function clearSessionCookie() {
 }
 
 export async function readSession(request, env, now = Date.now()) {
-  if (!validConfiguration(env)) return null;
+  if (!validSessionSecret(env)) return null;
+  const allowedEmails = new Set();
+  if (validPasswordConfiguration(env)) allowedEmails.add(SHARED_OPERATOR_EMAIL);
+  if (validGoogleConfiguration(env)) allowedEmails.add(normalizedEmail(env.GOOGLE_ALLOWED_EMAIL));
+  if (allowedEmails.size === 0) return null;
   const token = cookieValue(request);
   if (!token) return null;
   const parts = token.split(".");
@@ -170,20 +209,76 @@ export async function readSession(request, env, now = Date.now()) {
       || typeof payload !== "object"
       || Array.isArray(payload)
       || Object.keys(payload).length !== 2
-      || payload.email !== SHARED_OPERATOR_EMAIL
+      || typeof payload.email !== "string"
+      || !allowedEmails.has(payload.email)
       || !Number.isInteger(payload.exp)
       || payload.exp <= Math.floor(now / 1000)
     ) {
       return null;
     }
-    return { email: SHARED_OPERATOR_EMAIL };
+    return { email: payload.email };
   } catch {
     return null;
   }
 }
 
+export async function verifyGoogleCredential(credential, {
+  clientId,
+  jwks = GOOGLE_JWKS,
+  now = Date.now(),
+} = {}) {
+  const { payload } = await jwtVerify(credential, jwks, {
+    algorithms: ["RS256"],
+    issuer: GOOGLE_ISSUERS,
+    audience: clientId,
+    currentDate: new Date(now),
+  });
+  const email = normalizedEmail(payload.email);
+  if (
+    !email
+    || payload.email_verified !== true
+    || typeof payload.sub !== "string"
+    || !payload.sub
+  ) {
+    throw new Error("Invalid Google identity claims");
+  }
+  return { email, sub: payload.sub };
+}
+
+export async function authenticateGoogle(request, env, {
+  jwks = GOOGLE_JWKS,
+  now = Date.now(),
+} = {}) {
+  if (!validGoogleConfiguration(env)) {
+    return apiError(503, "AUTHENTICATION_UNAVAILABLE", "Authentication is unavailable");
+  }
+
+  const body = await requestBody(request);
+  if (!exactGoogleBody(body)) {
+    return apiError(400, "INVALID_GOOGLE_LOGIN_REQUEST", "A Google credential is required");
+  }
+
+  try {
+    const identity = await verifyGoogleCredential(body.credential, {
+      clientId: env.GOOGLE_CLIENT_ID,
+      jwks,
+      now,
+    });
+    if (identity.email !== normalizedEmail(env.GOOGLE_ALLOWED_EMAIL)) {
+      throw new Error("Google account is not allowed");
+    }
+    const token = await signedSession(env.ACCESS_SESSION_SECRET, identity.email, now);
+    return new Response(null, {
+      status: 204,
+      headers: { "set-cookie": sessionCookie(token) },
+    });
+  } catch {
+    return apiError(401, "INVALID_GOOGLE_LOGIN", "Google login failed");
+  }
+}
+
 export async function authenticatePassword(request, env, now = Date.now()) {
-  if (!validConfiguration(env)) {
+  if (!validPasswordConfiguration(env)) {
     return apiError(503, "AUTHENTICATION_UNAVAILABLE", "Authentication is unavailable");
   }
 
@@ -249,7 +344,7 @@ export async function authenticatePassword(request, env, now = Date.now()) {
   }
 
   await run(database, "DELETE FROM access_login_attempts WHERE address_hash = ?", [key]);
-  const token = await signedSession(env.ACCESS_SESSION_SECRET, now);
+  const token = await signedSession(env.ACCESS_SESSION_SECRET, SHARED_OPERATOR_EMAIL, now);
   return new Response(null, {
     status: 204,
     headers: { "set-cookie": sessionCookie(token) },

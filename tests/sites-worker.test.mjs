@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  createLocalJWKSet,
+  exportJWK,
+  generateKeyPair,
+  SignJWT,
+} from "jose";
 import { parseRosterCsv, ROSTER_FILES } from "../scripts/import-rosters.mjs";
-import { readSession } from "../worker/auth.js";
+import * as workerAuth from "../worker/auth.js";
 import worker from "../worker/index.js";
 import { createSitesD1 } from "./helpers/sitesD1.mjs";
 
@@ -13,6 +19,9 @@ const TEST_PASSWORD = "Teacher-Access-2026";
 const TEST_PASSWORD_SHA256 =
   "65e22250c5caa9cd6cfd98ec3f07f32834141d3c86ff0637cdc271c703aec702";
 const TEST_SESSION_SECRET = "test-session-secret-with-at-least-32-random-bytes";
+const TEST_GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com";
+const TEST_ALLOWED_EMAIL = "qiaoen9816@gmail.com";
+const TEST_GOOGLE_NOW = Date.parse("2026-08-01T05:00:00.000Z");
 const emptyProfile = {
   school: "",
   schoolClass: "",
@@ -62,8 +71,51 @@ function workerEnv(env = {}) {
     ASSETS: noAssetFallback,
     ACCESS_PASSWORD_SHA256: TEST_PASSWORD_SHA256,
     ACCESS_SESSION_SECRET: TEST_SESSION_SECRET,
+    GOOGLE_CLIENT_ID: TEST_GOOGLE_CLIENT_ID,
+    GOOGLE_ALLOWED_EMAIL: TEST_ALLOWED_EMAIL,
     ...env,
   };
+}
+
+async function googleFixture() {
+  const { privateKey, publicKey } = await generateKeyPair("RS256");
+  const publicJwk = await exportJWK(publicKey);
+  publicJwk.kid = "test-google-key";
+  publicJwk.alg = "RS256";
+  publicJwk.use = "sig";
+  const jwks = createLocalJWKSet({ keys: [publicJwk] });
+
+  async function sign({
+    email = TEST_ALLOWED_EMAIL,
+    emailVerified = true,
+    audience = TEST_GOOGLE_CLIENT_ID,
+    issuer = "https://accounts.google.com",
+    expiresAt = Math.floor(TEST_GOOGLE_NOW / 1000) + 300,
+    signingKey = privateKey,
+  } = {}) {
+    return new SignJWT({ email, email_verified: emailVerified })
+      .setProtectedHeader({ alg: "RS256", kid: publicJwk.kid })
+      .setSubject("google-user-123")
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .setIssuedAt(Math.floor(TEST_GOOGLE_NOW / 1000))
+      .setExpirationTime(expiresAt)
+      .sign(signingKey);
+  }
+
+  return { jwks, sign };
+}
+
+async function googleLoginRequest(credential, env = {}) {
+  return workerAuth.authenticateGoogle(
+    new Request("https://example.test/api/session/google", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ credential }),
+    }),
+    workerEnv(env),
+    { jwks: env.jwks, now: TEST_GOOGLE_NOW },
+  );
 }
 
 const loginCookieByDatabase = new WeakMap();
@@ -143,6 +195,108 @@ test("accepts the shared password and issues a secure host-only cookie", async (
     assert.match(cookie, /Path=\//u);
     assert.match(cookie, /Max-Age=43200/u);
   });
+});
+
+test("accepts a signed Google ID token for the only allowed verified email", async () => {
+  assert.equal(typeof workerAuth.verifyGoogleCredential, "function");
+  const { jwks, sign } = await googleFixture();
+  const identity = await workerAuth.verifyGoogleCredential(await sign(), {
+    clientId: TEST_GOOGLE_CLIENT_ID,
+    jwks,
+    now: TEST_GOOGLE_NOW,
+  });
+
+  assert.deepEqual(identity, {
+    email: TEST_ALLOWED_EMAIL,
+    sub: "google-user-123",
+  });
+});
+
+test("rejects a valid Google token for another email with a generic response", async () => {
+  assert.equal(typeof workerAuth.authenticateGoogle, "function");
+  const { jwks, sign } = await googleFixture();
+  const disallowed = await googleLoginRequest(
+    await sign({ email: "another-teacher@example.com" }),
+    { jwks },
+  );
+  const invalid = await googleLoginRequest("not-a-google-token", { jwks });
+
+  assert.equal(disallowed.status, 401);
+  assert.equal(invalid.status, 401);
+  assert.deepEqual(await disallowed.json(), await invalid.json());
+  assert.equal(disallowed.headers.get("set-cookie"), null);
+});
+
+test("rejects unverified email, wrong audience, wrong issuer, expiry, and bad signature", async () => {
+  assert.equal(typeof workerAuth.verifyGoogleCredential, "function");
+  const { jwks, sign } = await googleFixture();
+  const { privateKey: otherKey } = await generateKeyPair("RS256");
+  const invalidTokens = [
+    await sign({ emailVerified: false }),
+    await sign({ audience: "other-client.apps.googleusercontent.com" }),
+    await sign({ issuer: "https://issuer.example" }),
+    await sign({ expiresAt: Math.floor(TEST_GOOGLE_NOW / 1000) - 1 }),
+    await sign({ signingKey: otherKey }),
+  ];
+
+  for (const credential of invalidTokens) {
+    await assert.rejects(workerAuth.verifyGoogleCredential(credential, {
+      clientId: TEST_GOOGLE_CLIENT_ID,
+      jwks,
+      now: TEST_GOOGLE_NOW,
+    }));
+  }
+});
+
+test("rejects malformed Google login bodies and missing auth configuration", async () => {
+  assert.equal(typeof workerAuth.authenticateGoogle, "function");
+  const malformed = await workerAuth.authenticateGoogle(
+    new Request("https://example.test/api/session/google", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ credential: "token", extra: true }),
+    }),
+    workerEnv(),
+    { now: TEST_GOOGLE_NOW },
+  );
+  const unavailable = await workerAuth.authenticateGoogle(
+    new Request("https://example.test/api/session/google", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ credential: "token" }),
+    }),
+    { ASSETS: noAssetFallback },
+    { now: TEST_GOOGLE_NOW },
+  );
+
+  assert.equal(malformed.status, 400);
+  assert.equal(unavailable.status, 503);
+});
+
+test("reads the verified Google email from a signed 12-hour session", async () => {
+  assert.equal(typeof workerAuth.authenticateGoogle, "function");
+  const { jwks, sign } = await googleFixture();
+  const login = await googleLoginRequest(await sign(), { jwks });
+  assert.equal(login.status, 204);
+  const cookie = login.headers.get("set-cookie");
+  assert.match(cookie, /__Host-daycare_session=/u);
+  assert.match(cookie, /Max-Age=43200/u);
+
+  const request = new Request("https://example.test/api/session", {
+    headers: { cookie: cookie.split(";", 1)[0] },
+  });
+  assert.deepEqual(
+    await workerAuth.readSession(request, workerEnv(), TEST_GOOGLE_NOW + 1_000),
+    { email: TEST_ALLOWED_EMAIL },
+  );
+  assert.equal(
+    await workerAuth.readSession(
+      request,
+      workerEnv(),
+      TEST_GOOGLE_NOW + (12 * 60 * 60 * 1000) + 1_000,
+    ),
+    null,
+  );
 });
 
 test("rejects malformed and incorrect shared passwords without a session", async () => {
@@ -293,7 +447,7 @@ test("rejects a tampered password-session cookie", async () => {
 test("rejects an expired password-session cookie", async () => {
   await withD1(async (env) => {
     const cookie = await loginCookie(env.DB);
-    const identity = await readSession(
+    const identity = await workerAuth.readSession(
       new Request("https://example.test/api/session", {
         headers: { cookie },
       }),
