@@ -1,0 +1,98 @@
+{
+  "resources": [
+    {
+      "id": "1-chinese", "grade": 1, "subject": "华文", "pdfFile": "1年级_华文_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "下册完整版", "duration": "42:20", "durationSeconds": 2540, "videoId": "G9HVvzhPtTk", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版", "duration": "42:21", "durationSeconds": 2541, "videoId": "nTLnzUXU7zk", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册快速版", "duration": "3:51", "durationSeconds": 231, "videoId": "681yp19nZBM", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册快速版", "duration": "3:51", "durationSeconds": 231, "videoId": "OJug4NJxqJw", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "1-malay", "grade": 1, "subject": "国语", "pdfFile": "1年级_国语_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "下册完整版", "duration": "38:20", "durationSeconds": 2300, "videoId": "ny_RadBlf0g", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版", "duration": "38:21", "durationSeconds": 2301, "videoId": "P8eEdOz4y38", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册快速版", "duration": "3:31", "durationSeconds": 211, "videoId": "Keyy5R_NayQ", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册快速版", "duration": "3:31", "durationSeconds": 211, "videoId": "tWyrRQaLcPU", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "1-mathematics", "grade": 1, "subject": "数学", "pdfFile": "1年级_数学_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "下册完整版", "duration": "45:21", "durationSeconds": 2721, "videoId": "-ukU8RoBV-Q", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版", "duration": "1:02:21", "durationSeconds": 3741, "videoId": "DgRklqnMEHI", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册快速版", "duration": "4:06", "durationSeconds": 246, "videoId": "BlE6sIxzXvw", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册快速版", "duration": "5:31", "durationSeconds": 331, "videoId": "vpajeLAr8bU", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "1-science", "grade": 1, "subject": "科学", "pdfFile": "1年级_科学_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "完整版", "duration": "32:21", "durationSeconds": 1941, "videoId": "RPnSzMHUVBM", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "快速版", "duration": "3:01", "durationSeconds": 181, "videoId": "Uu0lD7xrREg", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "2-chinese", "grade": 2, "subject": "华文", "pdfFile": "2年级_华文_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "下册完整版", "duration": "42:21", "durationSeconds": 2541, "videoId": "pV1L8AT0s4w", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版", "duration": "42:21", "durationSeconds": 2541, "videoId": "CJf5M2ptlhQ", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册快速版", "duration": "3:50", "durationSeconds": 230, "videoId": "AeoMa2D2bzE", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册快速版", "duration": "3:50", "durationSeconds": 230, "videoId": "QqxSfx8mNTs", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "2-malay", "grade": 2, "subject": "国语", "pdfFile": "2年级_国语_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "下册完整版", "duration": "43:21", "durationSeconds": 2601, "videoId": "TQSUQT1NnCk", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版", "duration": "43:21", "durationSeconds": 2601, "videoId": "X6AAAnHNo9I", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册快速版", "duration": "3:50", "durationSeconds": 230, "videoId": "3G25_5LBgVc", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册快速版", "duration": "3:50", "durationSeconds": 230, "videoId": "t45VdtZbe7A", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "2-mathematics", "grade": 2, "subject": "数学", "pdfFile": "2年级_数学_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "完整版", "duration": "1:18:21", "durationSeconds": 4701, "videoId": "_6-CMY0lIhI", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "快速版", "duration": "6:45", "durationSeconds": 405, "videoId": "yqIXHBjYz-c", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "2-science", "grade": 2, "subject": "科学", "pdfFile": "2年级_科学_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "完整版", "duration": "43:20", "durationSeconds": 2600, "videoId": "Gsn7Y9eR2mg", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "快速版", "duration": "3:50", "durationSeconds": 230, "videoId": "3_DiUohIqE0", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "3-chinese", "grade": 3, "subject": "华文", "pdfFile": "3年级_华文_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "下册完整版", "duration": "43:20", "durationSeconds": 2600, "videoId": "014P1XavOSc", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版", "duration": "43:20", "durationSeconds": 2600, "videoId": "XNt5cFUKcFQ", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册快速版", "duration": "7:30", "durationSeconds": 450, "videoId": "cqZdp5Zluws", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册快速版", "duration": "7:30", "durationSeconds": 450, "videoId": "XYS23HEUw_o", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "3-malay", "grade": 3, "subject": "国语", "pdfFile": "3年级_国语_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "下册完整版", "duration": "43:20", "durationSeconds": 2600, "videoId": "h9tA-QQg5jA", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版", "duration": "43:21", "durationSeconds": 2601, "videoId": "kwFZZuDQc8Q", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "3-mathematics", "grade": 3, "subject": "数学", "pdfFile": "3年级_数学_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "完整版", "duration": "1:19:20", "durationSeconds": 4760, "videoId": "CKrCzJwoPK8", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    },
+    {
+      "id": "3-science", "grade": 3, "subject": "科学", "pdfFile": "3年级_科学_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+      "videos": [
+        {"label": "完整版", "duration": "47:20", "durationSeconds": 2840, "videoId": "nP0HGVFNQ3M", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+      ]
+    }
+  ]
+}

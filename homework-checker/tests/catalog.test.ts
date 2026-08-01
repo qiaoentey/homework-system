@@ -8,6 +8,7 @@ describe("answer catalog", () => {
     expect(ANSWER_RESOURCES.every((item) =>
       item.pdfPath.startsWith("pdf/") && !item.pdfPath.startsWith("/pdf/")
     )).toBe(true);
+    expect(ANSWER_RESOURCES.every((item) => item.pdfPath.endsWith("_活动本答案参考.pdf"))).toBe(true);
   });
 
   it("keeps the complete external-video inventory intentional and status-labelled", () => {
@@ -53,6 +54,12 @@ describe("answer catalog", () => {
     expect(new Set(ANSWER_RESOURCES.flatMap((resource) => resource.videos.map((video) => video.videoId))).size).toBe(34);
     expect(ANSWER_RESOURCES.flatMap((resource) => resource.videos)
       .every((video) => video.linkStatus === "external-unverified" && video.catalogReviewedOn === "2026-07-27")).toBe(true);
+    expect(ANSWER_RESOURCES.flatMap((resource) => resource.videos)
+      .filter((video) => video.label.includes("完整版"))
+      .every((video) => video.primarySource)).toBe(true);
+    expect(ANSWER_RESOURCES.flatMap((resource) => resource.videos)
+      .filter((video) => video.label.includes("快速版"))
+      .every((video) => !video.primarySource)).toBe(true);
   });
 
   it("filters grade 2 mathematics to one resource", () => {
