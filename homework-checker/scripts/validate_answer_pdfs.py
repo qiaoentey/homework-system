@@ -21,7 +21,7 @@ from scripts.generate_answer_pdfs import answer_book_sha256
 ROOT = PROJECT_ROOT
 MAX_PDF_SIZE = 5 * 1024 * 1024
 BOOK_HASH_PATTERN = re.compile(r"(?:^|[;\s])book-sha256=([0-9a-f]{64})(?:$|[;\s])")
-ANSWER_ROW_PATTERN = re.compile(r"答案\s*#\s*\d+")
+ANSWER_ROW_PATTERN = re.compile(r"答案\s*#\s*(\d+)")
 
 
 def _expected_title(grade: int, subject: str) -> str:
@@ -104,7 +104,11 @@ def validate_pdf_set(
             errors.append(f"missing answer-book hash: {path.name}")
         elif match.group(1) != answer_book_sha256(book):
             errors.append(f"answer-book hash mismatch: {path.name}")
-        if len(ANSWER_ROW_PATTERN.findall(text)) < len(book.entries):
+        actual_row_numbers = {
+            int(number) for number in ANSWER_ROW_PATTERN.findall(text)
+        }
+        expected_row_numbers = set(range(1, len(book.entries) + 1))
+        if actual_row_numbers != expected_row_numbers:
             errors.append(f"{path.name} does not contain answer rows for every data entry")
 
     return errors

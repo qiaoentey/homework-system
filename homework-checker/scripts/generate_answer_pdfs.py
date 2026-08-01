@@ -261,7 +261,7 @@ def build_answer_pdf(
             ]
             if review_items:
                 notes = "<br/>".join(
-                    f"答案 #{number} 需人工复核：{escape(entry.checking_note or entry.answer)}"
+                    f"第 {number} 题需人工复核：{escape(entry.checking_note or entry.answer)}"
                     for number, entry in review_items
                 )
                 story.append(Paragraph(notes, styles["callout"]))
