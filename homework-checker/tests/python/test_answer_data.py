@@ -17,6 +17,18 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class AnswerDataTests(unittest.TestCase):
+    def test_catalog_uses_the_reviewed_playlist_for_each_grade(self):
+        catalog = load_catalog(ROOT / "answer-data/catalog.json")
+
+        self.assertEqual(
+            {resource.grade: resource.playlist_url for resource in catalog.resources},
+            {
+                1: "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
+                2: "https://youtube.com/playlist?list=PLLWa_lzrwn3ktsgcODd4DcehkQxrhN7QM",
+                3: "https://youtube.com/playlist?list=PLLWa_lzrwn3k3W0xqVMWOi3oX9TwkNePv",
+            },
+        )
+
     def test_catalog_has_twelve_reference_pdfs_and_thirty_four_videos(self):
         catalog = load_catalog(ROOT / "answer-data/catalog.json")
 
