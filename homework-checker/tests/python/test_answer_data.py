@@ -130,6 +130,25 @@ class AnswerDataTests(unittest.TestCase):
         self.assertIn("source reviews must cover every primary video exactly", errors)
         self.assertIn("primary video review is incomplete: DgRklqnMEHI", errors)
 
+    def test_validation_rejects_duplicate_primary_video_review_records(self):
+        resource = load_catalog(ROOT / "answer-data/catalog.json").resources[3]
+        complete_review = SourceReview("RPnSzMHUVBM", 1941)
+        book = AnswerBook(
+            resource_id=resource.id,
+            grade=resource.grade,
+            subject=resource.subject,
+            updated_on="2026-08-01",
+            source_reviews=(complete_review, complete_review),
+            entries=(
+                AnswerEntry("上册", "第一单元", "1", "1", "1", "", "verified", "RPnSzMHUVBM", "00:01:00"),
+            ),
+        )
+
+        self.assertIn(
+            "source review IDs must be unique",
+            validate_answer_book(book, resource),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

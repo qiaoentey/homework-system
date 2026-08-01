@@ -202,7 +202,10 @@ def validate_answer_book(book: AnswerBook, resource: CatalogResource | None) -> 
         if (book.grade, book.subject) != (resource.grade, resource.subject):
             errors.append("book grade/subject does not match catalog")
         primary = {video.video_id: video for video in resource.videos if video.primary_source}
+        review_ids = [review.source_video_id for review in book.source_reviews]
         reviews = {review.source_video_id: review for review in book.source_reviews}
+        if len(review_ids) != len(set(review_ids)):
+            errors.append("source review IDs must be unique")
         if reviews.keys() != primary.keys():
             errors.append("source reviews must cover every primary video exactly")
         for video_id, video in primary.items():
