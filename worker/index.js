@@ -1,8 +1,7 @@
 import {
-  authenticatePassword,
+  authenticateGoogle,
   clearSessionCookie,
   readSession,
-  SHARED_OPERATOR_EMAIL,
 } from "./auth.js";
 const BRANCHES = [
   { code: "MK", label: "MK" },
@@ -59,10 +58,6 @@ function empty(status = 204) {
 
 function apiError(status, code, message) {
   return json({ code, error: message }, status);
-}
-
-function operator() {
-  return { email: SHARED_OPERATOR_EMAIL };
 }
 
 function isRecord(value) {
@@ -350,7 +345,7 @@ async function listStudents(request, database, url) {
   });
 }
 
-async function enrolStudent(request, database) {
+async function enrolStudent(request, database, identity) {
   const context = readContext(request);
   const invalidContext = contextError(context);
   if (invalidContext) return invalidContext;
@@ -409,7 +404,7 @@ async function enrolStudent(request, database) {
     ).bind(
       activityId,
       id,
-      operator(request).email,
+      identity.email,
       JSON.stringify({
         name: body.name.trim(),
         grade: body.grade.trim(),
@@ -449,7 +444,7 @@ async function enrolStudent(request, database) {
   return json(mapStudent(student), created ? 201 : 200);
 }
 
-async function stopStudent(request, database, id) {
+async function stopStudent(request, database, id, identity) {
   if (!UUID_PATTERN.test(id)) return apiError(400, "INVALID_STOP_REQUEST", "Invalid stop request");
   const context = readContext(request);
   const invalidContext = contextError(context);
@@ -507,7 +502,7 @@ async function stopStudent(request, database, id) {
     ).bind(
       activityId,
       id,
-      operator(request).email,
+      identity.email,
       JSON.stringify({
         name: body.name.trim(),
         grade: body.grade.trim(),
@@ -522,7 +517,7 @@ async function stopStudent(request, database, id) {
   return json(mapStudent(await rawStudent(database, id)));
 }
 
-async function restoreStudent(request, database, id) {
+async function restoreStudent(request, database, id, identity) {
   if (!UUID_PATTERN.test(id)) return apiError(400, "INVALID_STUDENT_ID", "A student UUID is required");
   const context = readContext(request);
   const invalidContext = contextError(context);
@@ -553,7 +548,7 @@ async function restoreStudent(request, database, id) {
          (id, student_id, action, actor, details, created_at)
        SELECT ?, ?, 'restore', ?, '{}', ?
        WHERE changes() = 1`,
-    ).bind(activityId, id, operator(request).email, now),
+    ).bind(activityId, id, identity.email, now),
   ]);
   if (Number(results[0]?.meta?.changes ?? 0) !== 1) {
     return apiError(409, "INVALID_STATUS", "Student status does not allow this operation");
@@ -561,7 +556,7 @@ async function restoreStudent(request, database, id) {
   return json(mapStudent(await rawStudent(database, id)));
 }
 
-async function updateProfile(request, database, id) {
+async function updateProfile(request, database, id, identity) {
   if (!UUID_PATTERN.test(id)) return apiError(400, "INVALID_STUDENT_ID", "A student UUID is required");
   const context = readContext(request);
   const invalidContext = contextError(context);
@@ -602,7 +597,7 @@ async function updateProfile(request, database, id) {
     ).bind(
       activityId,
       id,
-      operator(request).email,
+      identity.email,
       JSON.stringify({ profile: body.profile }),
       now,
     ),
@@ -701,7 +696,7 @@ async function summary(database, url) {
   });
 }
 
-async function updateAttendance(request, database, id, date, eventCode) {
+async function updateAttendance(request, database, id, date, eventCode, identity) {
   if (!UUID_PATTERN.test(id) || !validDate(date)) {
     return apiError(400, "INVALID_ATTENDANCE_TARGET", "Invalid student UUID or date");
   }
@@ -729,7 +724,7 @@ async function updateAttendance(request, database, id, date, eventCode) {
        is_active = excluded.is_active,
        updated_by = excluded.updated_by,
        updated_at = excluded.updated_at`,
-    [id, date, eventCode, body.active ? 1 : 0, operator(request).email, now],
+    [id, date, eventCode, body.active ? 1 : 0, identity.email, now],
   );
   const event = await first(
     database,
@@ -776,7 +771,7 @@ async function listMessages(request, database, id) {
   return json({ items: rows.map(mapMessage) });
 }
 
-async function createMessage(request, database, id) {
+async function createMessage(request, database, id, identity) {
   if (!UUID_PATTERN.test(id)) return apiError(400, "INVALID_STUDENT_ID", "A student UUID is required");
   const context = readContext(request);
   const invalidContext = contextError(context);
@@ -799,7 +794,7 @@ async function createMessage(request, database, id) {
     `INSERT INTO student_messages
        (id, student_id, message_date, body, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [messageId, id, body.date, body.body.trim(), operator(request).email, now],
+    [messageId, id, body.date, body.body.trim(), identity.email, now],
   );
   const message = await first(
     database,
@@ -813,8 +808,17 @@ async function createMessage(request, database, id) {
 async function handleApi(request, env, url) {
   const { pathname } = url;
   if (pathname === "/api/health" && request.method === "GET") return json({ ok: true });
-  if (pathname === "/api/session/password" && request.method === "POST") {
-    return authenticatePassword(request, env);
+  if (pathname === "/api/session/config" && request.method === "GET") {
+    if (typeof env.GOOGLE_CLIENT_ID !== "string" || !env.GOOGLE_CLIENT_ID.trim()) {
+      return apiError(503, "AUTH_UNAVAILABLE", "Authentication is unavailable");
+    }
+    return json({ googleClientId: env.GOOGLE_CLIENT_ID.trim() });
+  }
+  if (pathname === "/api/session/google" && request.method === "POST") {
+    return authenticateGoogle(request, env);
+  }
+  if (["/api/session/password", "/api/session/emergency"].includes(pathname)) {
+    return apiError(404, "NOT_FOUND", "API route not found");
   }
 
   const identity = await readSession(request, env);
@@ -839,7 +843,7 @@ async function handleApi(request, env, url) {
     return listStudents(request, env.DB, url);
   }
   if (pathname === "/api/students" && request.method === "POST") {
-    return enrolStudent(request, env.DB);
+    return enrolStudent(request, env.DB, identity);
   }
   if (pathname === "/api/attendance" && request.method === "GET") {
     return attendanceList(env.DB, url);
@@ -848,21 +852,29 @@ async function handleApi(request, env, url) {
 
   let match = pathname.match(/^\/api\/students\/([^/]+)\/attendance\/([^/]+)\/([^/]+)$/u);
   if (match && request.method === "PUT") {
-    return updateAttendance(request, env.DB, match[1], match[2], match[3]);
+    return updateAttendance(request, env.DB, match[1], match[2], match[3], identity);
   }
   match = pathname.match(/^\/api\/students\/([^/]+)\/attendance\/([^/]+)$/u);
   if (match && request.method === "DELETE") {
     return clearAttendance(request, env.DB, match[1], match[2]);
   }
   match = pathname.match(/^\/api\/students\/([^/]+)\/profile$/u);
-  if (match && request.method === "PATCH") return updateProfile(request, env.DB, match[1]);
+  if (match && request.method === "PATCH") {
+    return updateProfile(request, env.DB, match[1], identity);
+  }
   match = pathname.match(/^\/api\/students\/([^/]+)\/messages$/u);
   if (match && request.method === "GET") return listMessages(request, env.DB, match[1]);
-  if (match && request.method === "POST") return createMessage(request, env.DB, match[1]);
+  if (match && request.method === "POST") {
+    return createMessage(request, env.DB, match[1], identity);
+  }
   match = pathname.match(/^\/api\/students\/([^/]+)\/stop$/u);
-  if (match && request.method === "POST") return stopStudent(request, env.DB, match[1]);
+  if (match && request.method === "POST") {
+    return stopStudent(request, env.DB, match[1], identity);
+  }
   match = pathname.match(/^\/api\/students\/([^/]+)\/restore$/u);
-  if (match && request.method === "POST") return restoreStudent(request, env.DB, match[1]);
+  if (match && request.method === "POST") {
+    return restoreStudent(request, env.DB, match[1], identity);
+  }
 
   return apiError(404, "NOT_FOUND", "API route not found");
 }

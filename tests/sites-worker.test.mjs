@@ -15,9 +15,6 @@ import { createSitesD1 } from "./helpers/sitesD1.mjs";
 const noAssetFallback = {
   fetch: async () => new Response("missing", { status: 404 }),
 };
-const TEST_PASSWORD = "Teacher-Access-2026";
-const TEST_PASSWORD_SHA256 =
-  "65e22250c5caa9cd6cfd98ec3f07f32834141d3c86ff0637cdc271c703aec702";
 const TEST_SESSION_SECRET = "test-session-secret-with-at-least-32-random-bytes";
 const TEST_GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com";
 const TEST_ALLOWED_EMAIL = "qiaoen9816@gmail.com";
@@ -69,13 +66,14 @@ async function api(path, options = {}) {
 function workerEnv(env = {}) {
   return {
     ASSETS: noAssetFallback,
-    ACCESS_PASSWORD_SHA256: TEST_PASSWORD_SHA256,
     ACCESS_SESSION_SECRET: TEST_SESSION_SECRET,
     GOOGLE_CLIENT_ID: TEST_GOOGLE_CLIENT_ID,
     GOOGLE_ALLOWED_EMAIL: TEST_ALLOWED_EMAIL,
     ...env,
   };
 }
+
+const testGoogleFixture = googleFixture();
 
 async function googleFixture() {
   const { privateKey, publicKey } = await generateKeyPair("RS256");
@@ -120,23 +118,10 @@ async function googleLoginRequest(credential, env = {}) {
 
 const loginCookieByDatabase = new WeakMap();
 
-async function passwordLogin(DB, password, address = "203.0.113.10", env = {}) {
-  return worker.fetch(
-    new Request("https://example.test/api/session/password", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "cf-connecting-ip": address,
-      },
-      body: JSON.stringify({ password }),
-    }),
-    workerEnv({ DB, ...env }),
-  );
-}
-
 async function loginCookie(DB) {
   if (!loginCookieByDatabase.has(DB)) {
-    loginCookieByDatabase.set(DB, passwordLogin(DB, TEST_PASSWORD).then((response) => {
+    loginCookieByDatabase.set(DB, testGoogleFixture.then(async ({ jwks, sign }) => {
+      const response = await googleLoginRequest(await sign(), { jwks });
       assert.equal(response.status, 204);
       return response.headers.get("set-cookie").split(";", 1)[0];
     }));
@@ -182,20 +167,6 @@ async function withD1(operation) {
     env.close();
   }
 }
-
-test("accepts the shared password and issues a secure host-only cookie", async () => {
-  await withD1(async ({ DB }) => {
-    const response = await passwordLogin(DB, TEST_PASSWORD);
-    assert.equal(response.status, 204);
-    const cookie = response.headers.get("set-cookie");
-    assert.match(cookie, /__Host-daycare_session=/u);
-    assert.match(cookie, /HttpOnly/u);
-    assert.match(cookie, /Secure/u);
-    assert.match(cookie, /SameSite=Strict/u);
-    assert.match(cookie, /Path=\//u);
-    assert.match(cookie, /Max-Age=43200/u);
-  });
-});
 
 test("accepts a signed Google ID token for the only allowed verified email", async () => {
   assert.equal(typeof workerAuth.verifyGoogleCredential, "function");
@@ -299,81 +270,42 @@ test("reads the verified Google email from a signed 12-hour session", async () =
   );
 });
 
-test("rejects malformed and incorrect shared passwords without a session", async () => {
-  await withD1(async ({ DB }) => {
-    const malformed = await worker.fetch(
-      new Request("https://example.test/api/session/password", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "cf-connecting-ip": "203.0.113.11",
-        },
-        body: JSON.stringify({ password: TEST_PASSWORD, extra: true }),
-      }),
-      workerEnv({ DB }),
-    );
-    assert.equal(malformed.status, 400);
-
-    const incorrect = await passwordLogin(DB, "incorrect", "203.0.113.12");
-    assert.equal(incorrect.status, 401);
-    assert.equal(incorrect.headers.get("set-cookie"), null);
+test("publishes only the public Google client ID before login", async () => {
+  const response = await worker.fetch(
+    new Request("https://example.test/api/session/config"),
+    workerEnv(),
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    googleClientId: TEST_GOOGLE_CLIENT_ID,
   });
 });
 
-test("locks the fifth failed password attempt and returns retry guidance", async () => {
-  await withD1(async ({ DB }) => {
-    for (let attempt = 1; attempt < 5; attempt += 1) {
-      const response = await passwordLogin(DB, "incorrect", "203.0.113.13");
-      assert.equal(response.status, 401);
-    }
+test("creates sessions only through Google and hides obsolete login routes", async () => {
+  const malformedGoogle = await worker.fetch(
+    new Request("https://example.test/api/session/google", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+    workerEnv(),
+  );
+  assert.equal(malformedGoogle.status, 400);
 
-    const locked = await passwordLogin(DB, "incorrect", "203.0.113.13");
-    assert.equal(locked.status, 429);
-    assert.match(locked.headers.get("retry-after"), /^\d+$/u);
-  });
-});
-
-test("successful password login clears earlier failures for the address", async () => {
-  await withD1(async ({ DB }) => {
-    for (let attempt = 1; attempt < 5; attempt += 1) {
-      assert.equal(
-        (await passwordLogin(DB, "incorrect", "203.0.113.14")).status,
-        401,
-      );
-    }
-
-    assert.equal(
-      (await passwordLogin(DB, TEST_PASSWORD, "203.0.113.14")).status,
-      204,
-    );
-
-    for (let attempt = 1; attempt < 5; attempt += 1) {
-      assert.equal(
-        (await passwordLogin(DB, "incorrect", "203.0.113.14")).status,
-        401,
-      );
-    }
-  });
-});
-
-test("fails closed when shared-password secrets are missing", async () => {
-  await withD1(async ({ DB }) => {
+  for (const path of ["/api/session/password", "/api/session/emergency"]) {
     const response = await worker.fetch(
-      new Request("https://example.test/api/session/password", {
+      new Request(`https://example.test${path}`, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "cf-connecting-ip": "203.0.113.15",
-        },
-        body: JSON.stringify({ password: TEST_PASSWORD }),
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
       }),
-      { ASSETS: noAssetFallback, DB },
+      workerEnv(),
     );
-    assert.equal(response.status, 503);
-  });
+    assert.equal(response.status, 404, path);
+  }
 });
 
-test("rejects protected reads and writes without a password session", async () => {
+test("rejects protected reads and writes without a Google session", async () => {
   await withD1(async (env) => {
     for (const [path, method] of [
       ["/api/session", "GET"],
@@ -390,11 +322,11 @@ test("rejects protected reads and writes without a password session", async () =
   });
 });
 
-test("serves the shared operator session and fixed branch catalog after password login", async () => {
+test("serves the verified Google session and fixed branch catalog after login", async () => {
   await withD1(async (env) => {
     const session = await apiWithD1(env, "/api/session");
     assert.equal(session.status, 200);
-    assert.deepEqual(await session.json(), { email: "shared-access@local" });
+    assert.deepEqual(await session.json(), { email: TEST_ALLOWED_EMAIL });
 
     const catalog = await apiWithD1(env, "/api/catalog");
     assert.equal(catalog.status, 200);
@@ -432,7 +364,7 @@ test("serves the shared operator session and fixed branch catalog after password
   });
 });
 
-test("rejects a tampered password-session cookie", async () => {
+test("rejects a tampered Google-session cookie", async () => {
   await withD1(async (env) => {
     const cookie = await loginCookie(env.DB);
     const replacement = cookie.endsWith("a") ? "b" : "a";
@@ -444,7 +376,7 @@ test("rejects a tampered password-session cookie", async () => {
   });
 });
 
-test("rejects an expired password-session cookie", async () => {
+test("rejects an expired Google-session cookie", async () => {
   await withD1(async (env) => {
     const cookie = await loginCookie(env.DB);
     const identity = await workerAuth.readSession(
@@ -458,24 +390,12 @@ test("rejects an expired password-session cookie", async () => {
   });
 });
 
-test("logout clears the password session cookie", async () => {
+test("logout clears the Google session cookie", async () => {
   await withD1(async (env) => {
     const response = await apiWithD1(env, "/api/session", { method: "DELETE" });
     assert.equal(response.status, 204);
     assert.match(response.headers.get("set-cookie"), /Max-Age=0/u);
     assert.match(response.headers.get("set-cookie"), /Expires=Thu, 01 Jan 1970/u);
-  });
-});
-
-test("does not expose obsolete Google or emergency login routes", async () => {
-  await withD1(async (env) => {
-    for (const path of ["/api/session/google", "/api/session/emergency"]) {
-      const response = await apiWithD1(env, path, {
-        method: "POST",
-        body: {},
-      });
-      assert.equal(response.status, 404);
-    }
   });
 });
 
@@ -636,6 +556,7 @@ test("writes, lists, summarizes, and clears attendance", async () => {
       assert.equal(event.studentId, student.id);
       assert.equal(event.eventCode, eventCode);
       assert.equal(event.active, true);
+      assert.equal(event.updatedBy, TEST_ALLOWED_EMAIL);
     }
 
     const attendance = await readJson(await apiWithD1(
@@ -731,8 +652,8 @@ test("atomically rejects one of two concurrent profile updates with the same ver
        ORDER BY rowid`,
     ).bind(student.id).all();
     assert.deepEqual(activity.results.map((row) => ({ ...row })), [
-      { action: "profile_update", actor: "shared-access@local" },
-      { action: "profile_update", actor: "shared-access@local" },
+      { action: "profile_update", actor: TEST_ALLOWED_EMAIL },
+      { action: "profile_update", actor: TEST_ALLOWED_EMAIL },
     ]);
   });
 });
@@ -752,7 +673,7 @@ test("creates and lists trimmed student messages newest first", async () => {
       body: { date: "2026-07-26", body: "  Bring workbook.  " },
     }), 201);
     assert.equal(oldMessage.body, "Bring workbook.");
-    assert.equal(oldMessage.createdBy, "shared-access@local");
+    assert.equal(oldMessage.createdBy, TEST_ALLOWED_EMAIL);
 
     await readJson(await apiWithD1(env, path, {
       method: "POST",
@@ -815,9 +736,12 @@ test("idempotently retries one enrolment key while allowing real duplicate ident
       { id: realDuplicate.id, enrolment_key: "10000000-0000-4000-8000-000000000002" },
     ]);
     const activity = await env.DB.prepare(
-      "SELECT student_id, action FROM student_activity WHERE action = 'enrol' ORDER BY student_id",
+      "SELECT student_id, action, actor FROM student_activity WHERE action = 'enrol' ORDER BY student_id",
     ).all();
-    assert.deepEqual(activity.results.map(({ action }) => action), ["enrol", "enrol"]);
+    assert.deepEqual(activity.results.map(({ action, actor }) => ({ action, actor })), [
+      { action: "enrol", actor: TEST_ALLOWED_EMAIL },
+      { action: "enrol", actor: TEST_ALLOWED_EMAIL },
+    ]);
   });
 });
 
@@ -1023,8 +947,8 @@ test("concurrent stop and restore transitions each record exactly one activity",
        ORDER BY rowid`,
     ).bind(student.id).all();
     assert.deepEqual(activity.results.map((row) => ({ ...row })), [
-      { action: "stop", actor: "shared-access@local" },
-      { action: "restore", actor: "shared-access@local" },
+      { action: "stop", actor: TEST_ALLOWED_EMAIL },
+      { action: "restore", actor: TEST_ALLOWED_EMAIL },
     ]);
   });
 });
@@ -1111,9 +1035,9 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
        ORDER BY rowid`,
     ).bind(original.id).all();
     assert.deepEqual(activity.results.map((row) => ({ ...row })), [
-      { action: "profile_update", actor: "shared-access@local" },
-      { action: "stop", actor: "shared-access@local" },
-      { action: "restore", actor: "shared-access@local" },
+      { action: "profile_update", actor: TEST_ALLOWED_EMAIL },
+      { action: "stop", actor: TEST_ALLOWED_EMAIL },
+      { action: "restore", actor: TEST_ALLOWED_EMAIL },
     ]);
   });
 });
