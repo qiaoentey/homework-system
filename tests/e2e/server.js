@@ -15,9 +15,13 @@ const app = createApp({
   config: {
     sessionSecret: "e2e-session-secret",
     environment: "test",
-    googleClientId: "",
-    allowedEmails: [],
+    googleClientId: "e2e-client.apps.googleusercontent.com",
+    allowedEmails: ["qiaoen9816@gmail.com"],
     emergencyPasswordHash,
+  },
+  googleVerifier: async (credential) => {
+    if (credential !== "e2e-google-token") throw new Error("Invalid E2E credential");
+    return { email: "qiaoen9816@gmail.com", emailVerified: true };
   },
 });
 const vite = await createViteServer({

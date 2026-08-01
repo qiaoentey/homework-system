@@ -33,7 +33,8 @@ test("external entrance is reachable using GET requests only", async ({ page }) 
     await expect(page.getByRole("group", { name: "分院选择" }).getByRole("button"))
       .toHaveText(["MK", "STP", "WS"]);
   } else {
-    await expect(page.getByLabel("系统密码")).toBeVisible();
+    await expect(page.getByLabel("Google 登录")).toBeVisible();
+    await expect(page.getByLabel("系统密码")).toHaveCount(0);
   }
 });
 

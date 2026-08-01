@@ -23,14 +23,15 @@ const CATALOG = {
     { label: "MIXIN", code: "WS MIXIN" },
   ],
 };
-const accessPassword = process.env.E2E_ACCESS_PASSWORD
-  ?? process.env.E2E_EMERGENCY_PASSWORD
-  ?? "test-access";
-
 async function login(page) {
   await page.goto("/");
-  await page.getByLabel("系统密码").fill(accessPassword);
-  await page.getByRole("button", { name: "登录", exact: true }).click();
+  const status = await page.evaluate(async () => (await fetch("/api/session/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ credential: "e2e-google-token" }),
+  })).status);
+  expect(status).toBe(204);
+  await page.reload();
   await expect(page.getByRole("heading", { name: "请选择分院" })).toBeVisible();
 }
 
