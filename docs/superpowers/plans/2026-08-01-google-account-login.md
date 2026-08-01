@@ -124,7 +124,7 @@ Expected: FAIL because `authenticateGoogle` and `verifyGoogleCredential` do not 
 
 - [ ] **Step 4: Implement Google verification and email-bound sessions**
 
-Replace password-specific configuration and session payload logic with:
+Add Google-specific configuration beside the existing password helper so the Worker remains runnable until Task 2 removes the password route. Replace the hardcoded session-email payload logic with an email parameter and add:
 
 ```js
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -167,7 +167,7 @@ export async function verifyGoogleCredential(credential, {
 }
 ```
 
-Make `signedSession(secret, email, now)` encode `{ email, exp }`. Make `readSession` verify that the cookie email equals normalized `env.GOOGLE_ALLOWED_EMAIL`. Implement exact `{ credential }` request parsing and return one `401 INVALID_GOOGLE_LOGIN` response for every invalid, unverified, or disallowed identity.
+Make `signedSession(secret, email, now)` encode `{ email, exp }`. During this transitional task, make `readSession` accept either normalized `env.GOOGLE_ALLOWED_EMAIL` or the existing shared operator only when the matching authentication configuration exists; Task 2 removes the shared path. Implement exact `{ credential }` request parsing and return one `401 INVALID_GOOGLE_LOGIN` response for every invalid, unverified, or disallowed identity.
 
 - [ ] **Step 5: Run focused and full Sites tests**
 
@@ -178,7 +178,7 @@ node --test --test-name-pattern='Google ID token|Google token|Google login bodie
 npm run test:sites
 ```
 
-Expected: focused tests PASS; remaining password-route tests may still fail until Task 2 updates routing and helpers.
+Expected: focused tests PASS and the full Sites suite remains green because the Google core is additive until Task 2 switches routing atomically.
 
 - [ ] **Step 6: Commit the authentication core**
 
@@ -442,9 +442,10 @@ const packagedWorker = await readFile(
 );
 assert.doesNotMatch(packagedWorker, /from\s+["']jose["']/u);
 assert.match(packagedWorker, /api\/session\/google/u);
+await assert.rejects(access(new URL("../dist/server/auth.js", import.meta.url)));
 ```
 
-Remove the assertion that `dist/server/auth.js` exists because the auth module will be bundled into `index.js`.
+Replace the assertion that `dist/server/auth.js` exists with the rejection above because the auth module will be bundled into `index.js`.
 
 - [ ] **Step 2: Run a clean build/package test and verify RED**
 
