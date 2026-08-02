@@ -1,12 +1,23 @@
 import { expect, test } from "playwright/test";
-import { ANSWER_RESOURCES } from "../src/answer-library/catalog";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { appPath } from "./support/appPaths";
 
+type CatalogFile = {
+  resources: Array<{ pdfFile: string }>;
+};
+
+const answerResources = (JSON.parse(readFileSync(
+  fileURLToPath(new URL("../answer-data/catalog.json", import.meta.url)),
+  "utf8",
+)) as CatalogFile).resources.map((resource) => ({
+  pdfPath: `pdf/${resource.pdfFile}`,
+}));
 const sciencePdf = appPath("pdf/3年级_科学_活动本答案参考.pdf");
 
 test("serves every catalogued local answer asset as a non-empty PDF", async ({ page }) => {
   await page.goto(appPath());
-  for (const resource of ANSWER_RESOURCES) {
+  for (const resource of answerResources) {
     const asset = await page.evaluate(async (path) => {
       const response = await fetch(path);
       const bytes = new Uint8Array(await response.arrayBuffer());
