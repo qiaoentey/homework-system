@@ -343,6 +343,8 @@ def generate_existing_books(
             for resource in catalog.resources
             if (books_dir / f"{resource.id}.json").is_file()
         ]
+    if not selected:
+        return []
     font_name = register_production_font()
     outputs: list[Path] = []
     for resource in selected:

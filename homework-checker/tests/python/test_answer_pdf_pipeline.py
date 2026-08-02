@@ -1,6 +1,7 @@
 from dataclasses import replace
 from pathlib import Path
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -175,7 +176,7 @@ class AnswerPdfPipelineTests(unittest.TestCase):
                 "one review note was split across two PDF pages",
             )
 
-    def test_generator_can_run_as_the_package_script(self):
+    def test_generator_does_not_require_a_font_when_no_books_are_selected(self):
         with tempfile.TemporaryDirectory() as directory:
             isolated_root = Path(directory) / "populated-project"
             write_sample_project(isolated_root)
@@ -193,6 +194,10 @@ class AnswerPdfPipelineTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 check=False,
+                env={
+                    **os.environ,
+                    "ANSWER_PDF_FONT": str(isolated_root / "missing-font.ttf"),
+                },
             )
 
             self.assertEqual(completed.returncode, 0, completed.stderr)
