@@ -110,6 +110,45 @@ afterEach(() => {
 });
 
 describe("current-group search and safe profile selection", () => {
+  it("opens the correct student's unlocked profile with one tap", async () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    try {
+      vi.stubGlobal("fetch", setupFetch());
+      render(<RosterScreen branchCode="WS" groupCode="WS HUILING" date="2026-07-27" />);
+
+      const card = await screen.findByTestId("student-card");
+      expect(screen.getByRole("heading", { name: "请选择学生" })).toBeVisible();
+      expect(screen.getByLabelText("学校")).toBeDisabled();
+
+      fireEvent.click(within(card).getByRole("button", {
+        name: "填写 HAYDEN CHIN 资料",
+      }));
+
+      expect(await screen.findByRole("heading", { name: "HAYDEN CHIN" })).toBeVisible();
+      await waitFor(() => expect(screen.getByLabelText("学校")).toBeEnabled());
+      expect(screen.getByLabelText("学校")).toHaveFocus();
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: "smooth",
+        block: "start",
+      });
+    } finally {
+      if (originalScrollIntoView) {
+        Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+          configurable: true,
+          value: originalScrollIntoView,
+        });
+      } else {
+        delete HTMLElement.prototype.scrollIntoView;
+      }
+    }
+  });
+
   it("debounces for 250ms, clears the selected id and every form value on no result, and removes save", async () => {
     const fetchMock = setupFetch();
     vi.stubGlobal("fetch", fetchMock);

@@ -32,39 +32,39 @@
 - Consumes: `StudentCard.onSelect(studentId: string)` and the existing `selectedStudentId` state.
 - Produces: a visible card button with accessible name `填写 <student name> 资料`; `ProfilePanel.panelRef` receives a React ref for the section element.
 
-- [ ] **Step 1: Write the failing component test**
+- [x] **Step 1: Write the failing component test**
 
 Add a test that loads `HAYDEN CHIN`, verifies the form starts disabled, taps `填写 HAYDEN CHIN 资料`, and then asserts that the profile heading is `HAYDEN CHIN`, the `学校` input is enabled and focused, and `scrollIntoView({ behavior: "smooth", block: "start" })` was called on the panel.
 
-- [ ] **Step 2: Write the failing mobile/desktop E2E test**
+- [x] **Step 2: Write the failing mobile/desktop E2E test**
 
 Add a Playwright test that enters a populated teacher group, taps the first `填写资料` shortcut by accessible name, and verifies the profile heading and first input are visible, enabled, and focused. The existing two Playwright projects cover desktop and touch-sized mobile viewports.
 
-- [ ] **Step 3: Run the focused tests and verify RED**
+- [x] **Step 3: Run the focused tests and verify RED**
 
 Run: `npm test -- --run tests/client/profile-search.test.jsx`
 
 Expected: FAIL because the `填写 <student> 资料` button does not exist.
 
-- [ ] **Step 4: Add the card shortcut**
+- [x] **Step 4: Add the card shortcut**
 
 In `StudentCard.jsx`, add a `填写资料` button in a grouped footer action area. Give it `aria-label={`填写 ${student.name} 资料`}` and call `onSelect(student.id)`.
 
-- [ ] **Step 5: Add post-selection navigation**
+- [x] **Step 5: Add post-selection navigation**
 
 In `RosterScreen.jsx`, keep a `profilePanelRef` and a navigation request counter. Every `selectStudent(studentId)` call updates both selection and the counter. In an effect that runs after rendering, call `scrollIntoView({ behavior: "smooth", block: "start" })` and focus `input:not(:disabled)` inside the panel. Pass the ref to `ProfilePanel`, which attaches it to its root section.
 
-- [ ] **Step 6: Style the shortcut for clear touch use**
+- [x] **Step 6: Style the shortcut for clear touch use**
 
 In `app.css`, group the footer buttons with a flex container and give the profile shortcut a blue background, white text, a minimum 40px height, and a padded touch target. Preserve the attendance save-state area at the opposite side of the footer.
 
-- [ ] **Step 7: Run focused tests and verify GREEN**
+- [x] **Step 7: Run focused tests and verify GREEN**
 
 Run: `npm test -- --run tests/client/profile-search.test.jsx`
 
 Expected: PASS with the correct student selected, panel scrolled, and first input focused.
 
-- [ ] **Step 8: Run full verification**
+- [x] **Step 8: Run full verification**
 
 Run: `npm test -- --maxWorkers=1`
 

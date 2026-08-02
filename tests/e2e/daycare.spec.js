@@ -168,6 +168,20 @@ test("Yuan Ning STP loads only the approved 43 students", async ({ page }) => {
   ))).toBe(true);
 });
 
+test("one tap opens the selected student's editable profile", async ({ page }) => {
+  await openRoster(page, "WS", "HUILING", "WS HUILING");
+  await page.getByRole("searchbox", { name: "搜索当前班级学生" }).fill("萧时彬");
+
+  const card = page.getByTestId("student-card").filter({ hasText: "萧时彬" });
+  await card.getByRole("button", { name: "填写 萧时彬 资料", exact: true }).click();
+
+  const profileHeading = page.getByRole("heading", { name: "萧时彬", exact: true });
+  await expect(profileHeading).toBeVisible();
+  await expect(profileHeading).toBeInViewport();
+  await expect(page.getByLabel("学校", { exact: true })).toBeEnabled();
+  await expect(page.getByLabel("学校", { exact: true })).toBeFocused();
+});
+
 test("enrol, stop, and restore preserve UUID, profile, attendance, and messages", async ({
   page,
 }, testInfo) => {

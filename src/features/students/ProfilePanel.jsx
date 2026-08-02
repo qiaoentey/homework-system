@@ -7,6 +7,7 @@ import {
 } from "../../domain/profile.js";
 
 export function ProfilePanel({
+  panelRef,
   branchCode,
   groupCode,
   student,
@@ -67,7 +68,7 @@ export function ProfilePanel({
   }
 
   return (
-    <section className="profile-panel" aria-labelledby="profile-title">
+    <section ref={panelRef} className="profile-panel" aria-labelledby="profile-title">
       <div className="profile-panel__heading">
         <div>
           <span className="eyebrow">学生资料</span>

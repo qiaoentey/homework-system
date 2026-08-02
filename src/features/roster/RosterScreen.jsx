@@ -48,6 +48,7 @@ export function RosterScreen({
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [summaryStatus, setSummaryStatus] = useState("loading");
   const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [profileNavigationRequest, setProfileNavigationRequest] = useState(0);
   const [saveStates, setSaveStates] = useState({});
   const [messageOpen, setMessageOpen] = useState(false);
   const [lifecycleDialog, setLifecycleDialog] = useState(null);
@@ -56,11 +57,19 @@ export function RosterScreen({
   const attendanceRequestGeneration = useRef(0);
   const attendanceMutationVersions = useRef(new Map());
   const summaryRequestGeneration = useRef(0);
+  const profilePanelRef = useRef(null);
 
   const selectedStudent = useMemo(
     () => students.find((student) => student.id === selectedStudentId) ?? null,
     [selectedStudentId, students],
   );
+
+  useEffect(() => {
+    if (!selectedStudentId || !profileNavigationRequest) return;
+    const panel = profilePanelRef.current;
+    panel?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    panel?.querySelector("input:not(:disabled)")?.focus({ preventScroll: true });
+  }, [profileNavigationRequest, selectedStudentId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(searchInput.trim()), 250);
@@ -259,6 +268,7 @@ export function RosterScreen({
 
   function selectStudent(studentId) {
     setSelectedStudentId(studentId);
+    setProfileNavigationRequest((current) => current + 1);
     setMessageOpen(false);
   }
 
@@ -400,6 +410,7 @@ export function RosterScreen({
         />
       ) : null}
       <ProfilePanel
+        panelRef={profilePanelRef}
         branchCode={branchCode}
         groupCode={groupCode}
         student={selectedStudent}

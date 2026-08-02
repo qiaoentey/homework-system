@@ -52,14 +52,24 @@ export function StudentCard({
       </div>
 
       <footer className="student-card__footer">
-        <button
-          className="clear-button"
-          type="button"
-          disabled={saving}
-          onClick={() => onClear(student.id)}
-        >
-          清除今日
-        </button>
+        <div className="student-card__footer-actions">
+          <button
+            className="profile-shortcut-button"
+            type="button"
+            aria-label={`填写 ${student.name} 资料`}
+            onClick={() => onSelect(student.id)}
+          >
+            填写资料
+          </button>
+          <button
+            className="clear-button"
+            type="button"
+            disabled={saving}
+            onClick={() => onClear(student.id)}
+          >
+            清除今日
+          </button>
+        </div>
         <div className="student-card__save-state" role="status">
           {saveState?.status === "saving" ? "保存中…" : null}
           {saveState?.status === "saved" ? "已保存" : null}

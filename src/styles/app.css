@@ -562,6 +562,29 @@ button {
   margin-top: 12px;
 }
 
+.student-card__footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-shortcut-button {
+  min-height: 40px;
+  border: 1px solid var(--color-blue);
+  border-radius: 11px;
+  background: var(--color-blue);
+  color: white;
+  cursor: pointer;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.profile-shortcut-button:focus-visible,
+.profile-shortcut-button:hover {
+  background: #0f5dbd;
+}
+
 .clear-button,
 .retry-button,
 .secondary-button {
