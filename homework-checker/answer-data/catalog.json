@@ -12,10 +12,10 @@
     {
       "id": "1-malay", "grade": 1, "subject": "国语", "pdfFile": "1年级_国语_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3lwW1dGq-JB0NnvUZu2A9ML",
       "videos": [
-        {"label": "下册完整版", "duration": "38:20", "durationSeconds": 2300, "videoId": "ny_RadBlf0g", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
-        {"label": "上册完整版", "duration": "38:21", "durationSeconds": 2301, "videoId": "P8eEdOz4y38", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
-        {"label": "下册快速版", "duration": "3:31", "durationSeconds": 211, "videoId": "Keyy5R_NayQ", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
-        {"label": "上册快速版", "duration": "3:31", "durationSeconds": 211, "videoId": "tWyrRQaLcPU", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+        {"label": "下册完整版（补充）", "duration": "38:20", "durationSeconds": 2300, "videoId": "ny_RadBlf0g", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版（补充）", "duration": "38:21", "durationSeconds": 2301, "videoId": "P8eEdOz4y38", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册逐页核对版", "duration": "3:31", "durationSeconds": 211, "videoId": "Keyy5R_NayQ", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册逐页核对版", "duration": "3:31", "durationSeconds": 211, "videoId": "tWyrRQaLcPU", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
       ]
     },
     {
@@ -46,10 +46,10 @@
     {
       "id": "2-malay", "grade": 2, "subject": "国语", "pdfFile": "2年级_国语_活动本答案参考.pdf", "playlistUrl": "https://youtube.com/playlist?list=PLLWa_lzrwn3ktsgcODd4DcehkQxrhN7QM",
       "videos": [
-        {"label": "下册完整版", "duration": "43:21", "durationSeconds": 2601, "videoId": "TQSUQT1NnCk", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
-        {"label": "上册完整版", "duration": "43:21", "durationSeconds": 2601, "videoId": "X6AAAnHNo9I", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
-        {"label": "下册快速版", "duration": "3:50", "durationSeconds": 230, "videoId": "3G25_5LBgVc", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
-        {"label": "上册快速版", "duration": "3:50", "durationSeconds": 230, "videoId": "t45VdtZbe7A", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
+        {"label": "下册完整版（补充）", "duration": "43:21", "durationSeconds": 2601, "videoId": "TQSUQT1NnCk", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册完整版（补充）", "duration": "43:21", "durationSeconds": 2601, "videoId": "X6AAAnHNo9I", "primarySource": false, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "下册逐页核对版", "duration": "3:50", "durationSeconds": 230, "videoId": "3G25_5LBgVc", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"},
+        {"label": "上册逐页核对版", "duration": "3:50", "durationSeconds": 230, "videoId": "t45VdtZbe7A", "primarySource": true, "linkStatus": "external-unverified", "catalogReviewedOn": "2026-07-27"}
       ]
     },
     {
