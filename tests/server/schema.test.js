@@ -32,6 +32,7 @@ describe("initial database schema", () => {
   it("allows real duplicate identities while enforcing unique enrolment keys", async () => {
     const pool = await createTestDatabase();
     pools.push(pool);
+    const initialCount = Number((await pool.query("select count(*) from students")).rows[0].count);
 
     await pool.query(
       `insert into students
@@ -54,6 +55,7 @@ describe("initial database schema", () => {
                '10000000-0000-4000-8000-000000000001')`,
     )).rejects.toMatchObject({ code: "23505" });
 
-    expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(2);
+    expect(Number((await pool.query("select count(*) from students")).rows[0].count))
+      .toBe(initialCount + 2);
   });
 });

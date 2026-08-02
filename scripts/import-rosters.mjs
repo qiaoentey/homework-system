@@ -10,8 +10,9 @@ const APPROVED_COUNTS = {
   "WS JIA WEN": 61,
   "WS MIXIN": 42,
   "巧恩 STP": 90,
-  "PS STP": 121,
+  "PS STP": 83,
   "SY STP": 50,
+  "YUAN NING STP": 43,
 };
 
 function rosterFile(filename, groupCode) {
@@ -32,6 +33,7 @@ export const ROSTER_FILES = [
   rosterFile("stp-qiao-en.csv", "巧恩 STP"),
   rosterFile("stp-ps.csv", "PS STP"),
   rosterFile("stp-sy.csv", "SY STP"),
+  rosterFile("stp-yuan-ning.csv", "YUAN NING STP"),
 ];
 
 function normalizeWhitespace(value) {
