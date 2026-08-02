@@ -18,6 +18,7 @@ const noAssetFallback = {
 const TEST_SESSION_SECRET = "test-session-secret-with-at-least-32-random-bytes";
 const TEST_GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com";
 const TEST_ALLOWED_EMAIL = "qiaoen9816@gmail.com";
+const TEST_SECOND_ALLOWED_EMAIL = "raydenweng417@gmail.com";
 const TEST_GOOGLE_NOW = Date.parse("2026-08-01T05:00:00.000Z");
 const emptyProfile = {
   school: "",
@@ -187,6 +188,28 @@ test("accepts a signed Google ID token for the only allowed verified email", asy
     email: TEST_ALLOWED_EMAIL,
     sub: "google-user-123",
   });
+});
+
+test("accepts every normalized email in the comma-separated Google allowlist", async () => {
+  const { jwks, sign } = await googleFixture();
+  const env = {
+    GOOGLE_ALLOWED_EMAIL: undefined,
+    GOOGLE_ALLOWED_EMAILS: ` ${TEST_ALLOWED_EMAIL.toUpperCase()}, ${TEST_SECOND_ALLOWED_EMAIL} `,
+    jwks,
+  };
+
+  for (const email of [TEST_ALLOWED_EMAIL, TEST_SECOND_ALLOWED_EMAIL]) {
+    const login = await googleLoginRequest(await sign({ email }), env);
+    assert.equal(login.status, 204, email);
+
+    const request = new Request("https://example.test/api/session", {
+      headers: { cookie: login.headers.get("set-cookie").split(";", 1)[0] },
+    });
+    assert.deepEqual(
+      await workerAuth.readSession(request, workerEnv(env), TEST_GOOGLE_NOW + 1_000),
+      { email },
+    );
+  }
 });
 
 test("rejects a valid Google token for another email with a generic response", async () => {

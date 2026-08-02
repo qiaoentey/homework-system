@@ -33,6 +33,15 @@ function normalizedEmail(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
+function allowedGoogleEmails(env) {
+  return new Set([
+    ...(typeof env?.GOOGLE_ALLOWED_EMAILS === "string"
+      ? env.GOOGLE_ALLOWED_EMAILS.split(",")
+      : []),
+    env?.GOOGLE_ALLOWED_EMAIL,
+  ].map(normalizedEmail).filter(Boolean));
+}
+
 function validSessionSecret(env) {
   return typeof env?.ACCESS_SESSION_SECRET === "string"
     && env.ACCESS_SESSION_SECRET.length >= 32;
@@ -51,7 +60,7 @@ function validGoogleConfiguration(env) {
     validSessionSecret(env)
     && typeof env?.GOOGLE_CLIENT_ID === "string"
     && env.GOOGLE_CLIENT_ID.endsWith(".apps.googleusercontent.com")
-    && normalizedEmail(env.GOOGLE_ALLOWED_EMAIL),
+    && allowedGoogleEmails(env).size > 0,
   );
 }
 
@@ -189,7 +198,9 @@ export async function readSession(request, env, now = Date.now()) {
   if (!validSessionSecret(env)) return null;
   const allowedEmails = new Set();
   if (validPasswordConfiguration(env)) allowedEmails.add(SHARED_OPERATOR_EMAIL);
-  if (validGoogleConfiguration(env)) allowedEmails.add(normalizedEmail(env.GOOGLE_ALLOWED_EMAIL));
+  if (validGoogleConfiguration(env)) {
+    for (const email of allowedGoogleEmails(env)) allowedEmails.add(email);
+  }
   if (allowedEmails.size === 0) return null;
   const token = cookieValue(request);
   if (!token) return null;
@@ -264,7 +275,7 @@ export async function authenticateGoogle(request, env, {
       jwks,
       now,
     });
-    if (identity.email !== normalizedEmail(env.GOOGLE_ALLOWED_EMAIL)) {
+    if (!allowedGoogleEmails(env).has(identity.email)) {
       throw new Error("Google account is not allowed");
     }
     const token = await signedSession(env.ACCESS_SESSION_SECRET, identity.email, now);
