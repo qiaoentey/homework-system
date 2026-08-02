@@ -139,6 +139,42 @@ class AnswerPdfPipelineTests(unittest.TestCase):
             text = "\n".join(page.extract_text() or "" for page in reader.pages)
             self.assertEqual(re.findall(r"答案\s*#\s*(\d+)", text), ["1"])
 
+    def test_review_note_is_not_split_across_pages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "review-page-break.pdf"
+            base_book = sample_math_book()
+            review_note = "BEGIN" + ("复核文字" * 24) + "END"
+            entries = tuple(
+                replace(
+                    base_book.entries[0],
+                    page=str(index),
+                    question=f"q{index}",
+                    answer="答案文字" * 8,
+                    checking_note=review_note if index == 8 else "检查",
+                    confidence="review" if index == 8 else "verified",
+                )
+                for index in range(1, 9)
+            )
+            book = replace(base_book, entries=entries)
+            pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+
+            build_answer_pdf(
+                book,
+                sample_resource(),
+                output,
+                font_name="STSong-Light",
+            )
+
+            pages = [
+                "".join((page.extract_text() or "").split())
+                for page in PdfReader(output).pages
+            ]
+            expected = "".join(f"第 8 题需人工复核：{review_note}".split())
+            self.assertTrue(
+                any(expected in page for page in pages),
+                "one review note was split across two PDF pages",
+            )
+
     def test_generator_can_run_as_the_package_script(self):
         with tempfile.TemporaryDirectory() as directory:
             isolated_root = Path(directory) / "populated-project"

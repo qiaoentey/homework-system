@@ -21,6 +21,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import (
+    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -264,7 +265,9 @@ def build_answer_pdf(
                     f"第 {number} 题需人工复核：{escape(entry.checking_note or entry.answer)}"
                     for number, entry in review_items
                 )
-                story.append(Paragraph(notes, styles["callout"]))
+                story.append(KeepTogether([
+                    Paragraph(notes, styles["callout"]),
+                ]))
             story.append(Spacer(1, 4 * mm))
 
         story.extend([
