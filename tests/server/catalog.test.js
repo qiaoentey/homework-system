@@ -45,6 +45,7 @@ describe("GET /api/catalog", () => {
             { code: "巧恩 STP", label: "巧恩" },
             { code: "PS STP", label: "PS" },
             { code: "SY STP", label: "SY" },
+            { code: "YUAN NING STP", label: "YUAN NING" },
           ],
         },
         {

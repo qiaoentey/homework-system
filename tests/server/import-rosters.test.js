@@ -10,8 +10,9 @@ const APPROVED_COUNTS = {
   "WS JIA WEN": 61,
   "WS MIXIN": 42,
   "巧恩 STP": 90,
-  "PS STP": 121,
+  "PS STP": 83,
   "SY STP": 50,
+  "YUAN NING STP": 43,
 };
 
 describe("approved roster import", () => {

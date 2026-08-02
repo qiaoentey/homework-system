@@ -8,7 +8,7 @@ describe("initial database schema", () => {
     await Promise.all(pools.splice(0).map((pool) => pool.end()));
   });
 
-  it("seeds exactly three branches and nine teacher groups", async () => {
+  it("seeds exactly three branches and ten teacher groups", async () => {
     const pool = await createTestDatabase();
     pools.push(pool);
 
@@ -16,7 +16,7 @@ describe("initial database schema", () => {
     const groups = await pool.query("select code, branch_code from teacher_groups order by code");
 
     expect(branches.rows.map((row) => row.code)).toEqual(["MK", "STP", "WS"]);
-    expect(groups.rows).toHaveLength(9);
+    expect(groups.rows).toHaveLength(10);
   });
 
   it("prevents a student group from pointing at another branch", async () => {

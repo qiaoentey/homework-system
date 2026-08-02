@@ -51,12 +51,70 @@ const approvedCounts = {
   "MK QIAO EN": 40,
   "MK WEN XUAN": 18,
   "巧恩 STP": 90,
-  "PS STP": 121,
+  "PS STP": 83,
   "SY STP": 50,
+  "YUAN NING STP": 43,
   "WS HUILING": 46,
   "WS JIA WEN": 61,
   "WS MIXIN": 42,
 };
+const yuanNingGrades = {
+  "邓威乐": "Y1",
+  "刘柏亨": "Y1",
+  "曾于哲": "Y1",
+  "张皓翔": "Y1",
+  "黄靖芯": "Y1",
+  "叶思羽": "Y1",
+  Macy: "Y1",
+  "陈祈文": "Y1",
+  "陈凯泽": "Y1",
+  "Eason Chan": "Y1",
+  "邓茹予": "Y1",
+  "杨景立": "Y1",
+  Julian: "Y1",
+  "和凯乐": "Y1",
+  Jayden: "Y1",
+  "刘思源": "Y1",
+  "刘恩甯": "Y1",
+  Afzan: "Y1",
+  Ava: "Y1",
+  "陈美芯": "Y1",
+  "陈嘉谦": "Y1",
+  "范旻宏": "Y1",
+  "蔡颜馡": "Y1",
+  "伍悦帧": "Y1",
+  "马佳瑜": "Y1",
+  "陈凯": "Y1",
+  "林宥承": "Y1",
+  "林佑峻": "Y1",
+  "刘俊盛": "Y1",
+  "陈杰": "Y5",
+  "陈彦州": "Y5",
+  Owen: "Y5",
+  "陈佳莹": "Y5",
+  "萧欣甯": "K1+K2",
+  "萧皓恒": "K1+K2",
+  "陈羽捷": "K1+K2",
+  "丁文淇": "K1+K2",
+  "卢奕衡": "K1+K2",
+  "陈梓煒": "K1+K2",
+  "李媛霏": "K1+K2",
+  "Abby Lee": "K1+K2",
+  "蔡卓亨": "K1+K2",
+  "叶泋妤": "K1+K2",
+};
+const transferredPsSourceRefs = [
+  "stp-ps-001", "stp-ps-003", "stp-ps-004", "stp-ps-005",
+  "stp-ps-006", "stp-ps-007", "stp-ps-008", "stp-ps-010",
+  "stp-ps-011", "stp-ps-012", "stp-ps-013", "stp-ps-014",
+  "stp-ps-016", "stp-ps-017", "stp-ps-018", "stp-ps-020",
+  "stp-ps-021", "stp-ps-022", "stp-ps-023", "stp-ps-026",
+  "stp-ps-027", "stp-ps-028", "stp-ps-030", "stp-ps-031",
+  "stp-ps-032", "stp-ps-033", "stp-ps-035", "stp-ps-036",
+  "stp-ps-038", "stp-ps-039", "stp-ps-040", "stp-ps-042",
+  "stp-ps-043", "stp-ps-044", "stp-ps-045", "stp-ps-115",
+  "stp-ps-117", "stp-ps-119",
+];
 
 async function api(path, options = {}) {
   return worker.fetch(new Request(`https://example.test${path}`, options), {
@@ -377,6 +435,7 @@ test("serves the verified Google session and fixed branch catalog after login", 
             { code: "巧恩 STP", label: "巧恩" },
             { code: "PS STP", label: "PS" },
             { code: "SY STP", label: "SY" },
+            { code: "YUAN NING STP", label: "YUAN NING" },
           ],
         },
         {
@@ -461,7 +520,7 @@ test("applies the breakpoint-delimited Sites migration idempotently with exact a
       )));
       total += response.total;
     }
-    assert.equal(total, 550);
+    assert.equal(total, 555);
 
     const branchByGroup = Object.fromEntries(
       Object.keys(approvedCounts).map((groupCode) => [
@@ -491,6 +550,27 @@ test("applies the breakpoint-delimited Sites migration idempotently with exact a
        ORDER BY source_ref`,
     ).all();
     assert.deepEqual(migratedRoster.results.map((row) => ({ ...row })), expectedRoster);
+
+    const yuanNing = await readJson(await apiWithD1(
+      env,
+      "/api/students?branch=STP&group=YUAN%20NING%20STP&status=active&limit=50",
+    ));
+    assert.equal(yuanNing.total, 43);
+    assert.deepEqual(
+      Object.fromEntries(yuanNing.items.map(({ name, grade }) => [name, grade])),
+      yuanNingGrades,
+    );
+
+    const transferred = await env.DB.prepare(
+      `SELECT id, source_ref, group_code
+       FROM students
+       WHERE source_ref IN (${transferredPsSourceRefs.map(() => "?").join(", ")})
+       ORDER BY source_ref`,
+    ).bind(...transferredPsSourceRefs).all();
+    assert.equal(transferred.results.length, 38);
+    assert.ok(transferred.results.every((row) => (
+      row.id.startsWith("dc05") && row.group_code === "YUAN NING STP"
+    )));
 
     const qiaoEn = await readJson(await apiWithD1(
       env,
@@ -537,29 +617,29 @@ test("validates every branch/group read and write boundary", async () => {
   });
 });
 
-test("searches and paginates the 121-student roster with stable cursors", async () => {
+test("searches and paginates the 83-student PS roster with stable cursors", async () => {
   await withD1(async (env) => {
     const first = await readJson(await apiWithD1(
       env,
       "/api/students?branch=STP&group=PS%20STP&status=active&limit=500",
     ));
     assert.equal(first.items.length, 50);
-    assert.equal(first.total, 121);
+    assert.equal(first.total, 83);
     assert.equal(typeof first.nextCursor, "string");
 
     const second = await readJson(await apiWithD1(
       env,
       `/api/students?branch=STP&group=PS%20STP&status=active&limit=50&cursor=${encodeURIComponent(first.nextCursor)}`,
     ));
-    assert.equal(second.items.length, 50);
-    assert.equal(new Set([...first.items, ...second.items].map(({ id }) => id)).size, 100);
+    assert.equal(second.items.length, 33);
+    assert.equal(new Set([...first.items, ...second.items].map(({ id }) => id)).size, 83);
 
     const search = await readJson(await apiWithD1(
       env,
-      "/api/students?branch=STP&group=PS%20STP&status=active&search=abby",
+      "/api/students?branch=STP&group=PS%20STP&status=active&search=weijun",
     ));
     assert.equal(search.total, 1);
-    assert.equal(search.items[0].name, "ABBY LEE");
+    assert.equal(search.items[0].name, "徐weijun");
 
     const invalid = await readJson(await apiWithD1(
       env,

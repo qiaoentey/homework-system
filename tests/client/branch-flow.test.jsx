@@ -26,6 +26,7 @@ const catalog = {
         { code: "巧恩 STP", label: "巧恩" },
         { code: "PS STP", label: "PS" },
         { code: "SY STP", label: "SY" },
+        { code: "YUAN NING STP", label: "YUAN NING" },
       ],
     },
     {
@@ -109,12 +110,18 @@ describe.each([
     fireEvent.click(screen.getByRole("button", { name: "MK" }));
     expect(screen.getByRole("button", { name: "HAPPY" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "HUILING" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "YUAN NING" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "返回分院" })).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "HAPPY" }));
     expect(await screen.findByRole("heading", { name: "MK HAPPY" })).toBeVisible();
     expect(screen.getByRole("button", { name: "返回老师" })).toBeVisible();
     expect(screen.getByRole("button", { name: "返回分院" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "返回分院" }));
+    fireEvent.click(screen.getByRole("button", { name: "STP" }));
+    expect(screen.getByRole("button", { name: "YUAN NING" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "HAPPY" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "返回分院" }));
     fireEvent.click(screen.getByRole("button", { name: "WS" }));

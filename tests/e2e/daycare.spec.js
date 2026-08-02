@@ -16,6 +16,7 @@ const CATALOG = {
     { label: "巧恩", code: "巧恩 STP" },
     { label: "PS", code: "PS STP" },
     { label: "SY", code: "SY STP" },
+    { label: "YUAN NING", code: "YUAN NING STP" },
   ],
   WS: [
     { label: "HUILING", code: "WS HUILING" },
@@ -115,7 +116,7 @@ test("first screen is usable and contains only the three approved branches", asy
   }
 });
 
-test("every branch exposes exactly its three teacher groups", async ({ page }) => {
+test("every branch exposes only its approved teacher groups", async ({ page }) => {
   for (const [branch, groups] of Object.entries(CATALOG)) {
     await page.getByRole("button", { name: branch, exact: true }).click();
     const chooser = page.getByRole("group", { name: `${branch} 老师选择` });
@@ -153,6 +154,18 @@ test("Qiao En STP loads all 90 students through browser-safe headers", async ({ 
   await openRoster(page, "STP", "巧恩", "巧恩 STP");
   await expect(page.getByText("只显示当前老师的在读学生 · 共 90 名")).toBeVisible();
   await expect(page.getByText("名单载入失败，请重试")).toHaveCount(0);
+});
+
+test("Yuan Ning STP loads only the approved 43 students", async ({ page }) => {
+  await openRoster(page, "STP", "YUAN NING", "YUAN NING STP");
+  await expect(page.getByText("只显示当前老师的在读学生 · 共 43 名")).toBeVisible();
+
+  const result = await listStudents(page, "STP", "YUAN NING STP", "active");
+  expect(result.status).toBe(200);
+  expect(result.body.total).toBe(43);
+  expect(result.body.items.every((student) => (
+    student.branchCode === "STP" && student.groupCode === "YUAN NING STP"
+  ))).toBe(true);
 });
 
 test("enrol, stop, and restore preserve UUID, profile, attendance, and messages", async ({
@@ -339,9 +352,9 @@ test("API rejects a branch and teacher-group mismatch", async ({ page }) => {
   });
 });
 
-test("the 121-student PS roster mounts only a virtual window of cards", async ({ page }) => {
+test("the 83-student PS roster mounts only a virtual window of cards", async ({ page }) => {
   await openRoster(page, "STP", "PS", "PS STP");
-  await expect(page.getByText("只显示当前老师的在读学生 · 共 121 名")).toBeVisible();
+  await expect(page.getByText("只显示当前老师的在读学生 · 共 83 名")).toBeVisible();
   const mountedCards = page.getByTestId("student-card");
   await expect(mountedCards.first()).toBeVisible();
   expect(await mountedCards.count()).toBeLessThan(30);
