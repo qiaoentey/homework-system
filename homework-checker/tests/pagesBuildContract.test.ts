@@ -142,7 +142,7 @@ describe("Pages build contract", () => {
   it("rejects an empty PDF even when it is listed in the precache", () => {
     const artifactPath = makeArtifactCopy();
     writeFileSync(
-      join(artifactPath, "pdf/1年级_华文_活动本答案影片索引.pdf"),
+      join(artifactPath, "pdf/1年级_华文_活动本答案参考.pdf"),
       "",
     );
 
@@ -150,7 +150,35 @@ describe("Pages build contract", () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain(
-      "required file pdf/1年级_华文_活动本答案影片索引.pdf must be non-empty",
+      "required file pdf/1年级_华文_活动本答案参考.pdf must be non-empty",
+    );
+  });
+
+  it("rejects a video-index filename even when twelve PDFs are precached", () => {
+    const artifactPath = makeArtifactCopy();
+    const currentName = "1年级_华文_活动本答案参考.pdf";
+    const forbiddenName = "1年级_华文_活动本答案影片索引.pdf";
+    cpSync(
+      join(artifactPath, "pdf", currentName),
+      join(artifactPath, "pdf", forbiddenName),
+      { recursive: false },
+    );
+    rmSync(join(artifactPath, "pdf", currentName), { force: false });
+    const serviceWorkerPath = join(artifactPath, "service-worker.js");
+    const serviceWorker = readFileSync(serviceWorkerPath, "utf8");
+    writeFileSync(
+      serviceWorkerPath,
+      serviceWorker.replace(
+        `pdf/${currentName}`,
+        `pdf/${forbiddenName}`,
+      ),
+    );
+
+    const result = runVerifier(artifactPath);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(
+      "PDF filenames must end with 活动本答案参考.pdf",
     );
   });
 });

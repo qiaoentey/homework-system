@@ -27,6 +27,26 @@ const fail = (message) => {
   process.exit(1);
 };
 
+let answerCatalog;
+try {
+  answerCatalog = JSON.parse(readFileSync(
+    fileURLToPath(new URL("../answer-data/catalog.json", import.meta.url)),
+    "utf8",
+  ));
+} catch (error) {
+  fail(`could not read the answer catalog: ${error.message}`);
+}
+
+const expectedPdfNames = answerCatalog.resources
+  .map((resource) => resource.pdfFile)
+  .sort();
+if (
+  expectedPdfNames.length !== EXPECTED_PDF_COUNT ||
+  new Set(expectedPdfNames).size !== EXPECTED_PDF_COUNT
+) {
+  fail(`answer catalog must declare exactly ${EXPECTED_PDF_COUNT} unique PDFs`);
+}
+
 const isBaseSafeRelativePath = (path) => {
   if (
     typeof path !== "string" ||
@@ -335,6 +355,22 @@ if (pdfNames.length !== EXPECTED_PDF_COUNT) {
   fail(
     `dist/pdf must contain exactly ${EXPECTED_PDF_COUNT} PDFs; ` +
     `found ${pdfNames.length}`,
+  );
+}
+
+if (pdfNames.some((name) =>
+  name.includes("影片索引") || !name.endsWith("_活动本答案参考.pdf")
+)) {
+  fail("PDF filenames must end with 活动本答案参考.pdf and must not contain 影片索引");
+}
+
+const missingPdfNames = expectedPdfNames.filter((name) => !pdfNames.includes(name));
+const unexpectedPdfNames = pdfNames.filter((name) => !expectedPdfNames.includes(name));
+if (missingPdfNames.length > 0 || unexpectedPdfNames.length > 0) {
+  fail(
+    `dist/pdf filenames must exactly match the answer catalog; ` +
+    `missing: ${missingPdfNames.join(", ") || "none"}; ` +
+    `unexpected: ${unexpectedPdfNames.join(", ") || "none"}`,
   );
 }
 
