@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
 import {
   EMPTY_PROFILE,
-  PROFILE_FIELDS,
 } from "../../domain/profile.js";
 import { LifecycleDialog } from "./LifecycleDialog.jsx";
+import { StudentProfileFields } from "./StudentProfileFields.jsx";
 
 const GRADES = [
   "K1",
@@ -105,7 +105,10 @@ export function EnrolDialog({
               required
               disabled={status === "saving"}
               value={grade}
-              onChange={(event) => setGrade(event.target.value)}
+              onChange={(event) => {
+                setGrade(event.target.value);
+                setProfile((current) => ({ ...current, schoolClass: "" }));
+              }}
             >
               <option value="">请选择年级</option>
               {GRADES.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -128,21 +131,16 @@ export function EnrolDialog({
 
         <fieldset className="lifecycle-form__profile">
           <legend>学生个人资料</legend>
-          <div className="lifecycle-form__grid">
-            {PROFILE_FIELDS.map(([field, label]) => (
-              <label data-testid="enrol-profile-field" key={field}>
-                <span>{label}</span>
-                <input
-                  disabled={status === "saving"}
-                  value={profile[field]}
-                  onChange={(event) => setProfile((current) => ({
-                    ...current,
-                    [field]: event.target.value,
-                  }))}
-                />
-              </label>
-            ))}
-          </div>
+          <StudentProfileFields
+            grade={grade}
+            values={profile}
+            disabled={status === "saving"}
+            fieldTestId="enrol-profile-field"
+            onChange={(field, value) => setProfile((current) => ({
+              ...current,
+              [field]: value,
+            }))}
+          />
         </fieldset>
 
         <p className="form-error" role="alert">{error}</p>

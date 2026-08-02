@@ -68,7 +68,7 @@ export function RosterScreen({
     if (!selectedStudentId || !profileNavigationRequest) return;
     const panel = profilePanelRef.current;
     panel?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    panel?.querySelector("input:not(:disabled)")?.focus({ preventScroll: true });
+    panel?.querySelector("select:not(:disabled), input:not(:disabled)")?.focus({ preventScroll: true });
   }, [profileNavigationRequest, selectedStudentId]);
 
   useEffect(() => {

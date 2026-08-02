@@ -25,6 +25,8 @@ const PROFILE_FIELDS = [
   "schoolClass",
   "usualPickupTime",
   "pickupMethod",
+  "vanDriver",
+  "vanHomeTime",
   "lateStayMonday",
   "lateStayTuesday",
   "lateStayWednesday",

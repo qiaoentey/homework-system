@@ -3,8 +3,8 @@ import { rosterApi } from "../../api/client.js";
 import {
   EMPTY_PROFILE,
   normalizeProfile,
-  PROFILE_FIELDS,
 } from "../../domain/profile.js";
+import { StudentProfileFields } from "./StudentProfileFields.jsx";
 
 export function ProfilePanel({
   panelRef,
@@ -84,21 +84,16 @@ export function ProfilePanel({
       {noResults ? <p className="profile-panel__empty">找不到学生</p> : null}
 
       <form className="profile-form" onSubmit={save}>
-        <div className="profile-form__grid">
-          {PROFILE_FIELDS.map(([field, label]) => (
-            <label data-testid="profile-field" key={field}>
-              <span>{label}</span>
-              <input
-                disabled={!student || status === "saving"}
-                value={values[field]}
-                onChange={(event) => setValues((current) => ({
-                  ...current,
-                  [field]: event.target.value,
-                }))}
-              />
-            </label>
-          ))}
-        </div>
+        <StudentProfileFields
+          grade={student?.grade ?? ""}
+          values={values}
+          disabled={!student || status === "saving"}
+          fieldTestId="profile-field"
+          onChange={(field, value) => setValues((current) => ({
+            ...current,
+            [field]: value,
+          }))}
+        />
         {student ? (
           <div className="profile-form__actions">
             <button className="primary-button" type="submit" disabled={status === "saving"}>

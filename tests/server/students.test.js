@@ -628,6 +628,8 @@ describe("student API", () => {
         profile: {
           school: "New School",
           usualPickupTime: "17:30",
+          vanDriver: "Tong",
+          vanHomeTime: "18:00",
         },
       })
       .expect(200);
@@ -635,6 +637,8 @@ describe("student API", () => {
     expect(response.body.profile).toEqual({
       school: "New School",
       usualPickupTime: "17:30",
+      vanDriver: "Tong",
+      vanHomeTime: "18:00",
     });
     expect((await pool.query(
       "select action, details from student_activity where student_id = $1",
@@ -645,6 +649,8 @@ describe("student API", () => {
         profile: {
           school: "New School",
           usualPickupTime: "17:30",
+          vanDriver: "Tong",
+          vanHomeTime: "18:00",
         },
       },
     }]);

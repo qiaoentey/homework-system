@@ -25,6 +25,8 @@ const emptyProfile = {
   schoolClass: "",
   usualPickupTime: "",
   pickupMethod: "",
+  vanDriver: "",
+  vanHomeTime: "",
   lateStayMonday: "",
   lateStayTuesday: "",
   lateStayWednesday: "",
@@ -1105,7 +1107,12 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
         headers,
         body: {
           updatedAt: original.updatedAt,
-          profile: { usualPickupTime: "5:30 PM" },
+          profile: {
+            usualPickupTime: "17:30",
+            pickupMethod: "Van",
+            vanDriver: "Tong",
+            vanHomeTime: "18:00",
+          },
         },
       },
     ));
@@ -1135,7 +1142,10 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
     ));
     assert.equal(stopped.id, original.id);
     assert.equal(stopped.status, "stopped");
-    assert.equal(stopped.profile.usualPickupTime, "5:30 PM");
+    assert.equal(stopped.profile.usualPickupTime, "17:30");
+    assert.equal(stopped.profile.pickupMethod, "Van");
+    assert.equal(stopped.profile.vanDriver, "Tong");
+    assert.equal(stopped.profile.vanHomeTime, "18:00");
 
     const stoppedRoster = await readJson(await apiWithD1(
       env,
@@ -1150,7 +1160,10 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
     ));
     assert.equal(restored.id, original.id);
     assert.equal(restored.status, "active");
-    assert.equal(restored.profile.usualPickupTime, "5:30 PM");
+    assert.equal(restored.profile.usualPickupTime, "17:30");
+    assert.equal(restored.profile.pickupMethod, "Van");
+    assert.equal(restored.profile.vanDriver, "Tong");
+    assert.equal(restored.profile.vanHomeTime, "18:00");
     assert.ok(restored.updatedAt > profile.updatedAt);
 
     const attendance = await readJson(await apiWithD1(

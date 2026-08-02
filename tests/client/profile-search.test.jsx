@@ -16,10 +16,12 @@ import { RosterScreen } from "../../src/features/roster/RosterScreen.jsx";
 import { ProfilePanel } from "../../src/features/students/ProfilePanel.jsx";
 
 const PROFILE = {
-  school: "SJKC Example",
-  schoolClass: "3A",
+  school: "南益",
+  schoolClass: "3K",
   usualPickupTime: "13:30",
-  pickupMethod: "家长",
+  pickupMethod: "Van",
+  vanDriver: "Tong",
+  vanHomeTime: "17:30",
   lateStayMonday: "17:00",
   lateStayTuesday: "",
   lateStayWednesday: "17:30",
@@ -41,14 +43,18 @@ const HAYDEN = {
 const PROFILE_LABELS = [
   "学校",
   "学校班级",
-  "平时接送时间",
-  "接送方式",
-  "星期一延时",
-  "星期二延时",
-  "星期三延时",
-  "星期四延时",
-  "星期五延时",
+  "平常回家时间",
+  "回家载送",
+  "Van 司机",
+  "Van 回程时间",
+  "星期一",
+  "星期二",
+  "星期三",
+  "星期四",
+  "星期五",
 ];
+
+const BASE_PROFILE_LABELS = PROFILE_LABELS.filter((label) => !label.startsWith("Van "));
 
 function jsonResponse(status, body) {
   return {
@@ -157,7 +163,7 @@ describe("current-group search and safe profile selection", () => {
     const card = await screen.findByTestId("student-card");
     fireEvent.click(within(card).getByRole("button", { name: /选择 HAYDEN CHIN/ }));
     expect(screen.getByRole("button", { name: "保存学生资料" })).toBeEnabled();
-    expect(screen.getByLabelText("学校")).toHaveValue("SJKC Example");
+    expect(screen.getByLabelText("学校")).toHaveValue("南益");
 
     fireEvent.change(screen.getByRole("searchbox"), {
       target: { value: "ZZZ_NO_MATCH" },
@@ -177,7 +183,7 @@ describe("current-group search and safe profile selection", () => {
     expect(await screen.findByText("找不到学生")).toBeVisible();
     expect(screen.queryByRole("button", { name: "保存学生资料" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "写留言" })).not.toBeInTheDocument();
-    for (const label of PROFILE_LABELS) {
+    for (const label of BASE_PROFILE_LABELS) {
       expect(screen.getByLabelText(label)).toHaveValue("");
     }
 
@@ -188,7 +194,7 @@ describe("current-group search and safe profile selection", () => {
     expect(searchUrl).toContain("group=WS+HUILING");
   });
 
-  it("renders exactly the nine profile contract fields and saves only the selected UUID with scope", async () => {
+  it("renders the complete profile contract and saves only the selected UUID with scope", async () => {
     let profileRequest;
     const fetchMock = setupFetch();
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
@@ -202,7 +208,7 @@ describe("current-group search and safe profile selection", () => {
     for (const label of PROFILE_LABELS) {
       expect(screen.getByLabelText(label)).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(9);
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(11);
 
     fireEvent.change(screen.getByLabelText("学校班级"), { target: { value: "3B" } });
     fireEvent.click(screen.getByRole("button", { name: "保存学生资料" }));

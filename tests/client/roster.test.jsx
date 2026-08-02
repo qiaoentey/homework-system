@@ -20,6 +20,8 @@ const EMPTY_PROFILE = {
   schoolClass: "",
   usualPickupTime: "",
   pickupMethod: "",
+  vanDriver: "",
+  vanHomeTime: "",
   lateStayMonday: "",
   lateStayTuesday: "",
   lateStayWednesday: "",

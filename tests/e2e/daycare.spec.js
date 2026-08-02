@@ -200,9 +200,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   const enrol = page.getByRole("dialog", { name: "Enrol 学生" });
   await enrol.getByLabel("学生姓名").fill(name);
   await enrol.getByLabel("年级").selectOption("Y3");
-  await enrol.getByLabel("学校", { exact: true }).fill("E2E Academy");
-  await enrol.getByLabel("学校班级", { exact: true }).fill("3A");
-  await enrol.getByLabel("接送方式", { exact: true }).fill("Parent pickup");
+  await enrol.getByLabel("学校", { exact: true }).selectOption("南益");
+  await enrol.getByLabel("学校班级", { exact: true }).selectOption("3K");
+  await enrol.getByLabel("回家载送", { exact: true }).selectOption("家长");
   const createdResponse = page.waitForResponse((response) => (
     response.url().endsWith("/api/students") &&
     response.request().method() === "POST" &&
@@ -215,9 +215,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   expect(enrolled.body.items).toHaveLength(1);
   const createdId = enrolled.body.items[0].id;
   expect(enrolled.body.items[0].profile).toMatchObject({
-    school: "E2E Academy",
-    schoolClass: "3A",
-    pickupMethod: "Parent pickup",
+    school: "南益",
+    schoolClass: "3K",
+    pickupMethod: "家长",
   });
 
   const studentCard = page.getByTestId("student-card").filter({
@@ -257,9 +257,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   expect(active.body.items).toHaveLength(1);
   expect(active.body.items[0].id).toBe(createdId);
   expect(active.body.items[0].profile).toMatchObject({
-    school: "E2E Academy",
-    schoolClass: "3A",
-    pickupMethod: "Parent pickup",
+    school: "南益",
+    schoolClass: "3K",
+    pickupMethod: "家长",
   });
 
   const attendance = await attendanceFor(

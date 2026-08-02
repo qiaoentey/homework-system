@@ -25,6 +25,8 @@ const EMPTY_PROFILE = {
   schoolClass: "",
   usualPickupTime: "",
   pickupMethod: "",
+  vanDriver: "",
+  vanHomeTime: "",
   lateStayMonday: "",
   lateStayTuesday: "",
   lateStayWednesday: "",
@@ -148,7 +150,7 @@ describe("student enrolment", () => {
     });
     fireEvent.change(within(dialog).getByLabelText("年级"), { target: { value: "Y3" } });
     fireEvent.change(within(dialog).getByLabelText("学校"), {
-      target: { value: "SJKC Example" },
+      target: { value: "南益" },
     });
     const save = within(dialog).getByRole("button", { name: "保存学生" });
     fireEvent.click(save);
@@ -172,7 +174,7 @@ describe("student enrolment", () => {
       enrolmentKey: submitted.enrolmentKey,
       profile: {
         ...EMPTY_PROFILE,
-        school: "SJKC Example",
+        school: "南益",
       },
     });
 
