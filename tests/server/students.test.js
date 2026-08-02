@@ -278,8 +278,14 @@ describe("student API", () => {
       .send(body)
       .expect(200);
     expect(retried.body.id).toBe(response.body.id);
-    expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(1);
-    expect(Number((await pool.query("select count(*) from student_activity")).rows[0].count)).toBe(1);
+    expect(Number((await pool.query(
+      "select count(*) from students where enrolment_key = $1",
+      [body.enrolmentKey],
+    )).rows[0].count)).toBe(1);
+    expect(Number((await pool.query(
+      "select count(*) from student_activity where student_id = $1",
+      [response.body.id],
+    )).rows[0].count)).toBe(1);
   });
 
   it.each(enrolmentConflictCases)(

@@ -4,6 +4,7 @@ import { createTestDatabaseBefore } from "../helpers/testDatabase.js";
 
 const identityMigration = "002_unique_student_identity.sql";
 const enrolmentMigration = "003_enrolment_idempotency.sql";
+const yuanNingMigration = "004_stp_yuan_ning.sql";
 
 describe("student identity migration", () => {
   const pools = [];
@@ -45,19 +46,25 @@ describe("student identity migration", () => {
        values ('Alice Tan', 'Y3', 'MK', 'MK HAPPY')`,
     );
 
-    expect(await migrate(pool)).toEqual([identityMigration, enrolmentMigration]);
+    expect(await migrate(pool)).toEqual([
+      identityMigration,
+      enrolmentMigration,
+      yuanNingMigration,
+    ]);
     await pool.query(
       `insert into students (name, grade, branch_code, group_code)
        values (' ALICE TAN ', ' y3 ', 'MK', 'MK HAPPY')`,
     );
-    expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(2);
+    expect(Number((await pool.query(
+      "select count(*) from students where lower(btrim(name)) = 'alice tan'",
+    )).rows[0].count)).toBe(2);
   });
 
   it("upgrades an existing identity-index deployment for duplicate identities and idempotent enrolment", async () => {
     const pool = await createTestDatabaseBefore(enrolmentMigration);
     pools.push(pool);
 
-    expect(await migrate(pool)).toEqual([enrolmentMigration]);
+    expect(await migrate(pool)).toEqual([enrolmentMigration, yuanNingMigration]);
     await pool.query(
       `insert into students
          (name, grade, branch_code, group_code, enrolment_key)
@@ -74,6 +81,8 @@ describe("student identity migration", () => {
        values ('Different Student', 'Y4', 'MK', 'MK HAPPY',
                '10000000-0000-4000-8000-000000000001')`,
     )).rejects.toMatchObject({ code: "23505" });
-    expect(Number((await pool.query("select count(*) from students")).rows[0].count)).toBe(2);
+    expect(Number((await pool.query(
+      "select count(*) from students where lower(btrim(name)) = 'alice tan'",
+    )).rows[0].count)).toBe(2);
   });
 });
