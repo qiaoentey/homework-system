@@ -9,6 +9,9 @@
     "build:pages": "tsc --noEmit && vite build --base=/homework-system/",
     "verify:pages": "node scripts/verify-pages-build.mjs",
     "test": "vitest run",
+    "test:answers": "python3 -m unittest discover -s tests/python -p 'test_*.py' -v",
+    "generate:answers": "python3 scripts/generate_answer_pdfs.py",
+    "verify:answers": "python3 scripts/validate_answer_pdfs.py",
     "test:e2e": "playwright test",
     "test:e2e:pages": "PAGES_BASE_PATH=/homework-system/ playwright test"
   },

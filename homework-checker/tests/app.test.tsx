@@ -82,8 +82,10 @@ describe("App", () => {
     await user.click(screen.getByRole("link", { name: "快速查答案" }));
     await user.click(screen.getByRole("button", { name: "一年级" }));
     await user.click(screen.getByRole("button", { name: "数学" }));
-    expect(screen.getByRole("link", { name: "打开一年级数学 PDF" }))
-      .toHaveAttribute("href", "pdf/1年级_数学_活动本答案影片索引.pdf");
+    expect(screen.getByRole("link", { name: "打开一年级数学答案 PDF" }))
+      .toHaveAttribute("href", "pdf/1年级_数学_活动本答案参考.pdf");
+    expect(screen.getByText("PDF 内含答案参考；影片仅供补充讲解")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "补充讲解影片" })).toBeVisible();
   });
 
   it("shows an editable result after local OCR finds a definite error", async () => {

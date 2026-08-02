@@ -24,26 +24,27 @@ export function AnswerCard({ resource }: AnswerCardProps) {
       <div className="answer-card__heading">
         <p className="eyebrow">活动本答案</p>
         <h3>{title}</h3>
+        <p>PDF 内含答案参考；影片仅供补充讲解</p>
       </div>
       <div className="answer-card__actions">
-        <a href={resource.pdfPath} target="_blank" rel="noreferrer" aria-label={`打开${title} PDF`}>
-          打开 PDF
+        <a href={resource.pdfPath} target="_blank" rel="noreferrer" aria-label={`打开${title}答案 PDF`}>
+          打开答案 PDF
         </a>
-        <a href={resource.pdfPath} download aria-label={`下载${title} PDF`}>
-          下载 PDF
+        <a href={resource.pdfPath} download aria-label={`下载${title}答案 PDF`}>
+          下载答案 PDF
         </a>
       </div>
-      <section aria-label={`${title}答案影片`}>
-        <h4>答案影片</h4>
+      <section aria-label={`${title}补充讲解影片`}>
+        <h4>补充讲解影片</h4>
         <ul className="video-list">
-          {!isOnline && <li><span>影片需要联网</span></li>}
+          {!isOnline && <li><span>补充讲解影片需要联网</span></li>}
           {isOnline && resource.videos.map((video) => (
             <li key={video.videoId}>
               <a
                 href={`https://www.youtube.com/watch?v=${video.videoId}`}
                 target="_blank"
                 rel="noreferrer"
-                aria-label={`打开${title}${video.label}答案影片，${video.duration}`}
+                aria-label={`打开${title}${video.label}补充讲解影片，${video.duration}`}
               >
                 <span>{video.label}</span>
                 <span>{video.duration}</span>

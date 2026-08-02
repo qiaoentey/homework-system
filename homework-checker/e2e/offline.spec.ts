@@ -1,12 +1,23 @@
 import { expect, test } from "playwright/test";
-import { ANSWER_RESOURCES } from "../src/answer-library/catalog";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { appPath } from "./support/appPaths";
 
-const sciencePdf = appPath("pdf/3年级_科学_活动本答案影片索引.pdf");
+type CatalogFile = {
+  resources: Array<{ pdfFile: string }>;
+};
+
+const answerResources = (JSON.parse(readFileSync(
+  fileURLToPath(new URL("../answer-data/catalog.json", import.meta.url)),
+  "utf8",
+)) as CatalogFile).resources.map((resource) => ({
+  pdfPath: `pdf/${resource.pdfFile}`,
+}));
+const sciencePdf = appPath("pdf/3年级_科学_活动本答案参考.pdf");
 
 test("serves every catalogued local answer asset as a non-empty PDF", async ({ page }) => {
   await page.goto(appPath());
-  for (const resource of ANSWER_RESOURCES) {
+  for (const resource of answerResources) {
     const asset = await page.evaluate(async (path) => {
       const response = await fetch(path);
       const bytes = new Uint8Array(await response.arrayBuffer());
@@ -41,16 +52,24 @@ test("keeps the answer library and a precached PDF available offline", async ({ 
   await expect(page).toHaveURL(/#\/answers$/);
   await page.getByRole("button", { name: "三年级" }).click();
   await page.getByRole("button", { name: "科学" }).click();
-  await expect(page.getByRole("link", { name: "打开三年级科学 PDF" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "打开三年级科学答案 PDF" })).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-  await expect(page.getByText("影片需要联网")).toBeVisible();
+  await expect(page.getByText("补充讲解影片需要联网")).toBeVisible();
 
   const pdf = await page.evaluate(async (url) => {
     const response = await fetch(url);
-    return { ok: response.ok, contentType: response.headers.get("content-type") };
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return {
+      ok: response.ok,
+      contentType: response.headers.get("content-type"),
+      prefix: String.fromCharCode(...bytes.slice(0, 5)),
+      byteLength: bytes.byteLength,
+    };
   }, sciencePdf);
   expect(pdf.ok).toBeTruthy();
   expect(pdf.contentType).toContain("application/pdf");
+  expect(pdf.prefix).toBe("%PDF-");
+  expect(pdf.byteLength).toBeGreaterThan(1_000);
 });
 
 test("loads every application route directly from the app shell while offline", async ({ page, context, browserName }) => {

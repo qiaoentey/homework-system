@@ -72,6 +72,22 @@ describe("Homework checker CI workflow", () => {
       "npm run test:e2e:pages",
     ]);
   });
+
+  it("validates answer data and committed PDFs before the Node build", () => {
+    expect(verifySteps.find((step) => step.uses === "actions/setup-python@v5"))
+      .toEqual({
+        uses: "actions/setup-python@v5",
+        with: { "python-version": "3.11" },
+      });
+    const runs = verifySteps.flatMap((step) => step.run ?? []);
+    expect(runs.slice(0, 5)).toEqual([
+      "python -m pip install -r requirements-answer-pdf.txt",
+      "npm ci",
+      "npm run test:answers",
+      "npm run verify:answers",
+      "npm test",
+    ]);
+  });
 });
 
 describe("Homework checker Pages workflow", () => {
@@ -113,7 +129,10 @@ describe("Homework checker Pages workflow", () => {
   it("keeps the build gates and official Pages actions fail-closed", () => {
     expect(deploy.steps.filter((step) => step.run).map((step) => step.run))
       .toEqual([
+        "python -m pip install -r requirements-answer-pdf.txt",
         "npm ci",
+        "npm run test:answers",
+        "npm run verify:answers",
         "npm test",
         "npm run build:pages",
         "npm run verify:pages",
@@ -121,6 +140,7 @@ describe("Homework checker Pages workflow", () => {
     expect(deploy.steps.filter((step) => step.uses).map((step) => step.uses))
       .toEqual([
         "actions/checkout@v4",
+        "actions/setup-python@v5",
         "actions/setup-node@v4",
         "actions/configure-pages@v5",
         "actions/upload-pages-artifact@v4",
@@ -135,6 +155,14 @@ describe("Homework checker Pages workflow", () => {
       deploy.steps.find((step) => step.uses === "actions/deploy-pages@v4")?.id,
     ).toBe("deployment");
     expect(deploy.steps.every((step) => !("continue-on-error" in step))).toBe(true);
+  });
+
+  it("uses Python 3.11 for deterministic PDF validation", () => {
+    expect(deploy.steps.find((step) => step.uses === "actions/setup-python@v5"))
+      .toEqual({
+        uses: "actions/setup-python@v5",
+        with: { "python-version": "3.11" },
+      });
   });
 
   it("serializes Pages deployments", () => {

@@ -20,7 +20,7 @@ export function AnswerLibrary({ onBack }: AnswerLibraryProps) {
         </button>
         <p className="eyebrow">活动本答案资料库</p>
         <h1>快速查答案</h1>
-        <p>选择年级与科目，直接打开答案 PDF 或影片。</p>
+        <p>选择年级与科目，先打开答案 PDF；需要时才看补充讲解影片。</p>
       </header>
 
       <section className="filters" aria-label="答案筛选">
