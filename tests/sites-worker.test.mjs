@@ -88,6 +88,7 @@ async function googleFixture() {
     emailVerified = true,
     audience = TEST_GOOGLE_CLIENT_ID,
     issuer = "https://accounts.google.com",
+    issuedAt = Math.floor(TEST_GOOGLE_NOW / 1000),
     expiresAt = Math.floor(TEST_GOOGLE_NOW / 1000) + 300,
     signingKey = privateKey,
   } = {}) {
@@ -96,7 +97,7 @@ async function googleFixture() {
       .setSubject("google-user-123")
       .setIssuer(issuer)
       .setAudience(audience)
-      .setIssuedAt(Math.floor(TEST_GOOGLE_NOW / 1000))
+      .setIssuedAt(issuedAt)
       .setExpirationTime(expiresAt)
       .sign(signingKey);
   }
@@ -104,7 +105,7 @@ async function googleFixture() {
   return { jwks, sign };
 }
 
-async function googleLoginRequest(credential, env = {}) {
+async function googleLoginRequest(credential, env = {}, now = TEST_GOOGLE_NOW) {
   return workerAuth.authenticateGoogle(
     new Request("https://example.test/api/session/google", {
       method: "POST",
@@ -112,7 +113,7 @@ async function googleLoginRequest(credential, env = {}) {
       body: JSON.stringify({ credential }),
     }),
     workerEnv(env),
-    { jwks: env.jwks, now: TEST_GOOGLE_NOW },
+    { jwks: env.jwks, now },
   );
 }
 
@@ -121,7 +122,12 @@ const loginCookieByDatabase = new WeakMap();
 async function loginCookie(DB) {
   if (!loginCookieByDatabase.has(DB)) {
     loginCookieByDatabase.set(DB, testGoogleFixture.then(async ({ jwks, sign }) => {
-      const response = await googleLoginRequest(await sign(), { jwks });
+      const now = Date.now();
+      const issuedAt = Math.floor(now / 1000);
+      const response = await googleLoginRequest(await sign({
+        issuedAt,
+        expiresAt: issuedAt + 300,
+      }), { jwks }, now);
       assert.equal(response.status, 204);
       return response.headers.get("set-cookie").split(";", 1)[0];
     }));
@@ -367,10 +373,12 @@ test("serves the verified Google session and fixed branch catalog after login", 
 test("rejects a tampered Google-session cookie", async () => {
   await withD1(async (env) => {
     const cookie = await loginCookie(env.DB);
-    const replacement = cookie.endsWith("a") ? "b" : "a";
+    const signatureStart = cookie.indexOf(".") + 1;
+    const replacement = cookie[signatureStart] === "a" ? "b" : "a";
+    const tampered = `${cookie.slice(0, signatureStart)}${replacement}${cookie.slice(signatureStart + 1)}`;
     const response = await apiWithD1(env, "/api/catalog", {
       authenticated: false,
-      headers: { cookie: `${cookie.slice(0, -1)}${replacement}` },
+      headers: { cookie: tampered },
     });
     assert.equal(response.status, 401);
   });
