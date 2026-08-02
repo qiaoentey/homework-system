@@ -29,6 +29,8 @@ The release checks are:
 
 ```bash
 npm test
+npm run test:answers
+npm run verify:answers
 npm run build
 npm audit --audit-level=high
 npm run test:e2e
@@ -75,7 +77,7 @@ The companion audit observed 78 same-origin static HTTP requests and 12 browser-
 
 ## Answer-library assets
 
-The 12 files in `public/pdf/` are local answer/video-index documents for Grades 1–3 and four listed subjects. Tests fetch every production-built asset and require a non-empty `%PDF-` response. They are not OCR training data and are not represented as official textbook answer keys.
+The 12 files in `public/pdf/` are local, independently organized answer references for Grades 1–3 and four listed subjects. They contain readable answers, short checking notes, and explicit teacher-review warnings rather than video-only indexes. They are not official publisher answer keys, do not reproduce third-party video imagery, and remain subject to the teacher and current textbook edition. Tests validate their exact filenames, answer-row content, source-data hashes, metadata, page count, file size, and `%PDF-` signatures.
 
 The complete 34-video inventory is asserted in `tests/catalog.test.ts`. Every entry is labelled `external-unverified` with a catalog review date; inclusion does not assert that a third-party video is still available or licensed for redistribution. Review source, permission, and link status before replacing or releasing any entry.
 
@@ -86,7 +88,7 @@ The complete 34-video inventory is asserted in `tests/catalog.test.ts`. Every en
 
 ## Add a grade or subject
 
-1. Add a de-identified local PDF index to `public/pdf/`; never add student work or personal information.
+1. Add a de-identified answer-reference dataset and generated PDF; never add student work, personal information, or third-party video frames.
 2. Extend the `Grade`/`Subject` unions and `ANSWER_RESOURCES` in `src/answer-library/catalog.ts`, keeping a unique ID, local path, deliberate video inventory, and explicit link-status metadata.
 3. Update the exact catalog/PDF tests and confirm the asset is present in `dist/pdf/` after `npm run build`.
 4. Add synthetic calibration material if the content changes OCR/checker assumptions. Extend deterministic parsing only with tests; unsupported content must remain orange.

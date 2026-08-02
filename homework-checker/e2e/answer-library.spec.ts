@@ -8,7 +8,7 @@ test("opens a grade 3 science PDF in three choices", async ({ page }) => {
   await expect(page).toHaveURL(/#\/answers$/);
   await page.getByRole("button", { name: "三年级" }).click();
   await page.getByRole("button", { name: "科学" }).click();
-  const pdfHref = await page.getByRole("link", { name: "打开三年级科学 PDF" }).getAttribute("href");
+  const pdfHref = await page.getByRole("link", { name: "打开三年级科学答案 PDF" }).getAttribute("href");
   expect(decodeURIComponent(new URL(pdfHref!, page.url()).pathname))
-    .toBe(appPath("pdf/3年级_科学_活动本答案影片索引.pdf"));
+    .toBe(appPath("pdf/3年级_科学_活动本答案参考.pdf"));
 });
