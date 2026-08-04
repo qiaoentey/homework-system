@@ -154,7 +154,12 @@ export async function upsertAttendanceEvent(pool, {
     const result = await client.query(upsert, [id, date, eventCode, active, actor]);
     if (active && (eventCode === "arrive" || eventCode === "absent")) {
       const opposite = eventCode === "arrive" ? "absent" : "arrive";
-      await client.query(upsert, [id, date, opposite, false, actor]);
+      await client.query(
+        `update attendance_events
+         set is_active = false, updated_by = $4, updated_at = now()
+         where student_id = $1 and attendance_date = $2 and event_code = $3`,
+        [id, date, opposite, actor],
+      );
     }
     return mapAttendanceEvent(result.rows[0]);
   });

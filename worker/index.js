@@ -651,6 +651,72 @@ async function attendanceList(database, url) {
   return json({ items: rows.map(mapAttendance) });
 }
 
+async function attendanceRecord(database, url) {
+  const branchCode = url.searchParams.get("branch");
+  const groupCode = url.searchParams.get("group");
+  const date = url.searchParams.get("date");
+  if (
+    [...url.searchParams.keys()].some((key) => !["branch", "group", "date"].includes(key))
+    || !BRANCHES.some(({ code }) => code === branchCode)
+    || !GROUPS.some(({ code }) => code === groupCode)
+    || !validDate(date)
+  ) {
+    return apiError(400, "INVALID_ATTENDANCE_RECORD_QUERY", "Invalid branch, group, or date");
+  }
+  if (!validGroup(branchCode, groupCode)) {
+    return apiError(400, "GROUP_BRANCH_MISMATCH", "Group does not belong to branch");
+  }
+  const rows = await all(
+    database,
+    `SELECT s.id, s.name, s.grade, s.status, ae.event_code
+     FROM students s
+     LEFT JOIN attendance_events ae
+       ON ae.student_id = s.id
+      AND ae.attendance_date = ?
+      AND ae.is_active = 1
+      AND ae.event_code IN ('arrive', 'absent')
+     WHERE s.branch_code = ?
+       AND s.group_code = ?
+       AND (s.status = 'active' OR ae.event_code IS NOT NULL)
+     ORDER BY lower(s.name), s.id, ae.event_code`,
+    [date, branchCode, groupCode],
+  );
+  const students = new Map();
+  for (const row of rows) {
+    if (!students.has(row.id)) {
+      students.set(row.id, {
+        item: { id: row.id, name: row.name, grade: row.grade },
+        status: row.status,
+        events: new Set(),
+      });
+    }
+    if (row.event_code) students.get(row.id).events.add(row.event_code);
+  }
+  const present = [];
+  const absent = [];
+  const unmarked = [];
+  const conflicts = [];
+  for (const { item, status, events } of students.values()) {
+    if (events.has("arrive") && events.has("absent")) conflicts.push(item);
+    else if (events.has("arrive")) present.push(item);
+    else if (events.has("absent")) absent.push(item);
+    else if (status === "active") unmarked.push(item);
+  }
+  return json({
+    date,
+    counts: {
+      present: present.length,
+      absent: absent.length,
+      unmarked: unmarked.length,
+      conflicts: conflicts.length,
+    },
+    present,
+    absent,
+    unmarked,
+    conflicts,
+  });
+}
+
 async function summary(database, url) {
   const branchCode = url.searchParams.get("branch");
   const groupCode = url.searchParams.get("group");
@@ -726,8 +792,7 @@ async function updateAttendance(request, database, id, date, eventCode, identity
   const scoped = await scopedStudent(database, id, context.branchCode, context.groupCode, 403);
   if (scoped.response) return scoped.response;
   const now = new Date().toISOString();
-  await run(
-    database,
+  const upsert = (nextEventCode, nextActive) => database.prepare(
     `INSERT INTO attendance_events
        (student_id, attendance_date, event_code, is_active, updated_by, updated_at)
      VALUES (?, ?, ?, ?, ?, ?)
@@ -736,8 +801,19 @@ async function updateAttendance(request, database, id, date, eventCode, identity
        is_active = excluded.is_active,
        updated_by = excluded.updated_by,
        updated_at = excluded.updated_at`,
-    [id, date, eventCode, body.active ? 1 : 0, identity.email, now],
-  );
+  ).bind(id, date, nextEventCode, nextActive ? 1 : 0, identity.email, now);
+  const requested = upsert(eventCode, body.active);
+  if (body.active && (eventCode === "arrive" || eventCode === "absent")) {
+    const opposite = eventCode === "arrive" ? "absent" : "arrive";
+    const deactivateOpposite = database.prepare(
+      `UPDATE attendance_events
+       SET is_active = 0, updated_by = ?, updated_at = ?
+       WHERE student_id = ? AND attendance_date = ? AND event_code = ?`,
+    ).bind(identity.email, now, id, date, opposite);
+    await database.batch([requested, deactivateOpposite]);
+  } else {
+    await requested.run();
+  }
   const event = await first(
     database,
     `SELECT student_id, attendance_date, event_code, is_active, updated_by, updated_at
@@ -845,7 +921,12 @@ async function handleApi(request, env, url) {
     });
   }
   if (pathname === "/api/catalog" && request.method === "GET") return json(catalogResponse());
-  const databaseRoute = ["/api/students", "/api/attendance", "/api/summary"].includes(pathname)
+  const databaseRoute = [
+    "/api/students",
+    "/api/attendance",
+    "/api/attendance-records",
+    "/api/summary",
+  ].includes(pathname)
     || /^\/api\/students\/[^/]+\/(?:attendance|profile|messages|stop|restore)(?:\/|$)/u.test(pathname);
   if (databaseRoute && !env.DB) {
     return apiError(500, "DATABASE_UNAVAILABLE", "Database binding is unavailable");
@@ -859,6 +940,9 @@ async function handleApi(request, env, url) {
   }
   if (pathname === "/api/attendance" && request.method === "GET") {
     return attendanceList(env.DB, url);
+  }
+  if (pathname === "/api/attendance-records" && request.method === "GET") {
+    return attendanceRecord(env.DB, url);
   }
   if (pathname === "/api/summary" && request.method === "GET") return summary(env.DB, url);
 

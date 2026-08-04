@@ -698,6 +698,113 @@ test("writes, lists, summarizes, and clears attendance", async () => {
   });
 });
 
+test("lists scoped attendance records including stopped history and conflicts", async () => {
+  await withD1(async (env) => {
+    await env.DB.prepare("DELETE FROM students WHERE group_code = ?").bind("MK HAPPY").run();
+    const students = [
+      ["10000000-0000-4000-8000-000000000101", "PRESENT", "active"],
+      ["10000000-0000-4000-8000-000000000102", "STOPPED PRESENT", "stopped"],
+      ["10000000-0000-4000-8000-000000000103", "ABSENT", "active"],
+      ["10000000-0000-4000-8000-000000000104", "UNMARKED", "active"],
+      ["10000000-0000-4000-8000-000000000105", "CONFLICT", "active"],
+    ];
+    await env.DB.batch(students.map(([id, name, status]) => env.DB.prepare(
+      `INSERT INTO students (id, name, grade, branch_code, group_code, status, source_ref)
+       VALUES (?, ?, 'Y4', 'MK', 'MK HAPPY', ?, ?)`,
+    ).bind(id, name, status, `record-${id}`)));
+    const events = [
+      [students[0][0], "arrive", 1],
+      [students[1][0], "arrive", 1],
+      [students[2][0], "absent", 1],
+      [students[3][0], "arrive", 0],
+      [students[4][0], "arrive", 1],
+      [students[4][0], "absent", 1],
+    ];
+    await env.DB.batch(events.map(([studentId, eventCode, active]) => env.DB.prepare(
+      `INSERT INTO attendance_events
+         (student_id, attendance_date, event_code, is_active, updated_by)
+       VALUES (?, '2026-07-27', ?, ?, 'fixture@example.com')`,
+    ).bind(studentId, eventCode, active)));
+
+    const record = await readJson(await apiWithD1(
+      env,
+      "/api/attendance-records?branch=MK&group=MK%20HAPPY&date=2026-07-27",
+    ));
+    assert.deepEqual(record, {
+      date: "2026-07-27",
+      counts: { present: 2, absent: 1, unmarked: 1, conflicts: 1 },
+      present: [
+        { id: students[0][0], name: "PRESENT", grade: "Y4" },
+        { id: students[1][0], name: "STOPPED PRESENT", grade: "Y4" },
+      ],
+      absent: [{ id: students[2][0], name: "ABSENT", grade: "Y4" }],
+      unmarked: [{ id: students[3][0], name: "UNMARKED", grade: "Y4" }],
+      conflicts: [{ id: students[4][0], name: "CONFLICT", grade: "Y4" }],
+    });
+
+    assert.equal((await apiWithD1(
+      env,
+      "/api/attendance-records?branch=MK&group=MK%20HAPPY&date=2026-02-30",
+    )).status, 400);
+    const mismatch = await readJson(await apiWithD1(
+      env,
+      "/api/attendance-records?branch=MK&group=WS%20HUILING&date=2026-07-27",
+    ), 400);
+    assert.equal(mismatch.code, "GROUP_BRANCH_MISMATCH");
+  });
+});
+
+test("makes Worker arrive and absent writes mutually exclusive", async () => {
+  await withD1(async (env) => {
+    const roster = await readJson(await apiWithD1(
+      env,
+      "/api/students?branch=MK&group=MK%20HAPPY&status=active&limit=1",
+    ));
+    const student = roster.items[0];
+    const prefix = `/api/students/${student.id}/attendance/2026-07-27`;
+    await env.DB.prepare(
+      `INSERT INTO attendance_events
+         (student_id, attendance_date, event_code, is_active, updated_by)
+       VALUES (?, '2026-07-27', 'absent', 1, 'fixture@example.com')`,
+    ).bind(student.id).run();
+
+    await readJson(await apiWithD1(env, `${prefix}/arrive`, {
+      method: "PUT",
+      headers: groupHeaders(),
+      body: { active: true },
+    }));
+    let stored = await env.DB.prepare(
+      `SELECT event_code, is_active FROM attendance_events
+       WHERE student_id = ? AND attendance_date = '2026-07-27'
+       ORDER BY event_code`,
+    ).bind(student.id).all();
+    assert.deepEqual(stored.results.map((row) => ({ ...row })), [
+      { event_code: "absent", is_active: 0 },
+      { event_code: "arrive", is_active: 1 },
+    ]);
+
+    await readJson(await apiWithD1(env, `${prefix}/absent`, {
+      method: "PUT",
+      headers: groupHeaders(),
+      body: { active: true },
+    }));
+    await readJson(await apiWithD1(env, `${prefix}/arrive`, {
+      method: "PUT",
+      headers: groupHeaders(),
+      body: { active: false },
+    }));
+    stored = await env.DB.prepare(
+      `SELECT event_code, is_active FROM attendance_events
+       WHERE student_id = ? AND attendance_date = '2026-07-27'
+       ORDER BY event_code`,
+    ).bind(student.id).all();
+    assert.deepEqual(stored.results.map((row) => ({ ...row })), [
+      { event_code: "absent", is_active: 1 },
+      { event_code: "arrive", is_active: 0 },
+    ]);
+  });
+});
+
 test("decodes a browser-safe Chinese group header for Qiao En STP writes", async () => {
   await withD1(async (env) => {
     const roster = await readJson(await apiWithD1(
