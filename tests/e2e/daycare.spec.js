@@ -318,6 +318,28 @@ test("failed attendance can be retried without leaving stale optimistic state", 
   expect(attempts).toBe(2);
 });
 
+test("attendance records show the saved current-class result without a pickup event", async ({
+  page,
+}) => {
+  await openRoster(page, "MK", "WEN XUAN", "MK WEN XUAN");
+
+  const card = page.getByTestId("student-card").first();
+  const studentName = (await card.locator(".student-card__identity strong").textContent()).trim();
+  await expect(card.getByRole("button", { name: "接", exact: true })).toHaveCount(0);
+
+  const arrive = card.getByRole("button", { name: "到", exact: true });
+  if (await arrive.getAttribute("aria-pressed") !== "true") {
+    await arrive.click();
+    await expect(card.getByText("已保存")).toBeVisible();
+  }
+
+  await page.getByRole("button", { name: "点名记录" }).click();
+  const dialog = page.getByRole("dialog", { name: "点名记录" });
+  await expect(dialog.getByRole("heading", { name: /出席 \d+/ })).toBeVisible();
+  await expect(dialog.getByText(studentName, { exact: true })).toBeVisible();
+  await expect(dialog.getByLabel("记录日期")).not.toHaveValue("");
+});
+
 test("empty search clears the previous profile and removes its save action", async ({
   page,
 }) => {
