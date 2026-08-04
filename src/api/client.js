@@ -118,6 +118,14 @@ export const rosterApi = {
     }),
     { branchCode, groupCode },
   ),
+  attendanceRecords: ({ branchCode, groupCode, date }) => apiRequest(
+    queryPath("/api/attendance-records", {
+      branch: branchCode,
+      group: groupCode,
+      date,
+    }),
+    { branchCode, groupCode },
+  ),
   summary: ({ branchCode, groupCode, date }) => apiRequest(
     queryPath("/api/summary", {
       branch: branchCode,

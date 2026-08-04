@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
 import { EMPTY_SUMMARY, nextAttendanceEvents } from "../../domain/attendance.js";
+import { AttendanceRecordsDialog } from "../attendance/AttendanceRecordsDialog.jsx";
 import { SummaryBar } from "../dashboard/SummaryBar.jsx";
 import { MessageDialog } from "../messages/MessageDialog.jsx";
 import { EnrolDialog } from "../students/EnrolDialog.jsx";
@@ -356,6 +357,9 @@ export function RosterScreen({
         <button className="secondary-button" type="button" onClick={() => setLifecycleDialog("restore")}>
           恢复学生
         </button>
+        <button className="secondary-button" type="button" onClick={() => setLifecycleDialog("records")}>
+          点名记录
+        </button>
       </div>
 
       {toast ? <div className="lifecycle-toast" role="status">{toast}</div> : null}
@@ -452,6 +456,14 @@ export function RosterScreen({
           groupCode={groupCode}
           onClose={() => setLifecycleDialog(null)}
           onRestored={restored}
+        />
+      ) : null}
+      {lifecycleDialog === "records" ? (
+        <AttendanceRecordsDialog
+          branchCode={branchCode}
+          groupCode={groupCode}
+          initialDate={date}
+          onClose={() => setLifecycleDialog(null)}
         />
       ) : null}
     </section>
