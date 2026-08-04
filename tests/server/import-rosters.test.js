@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { importRosters, ROSTER_FILES } from "../../scripts/import-rosters.mjs";
 import { createTestDatabase } from "../helpers/testDatabase.js";
+import { JANICE_ROSTER } from "../fixtures/janiceRoster.js";
 
 const APPROVED_COUNTS = {
   "MK HAPPY": 82,
@@ -13,6 +14,7 @@ const APPROVED_COUNTS = {
   "PS STP": 83,
   "SY STP": 50,
   "YUAN NING STP": 43,
+  "JANICE STP": 52,
 };
 
 describe("approved roster import", () => {
@@ -36,6 +38,10 @@ describe("approved roster import", () => {
       name: "Aria",
       grade: "Y6",
     }));
+    expect(result.rows
+      .filter((row) => row.groupCode === "JANICE STP")
+      .map(({ name, grade }) => [name, grade]))
+      .toEqual(JANICE_ROSTER);
     for (const label of ["假期通知", "午餐伙食", "晚餐伙食", "liew妈妈", "Daycare助理"]) {
       expect(result.rows).not.toContainEqual(expect.objectContaining({
         groupCode: "MK HAPPY",

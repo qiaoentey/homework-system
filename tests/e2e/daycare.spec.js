@@ -17,6 +17,7 @@ const CATALOG = {
     { label: "PS", code: "PS STP" },
     { label: "SY", code: "SY STP" },
     { label: "YUAN NING", code: "YUAN NING STP" },
+    { label: "JANICE", code: "JANICE STP" },
   ],
   WS: [
     { label: "HUILING", code: "WS HUILING" },
@@ -165,6 +166,18 @@ test("Yuan Ning STP loads only the approved 43 students", async ({ page }) => {
   expect(result.body.total).toBe(43);
   expect(result.body.items.every((student) => (
     student.branchCode === "STP" && student.groupCode === "YUAN NING STP"
+  ))).toBe(true);
+});
+
+test("Janice STP loads only the approved 52 students", async ({ page }) => {
+  await openRoster(page, "STP", "JANICE", "JANICE STP");
+  await expect(page.getByText("只显示当前老师的在读学生 · 共 52 名")).toBeVisible();
+
+  const result = await listStudents(page, "STP", "JANICE STP", "active");
+  expect(result.status).toBe(200);
+  expect(result.body.total).toBe(52);
+  expect(result.body.items.every((student) => (
+    student.branchCode === "STP" && student.groupCode === "JANICE STP"
   ))).toBe(true);
 });
 

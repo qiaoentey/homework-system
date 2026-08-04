@@ -8,6 +8,7 @@ import {
   SignJWT,
 } from "jose";
 import { parseRosterCsv, ROSTER_FILES } from "../scripts/import-rosters.mjs";
+import { JANICE_ROSTER } from "./fixtures/janiceRoster.js";
 import * as workerAuth from "../worker/auth.js";
 import worker from "../worker/index.js";
 import { createSitesD1 } from "./helpers/sitesD1.mjs";
@@ -56,6 +57,7 @@ const approvedCounts = {
   "PS STP": 83,
   "SY STP": 50,
   "YUAN NING STP": 43,
+  "JANICE STP": 52,
   "WS HUILING": 46,
   "WS JIA WEN": 61,
   "WS MIXIN": 42,
@@ -438,6 +440,7 @@ test("serves the verified Google session and fixed branch catalog after login", 
             { code: "PS STP", label: "PS" },
             { code: "SY STP", label: "SY" },
             { code: "YUAN NING STP", label: "YUAN NING" },
+            { code: "JANICE STP", label: "JANICE" },
           ],
         },
         {
@@ -522,7 +525,7 @@ test("applies the breakpoint-delimited Sites migration idempotently with exact a
       )));
       total += response.total;
     }
-    assert.equal(total, 555);
+    assert.equal(total, 607);
 
     const branchByGroup = Object.fromEntries(
       Object.keys(approvedCounts).map((groupCode) => [
@@ -561,6 +564,17 @@ test("applies the breakpoint-delimited Sites migration idempotently with exact a
     assert.deepEqual(
       Object.fromEntries(yuanNing.items.map(({ name, grade }) => [name, grade])),
       yuanNingGrades,
+    );
+
+    const janice = await env.DB.prepare(
+      `SELECT name, grade
+       FROM students
+       WHERE group_code = 'JANICE STP'
+       ORDER BY source_ref`,
+    ).all();
+    assert.deepEqual(
+      janice.results.map(({ name, grade }) => [name, grade]),
+      JANICE_ROSTER,
     );
 
     const transferred = await env.DB.prepare(

@@ -5,6 +5,7 @@ import { createTestDatabaseBefore } from "../helpers/testDatabase.js";
 const identityMigration = "002_unique_student_identity.sql";
 const enrolmentMigration = "003_enrolment_idempotency.sql";
 const yuanNingMigration = "004_stp_yuan_ning.sql";
+const janiceMigration = "005_stp_janice.sql";
 
 describe("student identity migration", () => {
   const pools = [];
@@ -50,6 +51,7 @@ describe("student identity migration", () => {
       identityMigration,
       enrolmentMigration,
       yuanNingMigration,
+      janiceMigration,
     ]);
     await pool.query(
       `insert into students (name, grade, branch_code, group_code)
@@ -64,7 +66,11 @@ describe("student identity migration", () => {
     const pool = await createTestDatabaseBefore(enrolmentMigration);
     pools.push(pool);
 
-    expect(await migrate(pool)).toEqual([enrolmentMigration, yuanNingMigration]);
+    expect(await migrate(pool)).toEqual([
+      enrolmentMigration,
+      yuanNingMigration,
+      janiceMigration,
+    ]);
     await pool.query(
       `insert into students
          (name, grade, branch_code, group_code, enrolment_key)

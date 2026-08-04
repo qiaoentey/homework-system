@@ -29,6 +29,13 @@
       "when": 1785675600000,
       "tag": "0003_stp_yuan_ning",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785850000000,
+      "tag": "0004_stp_janice",
+      "breakpoints": true
     }
   ]
 }

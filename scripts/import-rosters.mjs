@@ -13,6 +13,7 @@ const APPROVED_COUNTS = {
   "PS STP": 83,
   "SY STP": 50,
   "YUAN NING STP": 43,
+  "JANICE STP": 52,
 };
 
 function rosterFile(filename, groupCode) {
@@ -34,6 +35,7 @@ export const ROSTER_FILES = [
   rosterFile("stp-ps.csv", "PS STP"),
   rosterFile("stp-sy.csv", "SY STP"),
   rosterFile("stp-yuan-ning.csv", "YUAN NING STP"),
+  rosterFile("stp-janice.csv", "JANICE STP"),
 ];
 
 function normalizeWhitespace(value) {
