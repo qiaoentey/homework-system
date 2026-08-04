@@ -25,6 +25,21 @@ export class AttendanceRepositoryError extends Error {
   }
 }
 
+async function inTransaction(pool, operation) {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const result = await operation(client);
+    await client.query("commit");
+    return result;
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function assertStudentScope(pool, { id, branchCode, groupCode }) {
   const result = await pool.query(
     "select branch_code, group_code from students where id = $1",
@@ -59,6 +74,63 @@ export async function listAttendance(pool, {
   return { items: result.rows.map(mapAttendanceEvent) };
 }
 
+export async function getAttendanceRecord(pool, {
+  branchCode,
+  groupCode,
+  date,
+}) {
+  const result = await pool.query(
+    `select s.id, s.name, s.grade, s.status, ae.event_code
+     from students s
+     left join attendance_events ae
+       on ae.student_id = s.id
+      and ae.attendance_date = $3
+      and ae.is_active = true
+      and ae.event_code in ('arrive', 'absent')
+     where s.branch_code = $1
+       and s.group_code = $2
+       and (s.status = 'active' or ae.event_code is not null)
+     order by lower(s.name), s.id, ae.event_code`,
+    [branchCode, groupCode, date],
+  );
+  const students = new Map();
+  for (const row of result.rows) {
+    if (!students.has(row.id)) {
+      students.set(row.id, {
+        item: { id: row.id, name: row.name, grade: row.grade },
+        status: row.status,
+        events: new Set(),
+      });
+    }
+    if (row.event_code) students.get(row.id).events.add(row.event_code);
+  }
+
+  const present = [];
+  const absent = [];
+  const unmarked = [];
+  const conflicts = [];
+  for (const { item, status, events } of students.values()) {
+    if (events.has("arrive") && events.has("absent")) conflicts.push(item);
+    else if (events.has("arrive")) present.push(item);
+    else if (events.has("absent")) absent.push(item);
+    else if (status === "active") unmarked.push(item);
+  }
+
+  return {
+    date,
+    counts: {
+      present: present.length,
+      absent: absent.length,
+      unmarked: unmarked.length,
+      conflicts: conflicts.length,
+    },
+    present,
+    absent,
+    unmarked,
+    conflicts,
+  };
+}
+
 export async function upsertAttendanceEvent(pool, {
   id,
   branchCode,
@@ -68,9 +140,9 @@ export async function upsertAttendanceEvent(pool, {
   active,
   actor,
 }) {
-  await assertStudentScope(pool, { id, branchCode, groupCode });
-  const result = await pool.query(
-    `insert into attendance_events
+  return inTransaction(pool, async (client) => {
+    await assertStudentScope(client, { id, branchCode, groupCode });
+    const upsert = `insert into attendance_events
        (student_id, attendance_date, event_code, is_active, updated_by)
      values ($1, $2, $3, $4, $5)
      on conflict (student_id, attendance_date, event_code)
@@ -78,10 +150,14 @@ export async function upsertAttendanceEvent(pool, {
        is_active = excluded.is_active,
        updated_by = excluded.updated_by,
        updated_at = now()
-     returning student_id, attendance_date, event_code, is_active, updated_by, updated_at`,
-    [id, date, eventCode, active, actor],
-  );
-  return mapAttendanceEvent(result.rows[0]);
+     returning student_id, attendance_date, event_code, is_active, updated_by, updated_at`;
+    const result = await client.query(upsert, [id, date, eventCode, active, actor]);
+    if (active && (eventCode === "arrive" || eventCode === "absent")) {
+      const opposite = eventCode === "arrive" ? "absent" : "arrive";
+      await client.query(upsert, [id, date, opposite, false, actor]);
+    }
+    return mapAttendanceEvent(result.rows[0]);
+  });
 }
 
 export async function clearAttendanceDate(pool, {

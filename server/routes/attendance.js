@@ -7,6 +7,7 @@ import { decodeHeaderValue } from "../http/headers.js";
 import {
   AttendanceRepositoryError,
   clearAttendanceDate,
+  getAttendanceRecord,
   getGroupSummary,
   listAttendance,
   upsertAttendanceEvent,
@@ -111,6 +112,16 @@ export function createAttendanceRouter({ pool }) {
     const parsed = parseGroupDate(request, response, "INVALID_ATTENDANCE_QUERY");
     if (!parsed) return;
     response.json(await listAttendance(pool, {
+      branchCode: parsed.branch,
+      groupCode: parsed.group,
+      date: parsed.date,
+    }));
+  }));
+
+  router.get("/attendance-records", requireSession, route(async (request, response) => {
+    const parsed = parseGroupDate(request, response, "INVALID_ATTENDANCE_RECORD_QUERY");
+    if (!parsed) return;
+    response.json(await getAttendanceRecord(pool, {
       branchCode: parsed.branch,
       groupCode: parsed.group,
       date: parsed.date,

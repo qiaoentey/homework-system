@@ -67,7 +67,7 @@ describe("attendance API", () => {
     await pool.end();
   });
 
-  it("requires a signed session for attendance and summary access", async () => {
+  it("requires a signed session for attendance, records, and summary access", async () => {
     const student = await insertStudent(pool);
 
     await request(app)
@@ -81,6 +81,62 @@ describe("attendance API", () => {
     await request(app)
       .get("/api/summary?branch=MK&group=MK%20HAPPY&date=2026-07-27")
       .expect(401);
+    await request(app)
+      .get("/api/attendance-records?branch=MK&group=MK%20HAPPY&date=2026-07-27")
+      .expect(401);
+  });
+
+  it("lists scoped present, absent, unmarked, stopped-history, and conflict records", async () => {
+    const present = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000001",
+      name: "PRESENT",
+    });
+    const stoppedPresent = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "STOPPED PRESENT",
+      status: "stopped",
+    });
+    const absent = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000003",
+      name: "ABSENT",
+    });
+    const unmarked = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000004",
+      name: "UNMARKED",
+    });
+    const conflict = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000005",
+      name: "CONFLICT",
+    });
+    const otherGroup = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000006",
+      name: "OTHER GROUP",
+      branchCode: "WS",
+      groupCode: "WS HUILING",
+    });
+    await insertEvent(pool, present.id, "arrive");
+    await insertEvent(pool, stoppedPresent.id, "arrive");
+    await insertEvent(pool, absent.id, "absent");
+    await insertEvent(pool, unmarked.id, "arrive", { active: false });
+    await insertEvent(pool, conflict.id, "arrive");
+    await insertEvent(pool, conflict.id, "absent");
+    await insertEvent(pool, otherGroup.id, "arrive");
+
+    const response = await agent
+      .get("/api/attendance-records?branch=MK&group=MK%20HAPPY&date=2026-07-27")
+      .expect(200);
+
+    expect(response.body).toEqual({
+      date: "2026-07-27",
+      counts: { present: 2, absent: 1, unmarked: 1, conflicts: 1 },
+      present: [
+        { id: present.id, name: "PRESENT", grade: "Y4" },
+        { id: stoppedPresent.id, name: "STOPPED PRESENT", grade: "Y4" },
+      ],
+      absent: [{ id: absent.id, name: "ABSENT", grade: "Y4" }],
+      unmarked: [{ id: unmarked.id, name: "UNMARKED", grade: "Y4" }],
+      conflicts: [{ id: conflict.id, name: "CONFLICT", grade: "Y4" }],
+    });
   });
 
   it("lists attendance only for active students in the selected branch and group", async () => {
@@ -196,6 +252,47 @@ describe("attendance API", () => {
     }]);
   });
 
+  it("atomically makes active arrive and absent mutually exclusive", async () => {
+    const student = await insertStudent(pool);
+    await insertEvent(pool, student.id, "absent");
+    const prefix = `/api/students/${student.id}/attendance/2026-07-27`;
+
+    await agent
+      .put(`${prefix}/arrive`)
+      .set(groupHeaders())
+      .send({ active: true })
+      .expect(200);
+    expect((await pool.query(
+      `select event_code, is_active from attendance_events
+       where student_id = $1 and attendance_date = $2
+       order by event_code`,
+      [student.id, "2026-07-27"],
+    )).rows).toEqual([
+      { event_code: "absent", is_active: false },
+      { event_code: "arrive", is_active: true },
+    ]);
+
+    await agent
+      .put(`${prefix}/absent`)
+      .set(groupHeaders())
+      .send({ active: true })
+      .expect(200);
+    await agent
+      .put(`${prefix}/arrive`)
+      .set(groupHeaders())
+      .send({ active: false })
+      .expect(200);
+    expect((await pool.query(
+      `select event_code, is_active from attendance_events
+       where student_id = $1 and attendance_date = $2
+       order by event_code`,
+      [student.id, "2026-07-27"],
+    )).rows).toEqual([
+      { event_code: "absent", is_active: true },
+      { event_code: "arrive", is_active: false },
+    ]);
+  });
+
   it("rejects attendance when the student is outside the selected group", async () => {
     const mkStudent = await insertStudent(pool);
 
@@ -251,6 +348,13 @@ describe("attendance API", () => {
     await agent
       .get("/api/summary?branch=MK&group=MK%20HAPPY&date=2026-2-3")
       .expect(400);
+    await agent
+      .get("/api/attendance-records?branch=MK&group=MK%20HAPPY&date=2026-02-30")
+      .expect(400);
+    const recordMismatch = await agent
+      .get("/api/attendance-records?branch=MK&group=WS%20HUILING&date=2026-07-27")
+      .expect(400);
+    expect(recordMismatch.body.code).toBe("GROUP_BRANCH_MISMATCH");
   });
 
   it("clears only the selected student's events on the selected date", async () => {
