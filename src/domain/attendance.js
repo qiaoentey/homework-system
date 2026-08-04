@@ -1,5 +1,4 @@
 export const EVENT_BUTTONS = [
-  ["pickup", "接"],
   ["arrive", "到"],
   ["shower", "冲"],
   ["meal", "餐"],
@@ -10,6 +9,20 @@ export const EVENT_BUTTONS = [
   ["absent", "缺席"],
   ["koko", "KOKO"],
 ];
+
+export function nextAttendanceEvents(previous, eventCode, active) {
+  const opposite = eventCode === "arrive"
+    ? "absent"
+    : eventCode === "absent"
+      ? "arrive"
+      : null;
+  const withoutCurrent = previous.filter((code) => code !== eventCode);
+  if (!active) return withoutCurrent;
+  const compatible = opposite
+    ? withoutCurrent.filter((code) => code !== opposite)
+    : withoutCurrent;
+  return [...compatible, eventCode];
+}
 
 export const EMPTY_SUMMARY = {
   expected: 0,

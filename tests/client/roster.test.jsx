@@ -213,6 +213,54 @@ describe("virtualized current-group roster", () => {
 });
 
 describe("attendance controls and summary", () => {
+  it("hides pickup and switches arrive and absent exclusively before saving", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) {
+        return jsonResponse(200, {
+          items: [{
+            studentId: student(1).id,
+            date: "2026-07-27",
+            eventCode: "absent",
+            active: true,
+            updatedBy: "teacher@example.com",
+            updatedAt: "2026-07-27T00:00:00.000Z",
+          }],
+        });
+      }
+      if (url.startsWith("/api/summary?")) {
+        return jsonResponse(200, {
+          expected: 1, arrived: 1, notArrived: 0, absent: 0, koko: 0, unmarked: 0,
+        });
+      }
+      if (url.includes("/attendance/") && options.method === "PUT") {
+        return jsonResponse(200, {
+          studentId: student(1).id,
+          date: "2026-07-27",
+          eventCode: "arrive",
+          active: true,
+          updatedBy: "teacher@example.com",
+          updatedAt: "2026-07-27T01:00:00.000Z",
+        });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    const arrive = within(card).getByRole("button", { name: "到" });
+    const absent = within(card).getByRole("button", { name: "缺席" });
+    await waitFor(() => expect(absent).toHaveAttribute("aria-pressed", "true"));
+
+    expect(within(card).queryByRole("button", { name: "接" })).not.toBeInTheDocument();
+    fireEvent.click(arrive);
+    expect(arrive).toHaveAttribute("aria-pressed", "true");
+    expect(absent).toHaveAttribute("aria-pressed", "false");
+    expect(await within(card).findByText("已保存")).toBeVisible();
+  });
+
   it("does not let a stale initial attendance response overwrite a newer saved event", async () => {
     const initialAttendance = deferred();
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
@@ -398,8 +446,8 @@ describe("attendance controls and summary", () => {
 
     fireEvent.click(arrive);
     expect(arrive).toHaveAttribute("aria-pressed", "true");
-    expect(within(firstCard).getByRole("button", { name: "接" })).toBeDisabled();
-    expect(within(secondCard).getByRole("button", { name: "接" })).toBeEnabled();
+    expect(within(firstCard).getByRole("button", { name: "冲" })).toBeDisabled();
+    expect(within(secondCard).getByRole("button", { name: "冲" })).toBeEnabled();
 
     await act(async () => {
       finishFirstEvent(jsonResponse(500, { error: "save failed" }));
@@ -427,7 +475,7 @@ describe("attendance controls and summary", () => {
           items: [{
             studentId: student(1).id,
             date: "2026-07-27",
-            eventCode: "pickup",
+            eventCode: "shower",
             active: true,
             updatedBy: "teacher@example.com",
             updatedAt: "2026-07-27T00:00:00.000Z",
@@ -460,11 +508,11 @@ describe("attendance controls and summary", () => {
       <RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />,
     );
     const card = await screen.findByTestId("student-card");
-    expect(within(card).getByRole("button", { name: "接" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(card).getByRole("button", { name: "冲" })).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(within(card).getByRole("button", { name: "清除今日" }));
 
     await waitFor(() => {
-      expect(within(card).getByRole("button", { name: "接" }))
+      expect(within(card).getByRole("button", { name: "冲" }))
         .toHaveAttribute("aria-pressed", "false");
       expect(summaryCalls).toBe(2);
     });

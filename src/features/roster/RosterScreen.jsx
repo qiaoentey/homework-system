@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
-import { EMPTY_SUMMARY } from "../../domain/attendance.js";
+import { EMPTY_SUMMARY, nextAttendanceEvents } from "../../domain/attendance.js";
 import { SummaryBar } from "../dashboard/SummaryBar.jsx";
 import { MessageDialog } from "../messages/MessageDialog.jsx";
 import { EnrolDialog } from "../students/EnrolDialog.jsx";
@@ -233,9 +233,7 @@ export function RosterScreen({
     );
     const previous = attendance[studentId] ?? [];
     const active = !previous.includes(eventCode);
-    const next = active
-      ? [...previous, eventCode]
-      : previous.filter((code) => code !== eventCode);
+    const next = nextAttendanceEvents(previous, eventCode, active);
     setAttendance((current) => ({ ...current, [studentId]: next }));
     saveAttendance(studentId, { type: "event", eventCode, active, previous });
   }
@@ -259,9 +257,11 @@ export function RosterScreen({
     );
     const optimistic = operation.type === "clear"
       ? []
-      : operation.active
-        ? [...operation.previous.filter((code) => code !== operation.eventCode), operation.eventCode]
-        : operation.previous.filter((code) => code !== operation.eventCode);
+      : nextAttendanceEvents(
+        operation.previous,
+        operation.eventCode,
+        operation.active,
+      );
     setAttendance((current) => ({ ...current, [studentId]: optimistic }));
     saveAttendance(studentId, operation);
   }
