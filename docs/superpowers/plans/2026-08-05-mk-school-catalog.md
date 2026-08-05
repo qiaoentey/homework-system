@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make MK student profiles and enrolment show only 一校、二校、启智 with the exact Year 1–6 class lists supplied by the user.
+**Goal:** Make MK student profiles and enrolment show only 一校、二校、启智、姚贞暖 with the exact supplied Year 1–6 class lists and no classes for 姚贞暖 yet.
 
 **Architecture:** Keep school catalogs in `src/domain/profileOptions.js` and select them by `branchCode`. Pass `branchCode` through the shared `StudentProfileFields` component so both profile editing and enrolment use the same rules without duplicating UI logic.
 
@@ -10,8 +10,9 @@
 
 ## Global Constraints
 
-- MK selectable schools are exactly 一校、二校、启智.
+- MK selectable schools are exactly 一校、二校、启智、姚贞暖, in that order.
 - MK classes exactly match the approved Year 1–6 lists.
+- 姚贞暖 has no selectable class for any grade.
 - MK does not offer 南益、民义、旺小、桥南、中华小学、中华中学.
 - STP and WS retain their existing school catalog.
 - Both `Y1`–`Y6` and `一年级`–`六年级` map to the matching year.
@@ -34,13 +35,14 @@
 Add assertions that:
 
 ```js
-expect(schoolOptionsFor("MK")).toEqual(["一校", "二校", "启智"]);
+expect(schoolOptionsFor("MK")).toEqual(["一校", "二校", "启智", "姚贞暖"]);
 expect(schoolOptionsFor("WS")).toEqual([
   "南益", "民义", "旺小", "桥南", "中华小学", "中华中学",
 ]);
 expect(schoolClassesFor("MK", "一校", "Y3")).toEqual(["3J", "3B", "3M", "3U"]);
 expect(schoolClassesFor("MK", "二校", "六年级")).toEqual(["6W", "6I", "6S"]);
 expect(schoolClassesFor("MK", "启智", "Y1")).toEqual(["1C", "1J", "1B"]);
+expect(schoolClassesFor("MK", "姚贞暖", "Y3")).toEqual([]);
 expect(schoolClassesFor("MK", "南益", "Y3")).toEqual([]);
 ```
 
@@ -82,7 +84,7 @@ Expected: FAIL because `schoolOptionsFor` does not exist and `schoolClassesFor` 
 In `src/domain/profileOptions.js`, retain the existing six schools as the default catalog, add:
 
 ```js
-const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智"];
+const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智", "姚贞暖"];
 
 const MK_SCHOOL_CLASSES = {
   一校: {
@@ -129,7 +131,7 @@ Expected: all profile option tests pass.
 Render an MK `ProfilePanel` and MK `EnrolDialog`. Assert both school selects contain only:
 
 ```js
-["请选择学校", "一校", "二校", "启智"]
+["请选择学校", "一校", "二校", "启智", "姚贞暖"]
 ```
 
 Select `一校` for an `Y3` student and assert the class select contains only:
@@ -137,6 +139,8 @@ Select `一校` for an `Y3` student and assert the class select contains only:
 ```js
 ["请选择学校班级", "3J", "3B", "3M", "3U"]
 ```
+
+Then select `姚贞暖` and assert the class select contains only `请选择学校班级` and has a blank value.
 
 - [ ] **Step 2: Run both component tests and confirm RED**
 
