@@ -13,6 +13,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RosterScreen } from "../../src/features/roster/RosterScreen.jsx";
+import { EnrolDialog } from "../../src/features/students/EnrolDialog.jsx";
 
 const GROUPS = [
   { code: "WS HUILING", label: "HUILING" },
@@ -106,6 +107,38 @@ afterEach(() => {
 });
 
 describe("student enrolment", () => {
+  it("offers only MK schools and their grade-matched classes in Enrol", () => {
+    render(
+      <EnrolDialog
+        branchCode="MK"
+        groupCode="MK HAPPY"
+        groups={[{ code: "MK HAPPY", label: "HAPPY" }]}
+        onClose={vi.fn()}
+        onEnrolled={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Enrol 学生" });
+    const school = within(dialog).getByRole("combobox", { name: "学校" });
+    expect(within(school).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择学校",
+      "一校",
+      "二校",
+      "启智",
+    ]);
+
+    fireEvent.change(within(dialog).getByLabelText("年级"), { target: { value: "Y3" } });
+    fireEvent.change(school, { target: { value: "一校" } });
+    expect(within(within(dialog).getByRole("combobox", { name: "学校班级" }))
+      .getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择学校班级",
+      "3J",
+      "3B",
+      "3M",
+      "3U",
+    ]);
+  });
+
   it("requires identity, offers only authenticated branch groups, sends every profile field once, and refreshes only the current group", async () => {
     const current = student(1, { name: "CURRENT STUDENT" });
     const enrolled = student(2, { name: "NEW STUDENT" });

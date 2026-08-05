@@ -7,6 +7,27 @@ export const SCHOOL_OPTIONS = [
   "中华中学",
 ];
 
+const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智"];
+
+const MK_SCHOOL_CLASSES = {
+  一校: {
+    1: ["1B", "1M", "1U"],
+    2: ["2B", "2M", "2U"],
+    3: ["3J", "3B", "3M", "3U"],
+    4: ["4B", "4M", "4U"],
+    5: ["5B", "5M", "5U"],
+    6: ["6B", "6M", "6U"],
+  },
+  二校: Object.fromEntries([1, 2, 3, 4, 5, 6].map((year) => [
+    String(year),
+    [`${year}W`, `${year}I`, `${year}S`],
+  ])),
+  启智: Object.fromEntries([1, 2, 3, 4, 5, 6].map((year) => [
+    String(year),
+    [`${year}C`, `${year}J`, `${year}B`],
+  ])),
+};
+
 const SCHOOL_CLASS_SUFFIXES = {
   南益: ["K", "H", "B", "M", "U", "J", "C"],
   民义: ["M", "K", "J", "B", "H", "U", "P"],
@@ -52,8 +73,15 @@ function gradePrefix(grade) {
   return "";
 }
 
-export function schoolClassesFor(school, grade) {
+export function schoolOptionsFor(branchCode) {
+  return branchCode === "MK" ? [...MK_SCHOOL_OPTIONS] : [...SCHOOL_OPTIONS];
+}
+
+export function schoolClassesFor(branchCode, school, grade) {
   const prefix = gradePrefix(grade);
+  if (branchCode === "MK") {
+    return [...(MK_SCHOOL_CLASSES[school]?.[prefix] ?? [])];
+  }
   const suffixes = SCHOOL_CLASS_SUFFIXES[school] ?? [];
   if (!prefix) return [];
   return suffixes.map((suffix) => `${prefix}${suffix}`);

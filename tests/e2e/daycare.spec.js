@@ -213,8 +213,18 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   const enrol = page.getByRole("dialog", { name: "Enrol 学生" });
   await enrol.getByLabel("学生姓名").fill(name);
   await enrol.getByLabel("年级").selectOption("Y3");
-  await enrol.getByLabel("学校", { exact: true }).selectOption("南益");
-  await enrol.getByLabel("学校班级", { exact: true }).selectOption("3K");
+  const school = enrol.getByLabel("学校", { exact: true });
+  await expect(school.locator("option")).toHaveText([
+    "请选择学校",
+    "一校",
+    "二校",
+    "启智",
+  ]);
+  for (const removedSchool of ["南益", "民义", "旺小", "桥南", "中华小学", "中华中学"]) {
+    await expect(school.locator(`option[value="${removedSchool}"]`)).toHaveCount(0);
+  }
+  await school.selectOption("一校");
+  await enrol.getByLabel("学校班级", { exact: true }).selectOption("3J");
   await enrol.getByLabel("回家载送", { exact: true }).selectOption("家长");
   await enrol.getByLabel("是否需要晚餐", { exact: true }).selectOption("需要");
   await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("需要");
@@ -230,8 +240,8 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   expect(enrolled.body.items).toHaveLength(1);
   const createdId = enrolled.body.items[0].id;
   expect(enrolled.body.items[0].profile).toMatchObject({
-    school: "南益",
-    schoolClass: "3K",
+    school: "一校",
+    schoolClass: "3J",
     pickupMethod: "家长",
     dinnerRequired: "需要",
     dinnerMonday: "需要",
@@ -278,8 +288,8 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   expect(active.body.items).toHaveLength(1);
   expect(active.body.items[0].id).toBe(createdId);
   expect(active.body.items[0].profile).toMatchObject({
-    school: "南益",
-    schoolClass: "3K",
+    school: "一校",
+    schoolClass: "3J",
     pickupMethod: "家长",
     dinnerRequired: "需要",
     dinnerMonday: "需要",

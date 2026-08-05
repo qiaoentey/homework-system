@@ -4,7 +4,20 @@ import {
   EMPTY_PROFILE,
   normalizeProfile,
 } from "../../domain/profile.js";
+import { schoolOptionsFor } from "../../domain/profileOptions.js";
 import { StudentProfileFields } from "./StudentProfileFields.jsx";
+
+function normalizeProfileForBranch(profile, branchCode) {
+  const normalized = normalizeProfile(profile);
+  if (branchCode === "MK" && !schoolOptionsFor(branchCode).includes(normalized.school)) {
+    return {
+      ...normalized,
+      school: "",
+      schoolClass: "",
+    };
+  }
+  return normalized;
+}
 
 export function ProfilePanel({
   panelRef,
@@ -27,10 +40,12 @@ export function ProfilePanel({
   }
 
   useEffect(() => {
-    setValues(student ? normalizeProfile(student.profile) : { ...EMPTY_PROFILE });
+    setValues(student
+      ? normalizeProfileForBranch(student.profile, branchCode)
+      : { ...EMPTY_PROFILE });
     setStatus("idle");
     setError("");
-  }, [student?.id]);
+  }, [branchCode, student?.id]);
 
   async function save(event) {
     event.preventDefault();
@@ -85,6 +100,7 @@ export function ProfilePanel({
 
       <form className="profile-form" onSubmit={save}>
         <StudentProfileFields
+          branchCode={branchCode}
           grade={student?.grade ?? ""}
           values={values}
           disabled={!student || status === "saving"}

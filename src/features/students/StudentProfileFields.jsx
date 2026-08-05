@@ -1,9 +1,9 @@
 import {
   PICKUP_METHOD_OPTIONS,
-  SCHOOL_OPTIONS,
   STAY_TIME_OPTIONS,
   VAN_DRIVER_OPTIONS,
   schoolClassesFor,
+  schoolOptionsFor,
 } from "../../domain/profileOptions.js";
 
 const STAY_FIELDS = [
@@ -28,13 +28,15 @@ function ExistingOption({ value, choices }) {
 }
 
 export function StudentProfileFields({
+  branchCode,
   grade,
   values,
   disabled,
   onChange,
   fieldTestId,
 }) {
-  const schoolClasses = schoolClassesFor(values.school, grade);
+  const schoolOptions = schoolOptionsFor(branchCode);
+  const schoolClasses = schoolClassesFor(branchCode, values.school, grade);
   const stayValues = STAY_TIME_OPTIONS.map(([value]) => value);
 
   function changeSchool(nextSchool) {
@@ -66,10 +68,10 @@ export function StudentProfileFields({
             onChange={(event) => changeSchool(event.target.value)}
           >
             <option value="">请选择学校</option>
-            {SCHOOL_OPTIONS.map((school) => (
+            {schoolOptions.map((school) => (
               <option key={school} value={school}>{school}</option>
             ))}
-            <ExistingOption value={values.school} choices={SCHOOL_OPTIONS} />
+            <ExistingOption value={values.school} choices={schoolOptions} />
           </select>
         </label>
 

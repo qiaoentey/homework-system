@@ -132,6 +132,7 @@ export function EnrolDialog({
         <fieldset className="lifecycle-form__profile">
           <legend>学生个人资料</legend>
           <StudentProfileFields
+            branchCode={branchCode}
             grade={grade}
             values={profile}
             disabled={status === "saving"}

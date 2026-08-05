@@ -4,6 +4,7 @@ import "@testing-library/jest-dom/vitest";
 import React from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { schoolClassesFor } from "../../src/domain/profileOptions.js";
 import { ProfilePanel } from "../../src/features/students/ProfilePanel.jsx";
 
 const EMPTY_PROFILE = {
@@ -40,11 +41,11 @@ function student(overrides = {}) {
   };
 }
 
-function renderProfile(selectedStudent = student()) {
+function renderProfile(selectedStudent = student(), branchCode = "WS") {
   render(
     <ProfilePanel
-      branchCode="WS"
-      groupCode="WS HUILING"
+      branchCode={branchCode}
+      groupCode={branchCode === "MK" ? "MK HAPPY" : "WS HUILING"}
       student={selectedStudent}
       noResults={false}
       onSaved={vi.fn()}
@@ -59,6 +60,77 @@ afterEach(() => {
 });
 
 describe("restored student profile choices", () => {
+  it("uses every exact MK school class supplied for Year 1 through Year 6", () => {
+    const classesBySchool = {
+      一校: {
+        Y1: ["1B", "1M", "1U"],
+        Y2: ["2B", "2M", "2U"],
+        Y3: ["3J", "3B", "3M", "3U"],
+        Y4: ["4B", "4M", "4U"],
+        Y5: ["5B", "5M", "5U"],
+        Y6: ["6B", "6M", "6U"],
+      },
+      二校: {
+        Y1: ["1W", "1I", "1S"],
+        Y2: ["2W", "2I", "2S"],
+        Y3: ["3W", "3I", "3S"],
+        Y4: ["4W", "4I", "4S"],
+        Y5: ["5W", "5I", "5S"],
+        Y6: ["6W", "6I", "6S"],
+      },
+      启智: {
+        Y1: ["1C", "1J", "1B"],
+        Y2: ["2C", "2J", "2B"],
+        Y3: ["3C", "3J", "3B"],
+        Y4: ["4C", "4J", "4B"],
+        Y5: ["5C", "5J", "5B"],
+        Y6: ["6C", "6J", "6B"],
+      },
+    };
+
+    for (const [school, grades] of Object.entries(classesBySchool)) {
+      for (const [grade, expectedClasses] of Object.entries(grades)) {
+        expect(schoolClassesFor("MK", school, grade)).toEqual(expectedClasses);
+      }
+    }
+    expect(schoolClassesFor("MK", "南益", "Y3")).toEqual([]);
+    expect(schoolClassesFor("MK", "一校", "三年级")).toEqual([
+      "3J", "3B", "3M", "3U",
+    ]);
+  });
+
+  it("shows only the approved MK schools and clears a deprecated MK selection", () => {
+    renderProfile(student({
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: {
+        ...EMPTY_PROFILE,
+        school: "南益",
+        schoolClass: "3K",
+      },
+    }), "MK");
+
+    const school = screen.getByRole("combobox", { name: "学校" });
+    expect(within(school).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择学校",
+      "一校",
+      "二校",
+      "启智",
+    ]);
+    expect(school).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "学校班级" })).toHaveValue("");
+
+    fireEvent.change(school, { target: { value: "一校" } });
+    expect(within(screen.getByRole("combobox", { name: "学校班级" }))
+      .getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择学校班级",
+      "3J",
+      "3B",
+      "3M",
+      "3U",
+    ]);
+  });
+
   it("links the six original schools to grade-matched classes and clears an incompatible class", () => {
     renderProfile();
 
