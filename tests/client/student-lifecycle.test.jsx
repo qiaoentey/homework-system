@@ -27,6 +27,12 @@ const EMPTY_PROFILE = {
   pickupMethod: "",
   vanDriver: "",
   vanHomeTime: "",
+  dinnerRequired: "",
+  dinnerMonday: "",
+  dinnerTuesday: "",
+  dinnerWednesday: "",
+  dinnerThursday: "",
+  dinnerFriday: "",
   lateStayMonday: "",
   lateStayTuesday: "",
   lateStayWednesday: "",
@@ -142,7 +148,7 @@ describe("student enrolment", () => {
       "WS MIXIN",
     ]);
     expect(within(dialog).queryByRole("option", { name: "MK HAPPY" })).not.toBeInTheDocument();
-    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(9);
+    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(10);
     expect(within(dialog).getByRole("button", { name: "保存学生" })).toBeDisabled();
 
     fireEvent.change(within(dialog).getByLabelText("学生姓名"), {
@@ -151,6 +157,12 @@ describe("student enrolment", () => {
     fireEvent.change(within(dialog).getByLabelText("年级"), { target: { value: "Y3" } });
     fireEvent.change(within(dialog).getByLabelText("学校"), {
       target: { value: "南益" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("是否需要晚餐"), {
+      target: { value: "需要" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("星期一晚餐"), {
+      target: { value: "需要" },
     });
     const save = within(dialog).getByRole("button", { name: "保存学生" });
     fireEvent.click(save);
@@ -175,6 +187,12 @@ describe("student enrolment", () => {
       profile: {
         ...EMPTY_PROFILE,
         school: "南益",
+        dinnerRequired: "需要",
+        dinnerMonday: "需要",
+        dinnerTuesday: "不需要",
+        dinnerWednesday: "不需要",
+        dinnerThursday: "不需要",
+        dinnerFriday: "不需要",
       },
     });
 

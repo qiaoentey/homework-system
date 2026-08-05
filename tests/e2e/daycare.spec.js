@@ -216,6 +216,8 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await enrol.getByLabel("学校", { exact: true }).selectOption("南益");
   await enrol.getByLabel("学校班级", { exact: true }).selectOption("3K");
   await enrol.getByLabel("回家载送", { exact: true }).selectOption("家长");
+  await enrol.getByLabel("是否需要晚餐", { exact: true }).selectOption("需要");
+  await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("需要");
   const createdResponse = page.waitForResponse((response) => (
     response.url().endsWith("/api/students") &&
     response.request().method() === "POST" &&
@@ -231,6 +233,12 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     school: "南益",
     schoolClass: "3K",
     pickupMethod: "家长",
+    dinnerRequired: "需要",
+    dinnerMonday: "需要",
+    dinnerTuesday: "不需要",
+    dinnerWednesday: "不需要",
+    dinnerThursday: "不需要",
+    dinnerFriday: "不需要",
   });
 
   const studentCard = page.getByTestId("student-card").filter({
@@ -273,6 +281,12 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     school: "南益",
     schoolClass: "3K",
     pickupMethod: "家长",
+    dinnerRequired: "需要",
+    dinnerMonday: "需要",
+    dinnerTuesday: "不需要",
+    dinnerWednesday: "不需要",
+    dinnerThursday: "不需要",
+    dinnerFriday: "不需要",
   });
 
   const attendance = await attendanceFor(

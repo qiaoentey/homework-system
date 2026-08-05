@@ -13,6 +13,12 @@ const EMPTY_PROFILE = {
   pickupMethod: "家长",
   vanDriver: "",
   vanHomeTime: "",
+  dinnerRequired: "",
+  dinnerMonday: "",
+  dinnerTuesday: "",
+  dinnerWednesday: "",
+  dinnerThursday: "",
+  dinnerFriday: "",
   lateStayMonday: "",
   lateStayTuesday: "",
   lateStayWednesday: "",
@@ -179,6 +185,36 @@ describe("restored student profile choices", () => {
         "5:00 PM",
       ]);
     }
+  });
+
+  it("reveals weekday dinner choices only when dinner is required and clears hidden days", () => {
+    renderProfile();
+
+    const dinnerRequired = screen.getByRole("combobox", { name: "是否需要晚餐" });
+    expect(within(dinnerRequired).getAllByRole("option").map((option) => option.textContent))
+      .toEqual(["请选择", "不需要", "需要"]);
+    expect(screen.queryByRole("combobox", { name: "星期一晚餐" }))
+      .not.toBeInTheDocument();
+
+    fireEvent.change(dinnerRequired, { target: { value: "需要" } });
+    for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
+      const dinner = screen.getByRole("combobox", { name: `${day}晚餐` });
+      expect(dinner).toHaveValue("不需要");
+      expect(within(dinner).getAllByRole("option").map((option) => option.textContent))
+        .toEqual(["不需要", "需要"]);
+    }
+
+    fireEvent.change(screen.getByRole("combobox", { name: "星期一晚餐" }), {
+      target: { value: "需要" },
+    });
+    expect(screen.getByRole("combobox", { name: "星期一晚餐" })).toHaveValue("需要");
+
+    fireEvent.change(dinnerRequired, { target: { value: "不需要" } });
+    expect(screen.queryByRole("combobox", { name: "星期一晚餐" }))
+      .not.toBeInTheDocument();
+
+    fireEvent.change(dinnerRequired, { target: { value: "需要" } });
+    expect(screen.getByRole("combobox", { name: "星期一晚餐" })).toHaveValue("不需要");
   });
 
   it("preserves non-catalog values as existing profile choices", () => {

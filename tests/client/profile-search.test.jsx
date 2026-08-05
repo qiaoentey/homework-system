@@ -22,6 +22,12 @@ const PROFILE = {
   pickupMethod: "Van",
   vanDriver: "Tong",
   vanHomeTime: "17:30",
+  dinnerRequired: "需要",
+  dinnerMonday: "需要",
+  dinnerTuesday: "不需要",
+  dinnerWednesday: "需要",
+  dinnerThursday: "不需要",
+  dinnerFriday: "不需要",
   lateStayMonday: "17:00",
   lateStayTuesday: "",
   lateStayWednesday: "17:30",
@@ -47,6 +53,12 @@ const PROFILE_LABELS = [
   "回家载送",
   "Van 司机",
   "Van 回程时间",
+  "是否需要晚餐",
+  "星期一晚餐",
+  "星期二晚餐",
+  "星期三晚餐",
+  "星期四晚餐",
+  "星期五晚餐",
   "星期一",
   "星期二",
   "星期三",
@@ -54,7 +66,9 @@ const PROFILE_LABELS = [
   "星期五",
 ];
 
-const BASE_PROFILE_LABELS = PROFILE_LABELS.filter((label) => !label.startsWith("Van "));
+const BASE_PROFILE_LABELS = PROFILE_LABELS.filter((label) => (
+  !label.startsWith("Van ") && !/^星期[一二三四五]晚餐$/u.test(label)
+));
 
 function jsonResponse(status, body) {
   return {
@@ -208,7 +222,7 @@ describe("current-group search and safe profile selection", () => {
     for (const label of PROFILE_LABELS) {
       expect(screen.getByLabelText(label)).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(11);
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(17);
 
     fireEvent.change(screen.getByLabelText("学校班级"), { target: { value: "3B" } });
     fireEvent.click(screen.getByRole("button", { name: "保存学生资料" }));

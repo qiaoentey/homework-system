@@ -709,6 +709,24 @@ button {
   border-top: 1px solid var(--color-line);
 }
 
+.student-profile-fields__dinner {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-line);
+}
+
+.student-profile-fields__dinner > label {
+  max-width: 260px;
+}
+
+.student-profile-fields__dinner-days {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .student-profile-fields__stay h3 {
   margin: 0;
   color: var(--color-navy);
@@ -1152,7 +1170,8 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .student-profile-fields__stay-grid {
+  .student-profile-fields__stay-grid,
+  .student-profile-fields__dinner-days {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

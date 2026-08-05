@@ -28,6 +28,12 @@ const emptyProfile = {
   pickupMethod: "",
   vanDriver: "",
   vanHomeTime: "",
+  dinnerRequired: "",
+  dinnerMonday: "",
+  dinnerTuesday: "",
+  dinnerWednesday: "",
+  dinnerThursday: "",
+  dinnerFriday: "",
   lateStayMonday: "",
   lateStayTuesday: "",
   lateStayWednesday: "",
@@ -859,11 +865,19 @@ test("atomically rejects one of two concurrent profile updates with the same ver
         headers: groupHeaders("MK", "MK QIAO EN"),
         body: {
           updatedAt: student.updatedAt,
-          profile: { pickupMethod: "Bus" },
+          profile: {
+            pickupMethod: "Bus",
+            dinnerRequired: "需要",
+            dinnerMonday: "需要",
+            dinnerTuesday: "不需要",
+          },
         },
       },
     ));
     assert.equal(seeded.profile.pickupMethod, "Bus");
+    assert.equal(seeded.profile.dinnerRequired, "需要");
+    assert.equal(seeded.profile.dinnerMonday, "需要");
+    assert.equal(seeded.profile.dinnerTuesday, "不需要");
 
     const settled = await Promise.allSettled([
       apiWithD1(env, `/api/students/${student.id}/profile`, {

@@ -630,6 +630,9 @@ describe("student API", () => {
           usualPickupTime: "17:30",
           vanDriver: "Tong",
           vanHomeTime: "18:00",
+          dinnerRequired: "需要",
+          dinnerMonday: "需要",
+          dinnerTuesday: "不需要",
         },
       })
       .expect(200);
@@ -639,6 +642,9 @@ describe("student API", () => {
       usualPickupTime: "17:30",
       vanDriver: "Tong",
       vanHomeTime: "18:00",
+      dinnerRequired: "需要",
+      dinnerMonday: "需要",
+      dinnerTuesday: "不需要",
     });
     expect((await pool.query(
       "select action, details from student_activity where student_id = $1",
@@ -651,6 +657,9 @@ describe("student API", () => {
           usualPickupTime: "17:30",
           vanDriver: "Tong",
           vanHomeTime: "18:00",
+          dinnerRequired: "需要",
+          dinnerMonday: "需要",
+          dinnerTuesday: "不需要",
         },
       },
     }]);

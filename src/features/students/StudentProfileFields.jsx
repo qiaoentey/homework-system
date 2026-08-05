@@ -14,6 +14,14 @@ const STAY_FIELDS = [
   ["lateStayFriday", "星期五"],
 ];
 
+const DINNER_FIELDS = [
+  ["dinnerMonday", "星期一晚餐"],
+  ["dinnerTuesday", "星期二晚餐"],
+  ["dinnerWednesday", "星期三晚餐"],
+  ["dinnerThursday", "星期四晚餐"],
+  ["dinnerFriday", "星期五晚餐"],
+];
+
 function ExistingOption({ value, choices }) {
   if (!value || choices.includes(value)) return null;
   return <option value={value}>{value}（现有资料）</option>;
@@ -32,6 +40,18 @@ export function StudentProfileFields({
   function changeSchool(nextSchool) {
     onChange("school", nextSchool);
     onChange("schoolClass", "");
+  }
+
+  function changeDinnerRequired(nextValue) {
+    onChange("dinnerRequired", nextValue);
+
+    for (const [field] of DINNER_FIELDS) {
+      if (nextValue === "需要") {
+        if (!values[field]) onChange(field, "不需要");
+      } else {
+        onChange(field, "");
+      }
+    }
   }
 
   return (
@@ -124,6 +144,41 @@ export function StudentProfileFields({
               />
             </label>
           </>
+        ) : null}
+      </div>
+
+      <div className="student-profile-fields__dinner">
+        <label data-testid={fieldTestId}>
+          <span>是否需要晚餐</span>
+          <select
+            aria-label="是否需要晚餐"
+            disabled={disabled}
+            value={values.dinnerRequired}
+            onChange={(event) => changeDinnerRequired(event.target.value)}
+          >
+            <option value="">请选择</option>
+            <option value="不需要">不需要</option>
+            <option value="需要">需要</option>
+          </select>
+        </label>
+
+        {values.dinnerRequired === "需要" ? (
+          <div className="student-profile-fields__dinner-days">
+            {DINNER_FIELDS.map(([field, label]) => (
+              <label data-testid={fieldTestId} key={field}>
+                <span>{label}</span>
+                <select
+                  aria-label={label}
+                  disabled={disabled}
+                  value={values[field]}
+                  onChange={(event) => onChange(field, event.target.value)}
+                >
+                  <option value="不需要">不需要</option>
+                  <option value="需要">需要</option>
+                </select>
+              </label>
+            ))}
+          </div>
         ) : null}
       </div>
 
