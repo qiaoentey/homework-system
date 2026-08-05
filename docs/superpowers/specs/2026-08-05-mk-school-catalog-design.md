@@ -19,7 +19,8 @@ Both `Y1`–`Y6` and `一年级`–`六年级` map to Year 1–6. Other grades h
 - 南益、民义、旺小、桥南、中华小学、中华中学 are not selectable in MK.
 - STP and WS retain their current school choices until their own branch catalogs are supplied.
 - Changing school or grade clears an incompatible class, preserving the current safe behavior.
-- A previously saved non-catalog value remains visible as `现有资料` so old records are not silently erased, but it is not offered as a normal new choice.
+- In MK, a previously saved non-catalog school and class load as blank choices so teachers see only the approved MK catalog. The stored record is unchanged until the teacher saves that student profile; saving without choosing a replacement clears the deprecated school and class.
+- STP and WS retain the existing `现有资料` fallback for non-catalog values.
 
 ## Validation
 
