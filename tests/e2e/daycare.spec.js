@@ -219,6 +219,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     "一校",
     "二校",
     "启智",
+    "姚贞暖",
   ]);
   for (const removedSchool of ["南益", "民义", "旺小", "桥南", "中华小学", "中华中学"]) {
     await expect(school.locator(`option[value="${removedSchool}"]`)).toHaveCount(0);

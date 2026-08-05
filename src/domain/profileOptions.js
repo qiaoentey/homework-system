@@ -7,7 +7,7 @@ export const SCHOOL_OPTIONS = [
   "中华中学",
 ];
 
-const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智"];
+const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智", "姚贞暖"];
 
 const MK_SCHOOL_CLASSES = {
   一校: {

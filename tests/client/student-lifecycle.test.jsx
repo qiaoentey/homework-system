@@ -125,6 +125,7 @@ describe("student enrolment", () => {
       "一校",
       "二校",
       "启智",
+      "姚贞暖",
     ]);
 
     fireEvent.change(within(dialog).getByLabelText("年级"), { target: { value: "Y3" } });
@@ -137,6 +138,13 @@ describe("student enrolment", () => {
       "3M",
       "3U",
     ]);
+
+    fireEvent.change(school, { target: { value: "姚贞暖" } });
+    const emptySchoolClass = within(dialog).getByRole("combobox", { name: "学校班级" });
+    expect(within(emptySchoolClass).getAllByRole("option").map((option) => (
+      option.textContent
+    ))).toEqual(["请选择学校班级"]);
+    expect(emptySchoolClass).toHaveValue("");
   });
 
   it("requires identity, offers only authenticated branch groups, sends every profile field once, and refreshes only the current group", async () => {
