@@ -229,6 +229,12 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await enrol.getByLabel("回家载送", { exact: true }).selectOption("家长");
   await enrol.getByLabel("是否需要晚餐", { exact: true }).selectOption("需要");
   await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("需要");
+  await enrol.getByLabel("学生类型", { exact: true }).selectOption("功课班");
+  await enrol.getByLabel("来校时间", { exact: true }).fill("14:00");
+  await enrol.getByLabel("回家时间", { exact: true }).fill("18:00");
+  await enrol.getByRole("checkbox", { name: "星期一", exact: true }).check();
+  await enrol.getByRole("checkbox", { name: "星期三", exact: true }).check();
+  await enrol.getByRole("checkbox", { name: "星期五", exact: true }).check();
   const createdResponse = page.waitForResponse((response) => (
     response.url().endsWith("/api/students") &&
     response.request().method() === "POST" &&
@@ -250,6 +256,14 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     dinnerWednesday: "不需要",
     dinnerThursday: "不需要",
     dinnerFriday: "不需要",
+    careProgram: "功课班",
+    homeworkArrivalTime: "14:00",
+    homeworkDepartureTime: "18:00",
+    homeworkMonday: "有来",
+    homeworkTuesday: "",
+    homeworkWednesday: "有来",
+    homeworkThursday: "",
+    homeworkFriday: "有来",
   });
 
   const studentCard = page.getByTestId("student-card").filter({
@@ -298,6 +312,14 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     dinnerWednesday: "不需要",
     dinnerThursday: "不需要",
     dinnerFriday: "不需要",
+    careProgram: "功课班",
+    homeworkArrivalTime: "14:00",
+    homeworkDepartureTime: "18:00",
+    homeworkMonday: "有来",
+    homeworkTuesday: "",
+    homeworkWednesday: "有来",
+    homeworkThursday: "",
+    homeworkFriday: "有来",
   });
 
   const attendance = await attendanceFor(
@@ -345,6 +367,7 @@ test("failed attendance can be retried without leaving stale optimistic state", 
   await expect(card.locator(".event-grid .event-button")).toHaveText([
     "到", "缺席", "冲", "餐", "功", "补", "复", "回", "KOKO",
   ]);
+  await expect(card.getByRole("button", { name: "清除今日", exact: true })).toHaveCount(0);
   const arrive = card.getByRole("button", { name: "到", exact: true });
   const previous = await arrive.getAttribute("aria-pressed");
   await arrive.click();

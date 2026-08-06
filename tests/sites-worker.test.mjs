@@ -39,6 +39,14 @@ const emptyProfile = {
   lateStayWednesday: "",
   lateStayThursday: "",
   lateStayFriday: "",
+  careProgram: "",
+  homeworkArrivalTime: "",
+  homeworkDepartureTime: "",
+  homeworkMonday: "",
+  homeworkTuesday: "",
+  homeworkWednesday: "",
+  homeworkThursday: "",
+  homeworkFriday: "",
 };
 const enrolmentConflictCases = [
   ["name", { name: "ANOTHER STUDENT" }, groupHeaders()],
@@ -870,6 +878,12 @@ test("atomically rejects one of two concurrent profile updates with the same ver
             dinnerRequired: "需要",
             dinnerMonday: "需要",
             dinnerTuesday: "不需要",
+            careProgram: "功课班",
+            homeworkArrivalTime: "14:00",
+            homeworkDepartureTime: "18:00",
+            homeworkMonday: "有来",
+            homeworkWednesday: "有来",
+            homeworkFriday: "有来",
           },
         },
       },
@@ -878,6 +892,14 @@ test("atomically rejects one of two concurrent profile updates with the same ver
     assert.equal(seeded.profile.dinnerRequired, "需要");
     assert.equal(seeded.profile.dinnerMonday, "需要");
     assert.equal(seeded.profile.dinnerTuesday, "不需要");
+    assert.equal(seeded.profile.careProgram, "功课班");
+    assert.equal(seeded.profile.homeworkArrivalTime, "14:00");
+    assert.equal(seeded.profile.homeworkDepartureTime, "18:00");
+    assert.equal(seeded.profile.homeworkMonday, "有来");
+    assert.equal(seeded.profile.homeworkTuesday, undefined);
+    assert.equal(seeded.profile.homeworkWednesday, "有来");
+    assert.equal(seeded.profile.homeworkThursday, undefined);
+    assert.equal(seeded.profile.homeworkFriday, "有来");
 
     const settled = await Promise.allSettled([
       apiWithD1(env, `/api/students/${student.id}/profile`, {

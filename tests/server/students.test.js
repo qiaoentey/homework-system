@@ -288,6 +288,35 @@ describe("student API", () => {
     )).rows[0].count)).toBe(1);
   });
 
+  it("accepts and preserves the homework-class schedule in the exact profile contract", async () => {
+    const profile = {
+      ...emptyProfile,
+      careProgram: "功课班",
+      homeworkArrivalTime: "14:00",
+      homeworkDepartureTime: "18:00",
+      homeworkMonday: "有来",
+      homeworkTuesday: "",
+      homeworkWednesday: "有来",
+      homeworkThursday: "",
+      homeworkFriday: "有来",
+    };
+
+    const created = await agent
+      .post("/api/students")
+      .set(studentHeaders())
+      .send({
+        name: "HOMEWORK STUDENT",
+        grade: "Y3",
+        branchCode: "MK",
+        groupCode: "MK HAPPY",
+        profile,
+        enrolmentKey: "10000000-0000-4000-8000-000000000099",
+      })
+      .expect(201);
+
+    expect(created.body.profile).toEqual(profile);
+  });
+
   it.each(enrolmentConflictCases)(
     "rejects a reused enrolment key when %s changes without altering the original enrolment",
     async (_field, change, headers) => {

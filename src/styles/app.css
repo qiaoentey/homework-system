@@ -709,6 +709,73 @@ button {
   border-top: 1px solid var(--color-line);
 }
 
+.student-profile-fields__program {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-line);
+}
+
+.student-profile-fields__program > label {
+  max-width: 260px;
+}
+
+.student-profile-fields__homework {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid rgba(23, 104, 209, 0.2);
+  border-radius: 14px;
+  background: var(--color-blue-light);
+}
+
+.student-profile-fields__homework-times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.student-profile-fields__homework-days {
+  display: grid;
+  gap: 10px;
+}
+
+.student-profile-fields__homework-days h3 {
+  margin: 0;
+  color: var(--color-navy);
+  font-size: 14px;
+}
+
+.student-profile-fields__homework-days > div {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-form .student-profile-fields__homework-days label,
+.lifecycle-form .student-profile-fields__homework-days label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+}
+
+.profile-form .student-profile-fields__homework-days input[type="checkbox"],
+.lifecycle-form .student-profile-fields__homework-days input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-blue);
+}
+
 .student-profile-fields__dinner {
   display: grid;
   gap: 14px;
@@ -1171,8 +1238,13 @@ button {
   }
 
   .student-profile-fields__stay-grid,
-  .student-profile-fields__dinner-days {
+  .student-profile-fields__dinner-days,
+  .student-profile-fields__homework-days > div {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .student-profile-fields__homework-times {
+    grid-template-columns: 1fr;
   }
 
   .lifecycle-form__grid,

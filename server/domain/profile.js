@@ -16,4 +16,12 @@ export const PROFILE_FIELDS = [
   "lateStayWednesday",
   "lateStayThursday",
   "lateStayFriday",
+  "careProgram",
+  "homeworkArrivalTime",
+  "homeworkDepartureTime",
+  "homeworkMonday",
+  "homeworkTuesday",
+  "homeworkWednesday",
+  "homeworkThursday",
+  "homeworkFriday",
 ];

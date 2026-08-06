@@ -39,6 +39,14 @@ const PROFILE_FIELDS = [
   "lateStayWednesday",
   "lateStayThursday",
   "lateStayFriday",
+  "careProgram",
+  "homeworkArrivalTime",
+  "homeworkDepartureTime",
+  "homeworkMonday",
+  "homeworkTuesday",
+  "homeworkWednesday",
+  "homeworkThursday",
+  "homeworkFriday",
 ];
 const ATTENDANCE_EVENTS = new Set([
   "pickup",

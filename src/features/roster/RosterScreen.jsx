@@ -198,18 +198,14 @@ export function RosterScreen({
       [studentId]: { status: "saving", operation },
     }));
     try {
-      if (operation.type === "clear") {
-        await rosterApi.clearAttendance({ branchCode, groupCode, studentId, date });
-      } else {
-        await rosterApi.setAttendance({
-          branchCode,
-          groupCode,
-          studentId,
-          date,
-          eventCode: operation.eventCode,
-          active: operation.active,
-        });
-      }
+      await rosterApi.setAttendance({
+        branchCode,
+        groupCode,
+        studentId,
+        date,
+        eventCode: operation.eventCode,
+        active: operation.active,
+      });
       setSaveStates((current) => ({
         ...current,
         [studentId]: { status: "saved", operation },
@@ -239,16 +235,6 @@ export function RosterScreen({
     saveAttendance(studentId, { type: "event", eventCode, active, previous });
   }
 
-  function clearDay(studentId) {
-    attendanceMutationVersions.current.set(
-      studentId,
-      (attendanceMutationVersions.current.get(studentId) ?? 0) + 1,
-    );
-    const previous = attendance[studentId] ?? [];
-    setAttendance((current) => ({ ...current, [studentId]: [] }));
-    saveAttendance(studentId, { type: "clear", previous });
-  }
-
   function retry(studentId) {
     const operation = saveStates[studentId]?.operation;
     if (!operation) return;
@@ -256,13 +242,11 @@ export function RosterScreen({
       studentId,
       (attendanceMutationVersions.current.get(studentId) ?? 0) + 1,
     );
-    const optimistic = operation.type === "clear"
-      ? []
-      : nextAttendanceEvents(
-        operation.previous,
-        operation.eventCode,
-        operation.active,
-      );
+    const optimistic = nextAttendanceEvents(
+      operation.previous,
+      operation.eventCode,
+      operation.active,
+    );
     setAttendance((current) => ({ ...current, [studentId]: optimistic }));
     saveAttendance(studentId, operation);
   }
@@ -409,7 +393,6 @@ export function RosterScreen({
           saveStates={saveStates}
           onSelect={selectStudent}
           onToggleEvent={toggleEvent}
-          onClear={clearDay}
           onRetry={retry}
         />
       ) : null}

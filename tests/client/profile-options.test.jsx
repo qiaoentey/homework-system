@@ -25,6 +25,14 @@ const EMPTY_PROFILE = {
   lateStayWednesday: "",
   lateStayThursday: "",
   lateStayFriday: "",
+  careProgram: "",
+  homeworkArrivalTime: "",
+  homeworkDepartureTime: "",
+  homeworkMonday: "",
+  homeworkTuesday: "",
+  homeworkWednesday: "",
+  homeworkThursday: "",
+  homeworkFriday: "",
 };
 
 function student(overrides = {}) {
@@ -296,6 +304,46 @@ describe("restored student profile choices", () => {
 
     fireEvent.change(dinnerRequired, { target: { value: "需要" } });
     expect(screen.getByRole("combobox", { name: "星期一晚餐" })).toHaveValue("不需要");
+  });
+
+  it("shows a one-tap homework schedule only for homework-class students and clears it when hidden", () => {
+    renderProfile();
+
+    const careProgram = screen.getByRole("combobox", { name: "学生类型" });
+    expect(within(careProgram).getAllByRole("option").map((option) => option.textContent))
+      .toEqual(["请选择", "Full Daycare", "功课班"]);
+    expect(screen.queryByLabelText("来校时间")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("回家时间")).not.toBeInTheDocument();
+
+    fireEvent.change(careProgram, { target: { value: "功课班" } });
+    const arrival = screen.getByLabelText("来校时间");
+    const departure = screen.getByLabelText("回家时间");
+    expect(arrival).toHaveAttribute("type", "time");
+    expect(departure).toHaveAttribute("type", "time");
+
+    const monday = screen.getByRole("checkbox", { name: "星期一" });
+    const wednesday = screen.getByRole("checkbox", { name: "星期三" });
+    const friday = screen.getByRole("checkbox", { name: "星期五" });
+    expect(monday).not.toBeChecked();
+    expect(friday).not.toBeChecked();
+
+    fireEvent.change(arrival, { target: { value: "14:00" } });
+    fireEvent.change(departure, { target: { value: "18:00" } });
+    fireEvent.click(monday);
+    fireEvent.click(wednesday);
+    fireEvent.click(friday);
+    expect(monday).toBeChecked();
+    expect(wednesday).toBeChecked();
+    expect(friday).toBeChecked();
+
+    fireEvent.change(careProgram, { target: { value: "Full Daycare" } });
+    expect(screen.queryByLabelText("来校时间")).not.toBeInTheDocument();
+    fireEvent.change(careProgram, { target: { value: "功课班" } });
+    expect(screen.getByLabelText("来校时间")).toHaveValue("");
+    expect(screen.getByLabelText("回家时间")).toHaveValue("");
+    for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
+      expect(screen.getByRole("checkbox", { name: day })).not.toBeChecked();
+    }
   });
 
   it("preserves non-catalog values as existing profile choices", () => {

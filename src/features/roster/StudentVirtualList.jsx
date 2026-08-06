@@ -42,7 +42,6 @@ export function StudentVirtualList({
   saveStates,
   onSelect,
   onToggleEvent,
-  onClear,
   onRetry,
 }) {
   const scrollRef = useRef(null);
@@ -105,7 +104,6 @@ export function StudentVirtualList({
                   saveState={saveStates[rosterStudent.id]}
                   onSelect={onSelect}
                   onToggleEvent={onToggleEvent}
-                  onClear={onClear}
                   onRetry={onRetry}
                 />
               ) : (

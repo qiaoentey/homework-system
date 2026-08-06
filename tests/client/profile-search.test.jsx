@@ -33,6 +33,14 @@ const PROFILE = {
   lateStayWednesday: "17:30",
   lateStayThursday: "",
   lateStayFriday: "16:30",
+  careProgram: "",
+  homeworkArrivalTime: "",
+  homeworkDepartureTime: "",
+  homeworkMonday: "",
+  homeworkTuesday: "",
+  homeworkWednesday: "",
+  homeworkThursday: "",
+  homeworkFriday: "",
 };
 
 const HAYDEN = {
@@ -53,6 +61,7 @@ const PROFILE_LABELS = [
   "回家载送",
   "Van 司机",
   "Van 回程时间",
+  "学生类型",
   "是否需要晚餐",
   "星期一晚餐",
   "星期二晚餐",
@@ -222,7 +231,7 @@ describe("current-group search and safe profile selection", () => {
     for (const label of PROFILE_LABELS) {
       expect(screen.getByLabelText(label)).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(17);
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(18);
 
     fireEvent.change(screen.getByLabelText("学校班级"), { target: { value: "3B" } });
     fireEvent.click(screen.getByRole("button", { name: "保存学生资料" }));

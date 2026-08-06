@@ -35,7 +35,7 @@
 - Produces profile fields: `careProgram`, `homeworkArrivalTime`, `homeworkDepartureTime`, `homeworkMonday`, `homeworkTuesday`, `homeworkWednesday`, `homeworkThursday`, `homeworkFriday`.
 - Stores selected weekdays as `"有来"`; unselected weekdays and hidden homework fields are `""`.
 
-- [ ] **Step 1: Write failing shared-form tests**
+- [x] **Step 1: Write failing shared-form tests**
 
 In `tests/client/profile-options.test.jsx`, render `ProfilePanel` with a student using the expanded empty profile. Assert:
 
@@ -68,7 +68,7 @@ expect(body.profile).toEqual(expect.objectContaining({
 }));
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 Run:
 
@@ -78,7 +78,7 @@ npm test -- --run tests/client/profile-options.test.jsx tests/client/student-lif
 
 Expected: FAIL because `学生类型` and homework schedule controls do not exist.
 
-- [ ] **Step 3: Expand the client profile contract**
+- [x] **Step 3: Expand the client profile contract**
 
 Append the eight fields to `PROFILE_FIELDS` in `src/domain/profile.js`:
 
@@ -95,7 +95,7 @@ Append the eight fields to `PROFILE_FIELDS` in `src/domain/profile.js`:
 
 Update every explicit client `EMPTY_PROFILE` fixture with the same keys set to `""`.
 
-- [ ] **Step 4: Render conditional schedule controls**
+- [x] **Step 4: Render conditional schedule controls**
 
 In `StudentProfileFields.jsx`, define:
 
@@ -116,7 +116,7 @@ checked={values[field] === "有来"}
 onChange={(event) => onChange(field, event.target.checked ? "有来" : "")}
 ```
 
-- [ ] **Step 5: Run the focused tests and verify GREEN**
+- [x] **Step 5: Run the focused tests and verify GREEN**
 
 Run the focused command from Step 2. Expected: both test files pass.
 
@@ -135,7 +135,7 @@ Run the focused command from Step 2. Expected: both test files pass.
 - Removes the `onClear(studentId)` prop from `StudentCard` and `StudentVirtualList`.
 - Keeps `rosterApi.clearAttendance` and the server endpoint unchanged.
 
-- [ ] **Step 1: Replace the old client clear-flow test with a failing absence test**
+- [x] **Step 1: Replace the old client clear-flow test with a failing absence test**
 
 In `tests/client/roster.test.jsx`, replace the test that clicks `清除今日` with:
 
@@ -149,7 +149,7 @@ it("does not expose a clear-today action on student cards", async () => {
 
 Add the same absence assertion to the roster E2E flow.
 
-- [ ] **Step 2: Run the focused roster test and verify RED**
+- [x] **Step 2: Run the focused roster test and verify RED**
 
 Run:
 
@@ -159,14 +159,14 @@ npm test -- --run tests/client/roster.test.jsx -t "does not expose a clear-today
 
 Expected: FAIL because the current student card contains `清除今日`.
 
-- [ ] **Step 3: Remove the action from the client component chain**
+- [x] **Step 3: Remove the action from the client component chain**
 
 - Remove the `清除今日` button and `onClear` prop from `StudentCard`.
 - Remove `onClear` forwarding from `StudentVirtualList`.
 - Remove `clearDay` and `onClear={clearDay}` from `RosterScreen`.
 - Simplify the client attendance save/retry branches so only event operations are created by the roster UI; do not change the API or server clear endpoint.
 
-- [ ] **Step 4: Run the focused roster test and verify GREEN**
+- [x] **Step 4: Run the focused roster test and verify GREEN**
 
 Run the command from Step 2. Expected: PASS.
 
@@ -185,13 +185,13 @@ Run the command from Step 2. Expected: PASS.
 - Express `fullProfileSchema` and Sites Worker `fullProfile` accept the same exact eight new string keys as the client.
 - Existing partial profile updates continue accepting any non-empty subset of the complete allowlist.
 
-- [ ] **Step 1: Write failing contract tests**
+- [x] **Step 1: Write failing contract tests**
 
 Extend the Sites `emptyProfile` fixture with all eight keys. Add a profile update that saves `功课班`, `14:00`, `18:00`, and Monday/Wednesday/Friday, then assert the returned and stored profile preserves those exact values.
 
 The existing table-driven Express test already mutates every `PROFILE_FIELDS` key. After adding the fields to its imported server contract, it must prove each new key participates in enrolment idempotency and partial updates.
 
-- [ ] **Step 2: Run server and Sites tests and verify RED**
+- [x] **Step 2: Run server and Sites tests and verify RED**
 
 Run:
 
@@ -202,7 +202,7 @@ npm run test:sites
 
 Expected: FAIL because Express and the Worker still reject the expanded exact profile payload.
 
-- [ ] **Step 3: Expand both runtime allowlists**
+- [x] **Step 3: Expand both runtime allowlists**
 
 Append these exact strings to both `server/domain/profile.js` and `worker/index.js`:
 
@@ -219,7 +219,7 @@ Append these exact strings to both `server/domain/profile.js` and `worker/index.
 
 Update explicit E2E and Sites profile fixtures with blank defaults. Do not add a database migration because the existing `profile` column stores JSON.
 
-- [ ] **Step 4: Run contract tests and verify GREEN**
+- [x] **Step 4: Run contract tests and verify GREEN**
 
 Run the commands from Step 2. Expected: all pass.
 
@@ -233,7 +233,7 @@ Run the commands from Step 2. Expected: all pass.
 **Interfaces:**
 - Produces a validated Sites archive from the exact committed source.
 
-- [ ] **Step 1: Run complete automated checks serially**
+- [x] **Step 1: Run complete automated checks serially**
 
 Run:
 
@@ -246,7 +246,7 @@ git diff --check
 
 Expected: all client/server tests, build, and Sites Worker tests pass.
 
-- [ ] **Step 2: Run desktop and mobile browser tests**
+- [x] **Step 2: Run desktop and mobile browser tests**
 
 Run:
 
@@ -257,7 +257,7 @@ npx playwright test --project=mobile-chromium --reporter=dot
 
 Expected: all tests pass on both projects, including the hidden clear action and homework schedule form.
 
-- [ ] **Step 3: Commit the exact validated implementation**
+- [x] **Step 3: Commit the exact validated implementation**
 
 ```bash
 git add src server worker tests docs/superpowers/plans/2026-08-06-care-program-schedule.md

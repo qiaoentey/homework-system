@@ -27,6 +27,14 @@ const EMPTY_PROFILE = {
   lateStayWednesday: "",
   lateStayThursday: "",
   lateStayFriday: "",
+  careProgram: "",
+  homeworkArrivalTime: "",
+  homeworkDepartureTime: "",
+  homeworkMonday: "",
+  homeworkTuesday: "",
+  homeworkWednesday: "",
+  homeworkThursday: "",
+  homeworkFriday: "",
 };
 
 function student(index, overrides = {}) {
@@ -485,26 +493,13 @@ describe("attendance controls and summary", () => {
     expect(screen.getByText("已到 1")).toBeVisible();
   });
 
-  it("clears one student's day with scoped headers and refreshes the active-only summary", async () => {
-    let summaryCalls = 0;
-    const fetchMock = vi.fn(async (url, options = {}) => {
+  it("does not expose a clear-today action on student cards", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
       if (url.startsWith("/api/students?")) {
         return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
       }
-      if (url.startsWith("/api/attendance?")) {
-        return jsonResponse(200, {
-          items: [{
-            studentId: student(1).id,
-            date: "2026-07-27",
-            eventCode: "shower",
-            active: true,
-            updatedBy: "teacher@example.com",
-            updatedAt: "2026-07-27T00:00:00.000Z",
-          }],
-        });
-      }
+      if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
       if (url.startsWith("/api/summary?")) {
-        summaryCalls += 1;
         return jsonResponse(200, {
           expected: 1,
           arrived: 0,
@@ -514,29 +509,15 @@ describe("attendance controls and summary", () => {
           unmarked: 1,
         });
       }
-      if (url.includes("/attendance/2026-07-27") && options.method === "DELETE") {
-        expect(options.headers).toMatchObject({
-          "X-Branch-Code": "STP",
-          "X-Group-Code": "PS STP",
-        });
-        return jsonResponse(200, { cleared: 1 });
-      }
-      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
-    });
-    vi.stubGlobal("fetch", fetchMock);
+      throw new Error(`Unexpected request: GET ${url}`);
+    }));
 
     render(
       <RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />,
     );
     const card = await screen.findByTestId("student-card");
-    expect(within(card).getByRole("button", { name: "冲" })).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(within(card).getByRole("button", { name: "清除今日" }));
-
-    await waitFor(() => {
-      expect(within(card).getByRole("button", { name: "冲" }))
-        .toHaveAttribute("aria-pressed", "false");
-      expect(summaryCalls).toBe(2);
-    });
+    expect(within(card).queryByRole("button", { name: "清除今日" }))
+      .not.toBeInTheDocument();
   });
 });
 

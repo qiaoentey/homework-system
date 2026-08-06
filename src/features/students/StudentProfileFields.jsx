@@ -22,6 +22,14 @@ const DINNER_FIELDS = [
   ["dinnerFriday", "星期五晚餐"],
 ];
 
+const HOMEWORK_DAY_FIELDS = [
+  ["homeworkMonday", "星期一"],
+  ["homeworkTuesday", "星期二"],
+  ["homeworkWednesday", "星期三"],
+  ["homeworkThursday", "星期四"],
+  ["homeworkFriday", "星期五"],
+];
+
 function ExistingOption({ value, choices }) {
   if (!value || choices.includes(value)) return null;
   return <option value={value}>{value}（现有资料）</option>;
@@ -54,6 +62,15 @@ export function StudentProfileFields({
         onChange(field, "");
       }
     }
+  }
+
+  function changeCareProgram(nextValue) {
+    onChange("careProgram", nextValue);
+    if (nextValue === "功课班") return;
+
+    onChange("homeworkArrivalTime", "");
+    onChange("homeworkDepartureTime", "");
+    for (const [field] of HOMEWORK_DAY_FIELDS) onChange(field, "");
   }
 
   return (
@@ -146,6 +163,66 @@ export function StudentProfileFields({
               />
             </label>
           </>
+        ) : null}
+      </div>
+
+      <div className="student-profile-fields__program">
+        <label data-testid={fieldTestId}>
+          <span>学生类型</span>
+          <select
+            aria-label="学生类型"
+            disabled={disabled}
+            value={values.careProgram}
+            onChange={(event) => changeCareProgram(event.target.value)}
+          >
+            <option value="">请选择</option>
+            <option value="Full Daycare">Full Daycare</option>
+            <option value="功课班">功课班</option>
+          </select>
+        </label>
+
+        {values.careProgram === "功课班" ? (
+          <div className="student-profile-fields__homework">
+            <div className="student-profile-fields__homework-times">
+              <label data-testid={fieldTestId}>
+                <span>来校时间</span>
+                <input
+                  aria-label="来校时间"
+                  type="time"
+                  disabled={disabled}
+                  value={values.homeworkArrivalTime}
+                  onChange={(event) => onChange("homeworkArrivalTime", event.target.value)}
+                />
+              </label>
+              <label data-testid={fieldTestId}>
+                <span>回家时间</span>
+                <input
+                  aria-label="回家时间"
+                  type="time"
+                  disabled={disabled}
+                  value={values.homeworkDepartureTime}
+                  onChange={(event) => onChange("homeworkDepartureTime", event.target.value)}
+                />
+              </label>
+            </div>
+            <div className="student-profile-fields__homework-days">
+              <h3>星期几有来</h3>
+              <div>
+                {HOMEWORK_DAY_FIELDS.map(([field, label]) => (
+                  <label data-testid={fieldTestId} key={field}>
+                    <input
+                      aria-label={label}
+                      type="checkbox"
+                      disabled={disabled}
+                      checked={values[field] === "有来"}
+                      onChange={(event) => onChange(field, event.target.checked ? "有来" : "")}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : null}
       </div>
 

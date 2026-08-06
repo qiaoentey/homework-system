@@ -7,7 +7,6 @@ export function StudentCard({
   saveState,
   onSelect,
   onToggleEvent,
-  onClear,
   onRetry,
 }) {
   const saving = saveState?.status === "saving";
@@ -60,14 +59,6 @@ export function StudentCard({
             onClick={() => onSelect(student.id)}
           >
             填写资料
-          </button>
-          <button
-            className="clear-button"
-            type="button"
-            disabled={saving}
-            onClick={() => onClear(student.id)}
-          >
-            清除今日
           </button>
         </div>
         <div className="student-card__save-state" role="status">

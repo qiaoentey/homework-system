@@ -16,6 +16,14 @@ export const PROFILE_FIELDS = [
   ["lateStayWednesday", "星期三"],
   ["lateStayThursday", "星期四"],
   ["lateStayFriday", "星期五"],
+  ["careProgram", "学生类型"],
+  ["homeworkArrivalTime", "来校时间"],
+  ["homeworkDepartureTime", "回家时间"],
+  ["homeworkMonday", "星期一有来"],
+  ["homeworkTuesday", "星期二有来"],
+  ["homeworkWednesday", "星期三有来"],
+  ["homeworkThursday", "星期四有来"],
+  ["homeworkFriday", "星期五有来"],
 ];
 
 export const EMPTY_PROFILE = Object.fromEntries(

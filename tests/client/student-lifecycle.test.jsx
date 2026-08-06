@@ -39,6 +39,14 @@ const EMPTY_PROFILE = {
   lateStayWednesday: "",
   lateStayThursday: "",
   lateStayFriday: "",
+  careProgram: "",
+  homeworkArrivalTime: "",
+  homeworkDepartureTime: "",
+  homeworkMonday: "",
+  homeworkTuesday: "",
+  homeworkWednesday: "",
+  homeworkThursday: "",
+  homeworkFriday: "",
 };
 
 function student(index, overrides = {}) {
@@ -189,7 +197,7 @@ describe("student enrolment", () => {
       "WS MIXIN",
     ]);
     expect(within(dialog).queryByRole("option", { name: "MK HAPPY" })).not.toBeInTheDocument();
-    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(10);
+    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(11);
     expect(within(dialog).getByRole("button", { name: "保存学生" })).toBeDisabled();
 
     fireEvent.change(within(dialog).getByLabelText("学生姓名"), {
@@ -205,6 +213,18 @@ describe("student enrolment", () => {
     fireEvent.change(within(dialog).getByLabelText("星期一晚餐"), {
       target: { value: "需要" },
     });
+    fireEvent.change(within(dialog).getByRole("combobox", { name: "学生类型" }), {
+      target: { value: "功课班" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("来校时间"), {
+      target: { value: "14:00" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("回家时间"), {
+      target: { value: "18:00" },
+    });
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期一" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期三" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期五" }));
     const save = within(dialog).getByRole("button", { name: "保存学生" });
     fireEvent.click(save);
     fireEvent.click(save);
@@ -234,6 +254,14 @@ describe("student enrolment", () => {
         dinnerWednesday: "不需要",
         dinnerThursday: "不需要",
         dinnerFriday: "不需要",
+        careProgram: "功课班",
+        homeworkArrivalTime: "14:00",
+        homeworkDepartureTime: "18:00",
+        homeworkMonday: "有来",
+        homeworkTuesday: "",
+        homeworkWednesday: "有来",
+        homeworkThursday: "",
+        homeworkFriday: "有来",
       },
     });
 
