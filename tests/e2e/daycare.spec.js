@@ -342,6 +342,9 @@ test("failed attendance can be retried without leaving stale optimistic state", 
   });
 
   const card = page.getByTestId("student-card").first();
+  await expect(card.locator(".event-grid .event-button")).toHaveText([
+    "到", "缺席", "冲", "餐", "功", "补", "复", "回", "KOKO",
+  ]);
   const arrive = card.getByRole("button", { name: "到", exact: true });
   const previous = await arrive.getAttribute("aria-pressed");
   await arrive.click();

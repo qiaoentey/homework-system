@@ -83,6 +83,27 @@ afterEach(() => {
 });
 
 describe("virtualized current-group roster", () => {
+  it("places absent directly beside arrive in the point-marking controls", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, {
+          items: [student(1)],
+          nextCursor: null,
+          total: 1,
+        });
+      }
+      return rosterSupport(url);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" />);
+
+    const card = await screen.findByTestId("student-card");
+    const labels = within(card.querySelector(".event-grid"))
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(labels).toEqual(["到", "缺席", "冲", "餐", "功", "补", "复", "回", "KOKO"]);
+  });
+
   it("mounts fewer than 30 cards for 121 students and requests 50 rows at a time", async () => {
     const firstPage = Array.from({ length: 50 }, (_, index) => student(index + 1));
     vi.stubGlobal("fetch", vi.fn(async (url) => {
