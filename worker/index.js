@@ -3,6 +3,7 @@ import {
   clearSessionCookie,
   readSession,
 } from "./auth.js";
+import { PRIMARY_ATTENDANCE_EVENTS } from "../shared/dailyAttendance.js";
 const BRANCHES = [
   { code: "MK", label: "MK" },
   { code: "STP", label: "STP" },
@@ -67,6 +68,7 @@ const ATTENDANCE_EVENTS = new Set([
   "homework",
   "supplement",
   "absent",
+  "koko",
 ]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
@@ -837,14 +839,16 @@ async function updateAttendance(request, database, id, date, eventCode, identity
        updated_at = excluded.updated_at`,
   ).bind(id, date, nextEventCode, nextActive ? 1 : 0, identity.email, now);
   const requested = upsert(eventCode, body.active);
-  if (body.active && (eventCode === "arrive" || eventCode === "absent")) {
-    const opposite = eventCode === "arrive" ? "absent" : "arrive";
-    const deactivateOpposite = database.prepare(
+  if (body.active && PRIMARY_ATTENDANCE_EVENTS.includes(eventCode)) {
+    const deactivateOtherPrimaryStates = database.prepare(
       `UPDATE attendance_events
        SET is_active = 0, updated_by = ?, updated_at = ?
-       WHERE student_id = ? AND attendance_date = ? AND event_code = ?`,
-    ).bind(identity.email, now, id, date, opposite);
-    await database.batch([requested, deactivateOpposite]);
+       WHERE student_id = ?
+         AND attendance_date = ?
+         AND event_code IN ('arrive', 'absent', 'koko')
+         AND event_code <> ?`,
+    ).bind(identity.email, now, id, date, eventCode);
+    await database.batch([requested, deactivateOtherPrimaryStates]);
   } else {
     await requested.run();
   }

@@ -716,7 +716,7 @@ test("writes, lists, summarizes, and clears attendance", async () => {
     const student = roster.items[0];
     const prefix = `/api/students/${student.id}/attendance/2026-07-27`;
 
-    for (const eventCode of ["arrive", "shower"]) {
+    for (const eventCode of ["arrive", "shower", "koko"]) {
       const event = await readJson(await apiWithD1(env, `${prefix}/${eventCode}`, {
         method: "PUT",
         headers: groupHeaders(),
@@ -728,7 +728,7 @@ test("writes, lists, summarizes, and clears attendance", async () => {
       assert.equal(event.updatedBy, TEST_ALLOWED_EMAIL);
     }
 
-    for (const eventCode of ["home", "review", "koko"]) {
+    for (const eventCode of ["home", "review"]) {
       const removedEvent = await readJson(await apiWithD1(env, `${prefix}/${eventCode}`, {
         method: "PUT",
         headers: groupHeaders(),
@@ -741,7 +741,7 @@ test("writes, lists, summarizes, and clears attendance", async () => {
       env,
       "/api/attendance?branch=MK&group=MK%20HAPPY&date=2026-07-27",
     ));
-    assert.deepEqual(attendance.items.map(({ eventCode }) => eventCode), ["arrive", "shower"]);
+    assert.deepEqual(attendance.items.filter(({ active }) => active).map(({ eventCode }) => eventCode), ["koko", "shower"]);
 
     const summary = await readJson(await apiWithD1(
       env,
@@ -749,17 +749,17 @@ test("writes, lists, summarizes, and clears attendance", async () => {
     ));
     assert.deepEqual(summary, {
       expected: 82,
-      arrived: 1,
-      notArrived: 81,
+      arrived: 0,
+      notArrived: 82,
       absent: 0,
-      koko: 0,
+      koko: 1,
       unmarked: 81,
     });
 
     assert.deepEqual(await readJson(await apiWithD1(env, prefix, {
       method: "DELETE",
       headers: groupHeaders(),
-    })), { cleared: 2 });
+    })), { cleared: 3 });
   });
 });
 

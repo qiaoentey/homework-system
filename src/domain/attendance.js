@@ -1,6 +1,9 @@
+import { PRIMARY_ATTENDANCE_EVENTS } from "../../shared/dailyAttendance.js";
+
 export const EVENT_BUTTONS = [
   ["arrive", "到"],
   ["absent", "缺席"],
+  ["koko", "KOKO"],
   ["shower", "冲"],
   ["meal", "餐"],
   ["homework", "功"],
@@ -8,15 +11,10 @@ export const EVENT_BUTTONS = [
 ];
 
 export function nextAttendanceEvents(previous, eventCode, active) {
-  const opposite = eventCode === "arrive"
-    ? "absent"
-    : eventCode === "absent"
-      ? "arrive"
-      : null;
   const withoutCurrent = previous.filter((code) => code !== eventCode);
   if (!active) return withoutCurrent;
-  const compatible = opposite
-    ? withoutCurrent.filter((code) => code !== opposite)
+  const compatible = PRIMARY_ATTENDANCE_EVENTS.includes(eventCode)
+    ? withoutCurrent.filter((code) => !PRIMARY_ATTENDANCE_EVENTS.includes(code))
     : withoutCurrent;
   return [...compatible, eventCode];
 }

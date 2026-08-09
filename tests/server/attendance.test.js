@@ -332,11 +332,6 @@ describe("attendance API", () => {
       .send({ active: true })
       .expect(400);
     await agent
-      .put(`${prefix}/2026-07-27/koko`)
-      .set(groupHeaders())
-      .send({ active: true })
-      .expect(400);
-    await agent
       .put(`${prefix}/2026-07-27/arrive`)
       .set(groupHeaders())
       .send({ active: "true" })
@@ -370,6 +365,31 @@ describe("attendance API", () => {
       .get("/api/attendance-records?branch=MK&group=WS%20HUILING&date=2026-07-27")
       .expect(400);
     expect(recordMismatch.body.code).toBe("GROUP_BRANCH_MISMATCH");
+  });
+
+  it("keeps only the newest primary attendance state active", async () => {
+    const selected = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000091",
+      name: "PRIMARY STATE",
+    });
+    const prefix = `/api/students/${selected.id}/attendance/2026-07-27`;
+
+    for (const eventCode of ["arrive", "koko", "absent"]) {
+      await agent
+        .put(`${prefix}/${eventCode}`)
+        .set(groupHeaders())
+        .send({ active: true })
+        .expect(200);
+    }
+
+    const active = await pool.query(
+      `select event_code
+       from attendance_events
+       where student_id = $1 and attendance_date = $2 and is_active = true
+       order by event_code`,
+      [selected.id, "2026-07-27"],
+    );
+    expect(active.rows.map((row) => row.event_code)).toEqual(["absent"]);
   });
 
   it("clears only the selected student's events on the selected date", async () => {

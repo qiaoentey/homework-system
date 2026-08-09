@@ -1,3 +1,5 @@
+import { PRIMARY_ATTENDANCE_EVENTS } from "../../shared/dailyAttendance.js";
+
 function dateString(value) {
   if (typeof value === "string") return value.slice(0, 10);
   const date = new Date(value);
@@ -152,13 +154,15 @@ export async function upsertAttendanceEvent(pool, {
        updated_at = now()
      returning student_id, attendance_date, event_code, is_active, updated_by, updated_at`;
     const result = await client.query(upsert, [id, date, eventCode, active, actor]);
-    if (active && (eventCode === "arrive" || eventCode === "absent")) {
-      const opposite = eventCode === "arrive" ? "absent" : "arrive";
+    if (active && PRIMARY_ATTENDANCE_EVENTS.includes(eventCode)) {
       await client.query(
         `update attendance_events
          set is_active = false, updated_by = $4, updated_at = now()
-         where student_id = $1 and attendance_date = $2 and event_code = $3`,
-        [id, date, opposite, actor],
+         where student_id = $1
+           and attendance_date = $2
+           and event_code = any($3::text[])
+           and event_code <> $5`,
+        [id, date, PRIMARY_ATTENDANCE_EVENTS, actor, eventCode],
       );
     }
     return mapAttendanceEvent(result.rows[0]);

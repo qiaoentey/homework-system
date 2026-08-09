@@ -5,6 +5,7 @@ const SUMMARY_ITEMS = [
   ["arrived", "已到"],
   ["notArrived", "未到"],
   ["absent", "缺席"],
+  ["koko", "KOKO"],
   ["unmarked", "未标记"],
 ];
 
