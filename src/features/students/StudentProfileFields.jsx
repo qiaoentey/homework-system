@@ -45,6 +45,18 @@ const SPECIAL_NOTE_FIELDS = [
   ["specialNoteNotifyIncompleteHomework", "来不及完成功课一定要通知家长"],
 ];
 
+const DETENTION_OPTIONS = ["听写留堂", "功课留堂", "不可以留堂"];
+
+function parseDetentionTypes(value) {
+  return new Set(String(value || "")
+    .split("|")
+    .filter((item) => DETENTION_OPTIONS.includes(item)));
+}
+
+function serializeDetentionTypes(types) {
+  return DETENTION_OPTIONS.filter((item) => types.has(item)).join("|");
+}
+
 function ExistingOption({ value, choices }) {
   if (!value || choices.includes(value)) return null;
   return <option value={value}>{value}（现有资料）</option>;
@@ -64,6 +76,7 @@ export function StudentProfileFields({
   const vanDriverOptions = vanDriverOptionsFor(branchCode);
   const stayTimeOptions = stayTimeOptionsFor(branchCode, values.school);
   const stayValues = stayTimeOptions.map(([value]) => value);
+  const detentionTypes = parseDetentionTypes(values.detentionType);
 
   function changeSchool(nextSchool) {
     onChange("school", nextSchool);
@@ -89,6 +102,20 @@ export function StudentProfileFields({
     onChange("homeworkArrivalTime", "");
     onChange("homeworkDepartureTime", "");
     for (const [field] of HOMEWORK_DAY_FIELDS) onChange(field, "");
+  }
+
+  function changeDetentionType(option, checked) {
+    const nextTypes = parseDetentionTypes(values.detentionType);
+    if (!checked) {
+      nextTypes.delete(option);
+    } else if (option === "不可以留堂") {
+      nextTypes.clear();
+      nextTypes.add(option);
+    } else {
+      nextTypes.delete("不可以留堂");
+      nextTypes.add(option);
+    }
+    onChange("detentionType", serializeDetentionTypes(nextTypes));
   }
 
   return (
@@ -320,7 +347,11 @@ export function StudentProfileFields({
                   onChange={(event) => onChange(field, event.target.value)}
                 >
                   <option value="不需要">不需要</option>
-                  <option value="需要">需要</option>
+                  <option value="小">小</option>
+                  <option value="大">大</option>
+                  {values[field] === "需要" ? (
+                    <option value="需要">需要（未选大小）</option>
+                  ) : null}
                 </select>
               </label>
             ))}
@@ -352,20 +383,21 @@ export function StudentProfileFields({
 
       <div className="student-profile-fields__notes">
         <h3>留堂与特别备注</h3>
-        <label data-testid={fieldTestId}>
-          <span>留堂</span>
-          <select
-            aria-label="留堂"
-            disabled={disabled}
-            value={values.detentionType}
-            onChange={(event) => onChange("detentionType", event.target.value)}
-          >
-            <option value="">请选择</option>
-            <option value="听写留堂">听写留堂</option>
-            <option value="功课留堂">功课留堂</option>
-            <option value="不可以留堂">不可以留堂</option>
-          </select>
-        </label>
+        <div className="student-profile-fields__detentions" role="group" aria-label="留堂">
+          <h4>留堂（可多选）</h4>
+          {DETENTION_OPTIONS.map((option) => (
+            <label data-testid={fieldTestId} key={option}>
+              <input
+                aria-label={option}
+                type="checkbox"
+                disabled={disabled}
+                checked={detentionTypes.has(option)}
+                onChange={(event) => changeDetentionType(option, event.target.checked)}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
         <div className="student-profile-fields__special-notes">
           <h4>特别备注</h4>
           {SPECIAL_NOTE_FIELDS.map(([field, label]) => (

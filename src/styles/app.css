@@ -946,16 +946,14 @@ button {
 }
 
 .student-profile-fields__notes > h3,
+.student-profile-fields__detentions > h4,
 .student-profile-fields__special-notes > h4 {
   margin: 0;
   color: var(--color-navy);
   font-size: 14px;
 }
 
-.student-profile-fields__notes > label {
-  max-width: 260px;
-}
-
+.student-profile-fields__detentions,
 .student-profile-fields__special-notes {
   display: grid;
   gap: 10px;
@@ -965,6 +963,8 @@ button {
   background: #f8f5ff;
 }
 
+.profile-form .student-profile-fields__detentions > label,
+.lifecycle-form .student-profile-fields__detentions > label,
 .profile-form .student-profile-fields__special-notes > label:not(.student-profile-fields__other-note),
 .lifecycle-form .student-profile-fields__special-notes > label:not(.student-profile-fields__other-note) {
   display: flex;
@@ -978,6 +978,8 @@ button {
   cursor: pointer;
 }
 
+.profile-form .student-profile-fields__detentions input[type="checkbox"],
+.lifecycle-form .student-profile-fields__detentions input[type="checkbox"],
 .profile-form .student-profile-fields__special-notes input[type="checkbox"],
 .lifecycle-form .student-profile-fields__special-notes input[type="checkbox"] {
   width: 20px;

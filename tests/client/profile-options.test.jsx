@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { schoolClassesFor } from "../../src/domain/profileOptions.js";
 import { ProfilePanel } from "../../src/features/students/ProfilePanel.jsx";
@@ -412,13 +412,13 @@ describe("restored student profile choices", () => {
       const dinner = screen.getByRole("combobox", { name: `${day}晚餐` });
       expect(dinner).toHaveValue("不需要");
       expect(within(dinner).getAllByRole("option").map((option) => option.textContent))
-        .toEqual(["不需要", "需要"]);
+        .toEqual(["不需要", "小", "大"]);
     }
 
     fireEvent.change(screen.getByRole("combobox", { name: "星期一晚餐" }), {
-      target: { value: "需要" },
+      target: { value: "小" },
     });
-    expect(screen.getByRole("combobox", { name: "星期一晚餐" })).toHaveValue("需要");
+    expect(screen.getByRole("combobox", { name: "星期一晚餐" })).toHaveValue("小");
 
     fireEvent.change(dinnerRequired, { target: { value: "不需要" } });
     expect(screen.queryByRole("combobox", { name: "星期一晚餐" }))
@@ -426,6 +426,21 @@ describe("restored student profile choices", () => {
 
     fireEvent.change(dinnerRequired, { target: { value: "需要" } });
     expect(screen.getByRole("combobox", { name: "星期一晚餐" })).toHaveValue("不需要");
+  });
+
+  it("keeps a legacy dinner requirement visible until a teacher chooses a portion", () => {
+    renderProfile(student({
+      profile: {
+        ...EMPTY_PROFILE,
+        dinnerRequired: "需要",
+        dinnerMonday: "需要",
+      },
+    }));
+
+    const monday = screen.getByRole("combobox", { name: "星期一晚餐" });
+    expect(monday).toHaveValue("需要");
+    expect(within(monday).getAllByRole("option").map((option) => option.textContent))
+      .toEqual(["不需要", "小", "大", "需要（未选大小）"]);
   });
 
   it("shows a one-tap homework schedule only for homework-class students and clears it when hidden", () => {
@@ -490,18 +505,49 @@ describe("restored student profile choices", () => {
     expect(screen.getByRole("option", { name: "18:00（现有资料）" })).toBeInTheDocument();
   });
 
-  it("records one detention choice, multiple special notes, and custom note text", () => {
+  it("records multiple detention choices while keeping not-allowed mutually exclusive", async () => {
+    let submittedProfile;
+    vi.stubGlobal("fetch", vi.fn(async (_url, options = {}) => {
+      submittedProfile = JSON.parse(options.body).profile;
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify(student({ profile: submittedProfile }));
+        },
+      };
+    }));
     renderProfile();
 
-    const detention = screen.getByRole("combobox", { name: "留堂" });
-    expect(within(detention).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "请选择",
-      "听写留堂",
-      "功课留堂",
-      "不可以留堂",
-    ]);
-    fireEvent.change(detention, { target: { value: "功课留堂" } });
-    expect(detention).toHaveValue("功课留堂");
+    expect(screen.queryByRole("combobox", { name: "留堂" })).not.toBeInTheDocument();
+    const spelling = screen.getByRole("checkbox", { name: "听写留堂" });
+    const homework = screen.getByRole("checkbox", { name: "功课留堂" });
+    const notAllowed = screen.getByRole("checkbox", { name: "不可以留堂" });
+
+    fireEvent.click(spelling);
+    fireEvent.click(homework);
+    expect(spelling).toBeChecked();
+    expect(homework).toBeChecked();
+    expect(notAllowed).not.toBeChecked();
+
+    fireEvent.click(notAllowed);
+    expect(spelling).not.toBeChecked();
+    expect(homework).not.toBeChecked();
+    expect(notAllowed).toBeChecked();
+
+    fireEvent.click(spelling);
+    fireEvent.click(homework);
+    expect(spelling).toBeChecked();
+    expect(homework).toBeChecked();
+    expect(notAllowed).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "保存学生资料" }));
+    await waitFor(() => expect(submittedProfile?.detentionType)
+      .toBe("听写留堂|功课留堂"));
+  });
+
+  it("records multiple special notes and custom note text", () => {
+    renderProfile();
 
     for (const note of [
       "高c",
