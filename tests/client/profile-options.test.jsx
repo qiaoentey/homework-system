@@ -395,7 +395,7 @@ describe("restored student profile choices", () => {
     }), "STP");
     const stpDriver = screen.getByRole("combobox", { name: "Van 司机" });
     expect(within(stpDriver).getAllByRole("option").map((option) => option.textContent))
-      .toEqual(["请选择司机", ...sharedDrivers]);
+      .toEqual(["请选择司机", ...sharedDrivers, "Aunty Airine"]);
   });
 
   it("reveals weekday dinner choices only when dinner is required and clears hidden days", () => {

@@ -100,6 +100,8 @@ const WS_VAN_DRIVER_OPTIONS = [
   "Aunty Airine",
 ];
 
+const STP_VAN_DRIVER_OPTIONS = ["Aunty Airine"];
+
 export const STAY_TIME_OPTIONS = [
   ["", "不留校"],
   ["15:30", "3:30 PM"],
@@ -149,6 +151,9 @@ export function vanDriverOptionsFor(branchCode) {
   }
   if (branchCode === "WS") {
     return [...VAN_DRIVER_OPTIONS, ...WS_VAN_DRIVER_OPTIONS];
+  }
+  if (branchCode === "STP") {
+    return [...VAN_DRIVER_OPTIONS, ...STP_VAN_DRIVER_OPTIONS];
   }
   return [...VAN_DRIVER_OPTIONS];
 }
