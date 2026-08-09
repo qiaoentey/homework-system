@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { rosterApi } from "../../api/client.js";
+import { EVENT_BUTTONS } from "../../domain/attendance.js";
 
 const FILTERS = [
   ["ALL", "全部"],
@@ -161,12 +162,38 @@ export function DashboardScreen({
 
                 {expanded ? (
                   <ul className="dashboard-students">
-                    {group.students.length ? group.students.map((student) => (
-                      <li className={`dashboard-student dashboard-student--${student.status}`} key={student.id}>
-                        <strong>{student.name}</strong>
-                        <span>{student.grade} · {STATUS_LABELS[student.status]}</span>
-                      </li>
-                    )) : (
+                    {group.students.length ? group.students.map((student) => {
+                      const activeEvents = new Set(student.events ?? []);
+                      return (
+                        <li className={`dashboard-student dashboard-student--${student.status}`} key={student.id}>
+                          <strong>{student.name}</strong>
+                          <div className="dashboard-student__details">
+                            <span className="dashboard-student__status">
+                              {student.grade} · {STATUS_LABELS[student.status]}
+                            </span>
+                            <div
+                              aria-label={`${student.name} 点名项目`}
+                              className="dashboard-student__events"
+                              role="list"
+                            >
+                              {EVENT_BUTTONS.map(([eventCode, label]) => {
+                                const active = activeEvents.has(eventCode);
+                                return (
+                                  <span
+                                    aria-label={`${label} ${active ? "已点" : "未点"}`}
+                                    className={`dashboard-student__event${active ? " dashboard-student__event--active" : ""}`}
+                                    key={eventCode}
+                                    role="listitem"
+                                  >
+                                    {label}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    }) : (
                       <li className="dashboard-students__empty">这个班目前没有在读学生</li>
                     )}
                   </ul>

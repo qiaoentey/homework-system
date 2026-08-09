@@ -233,7 +233,7 @@ export async function getDailyDashboard(pool, { date }) {
        on ae.student_id = s.id
       and ae.attendance_date = $1
       and ae.is_active = true
-      and ae.event_code in ('arrive', 'absent')
+      and ae.event_code in ('arrive', 'absent', 'shower', 'meal', 'homework', 'supplement')
      where s.status = 'active'
      order by s.group_code, lower(s.name), s.id, ae.event_code`,
     [date],

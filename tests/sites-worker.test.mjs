@@ -786,6 +786,10 @@ test("returns a signed-in daily dashboard for every daycare group", async () => 
     ).bind(id, name, branchCode, groupCode, `dashboard-${id}`)));
     const events = [
       [students[0][0], "arrive"],
+      [students[0][0], "shower"],
+      [students[0][0], "meal"],
+      [students[0][0], "homework"],
+      [students[0][0], "supplement"],
       [students[1][0], "absent"],
       [students[2][0], "koko"],
       [students[4][0], "koko"],
@@ -815,10 +819,22 @@ test("returns a signed-in daily dashboard for every daycare group", async () => 
         unmarked: 2,
       },
       students: [
-        { id: students[1][0], name: "MK ABSENT", grade: "Y4", status: "absent" },
-        { id: students[0][0], name: "MK ARRIVED", grade: "Y4", status: "arrived" },
-        { id: students[2][0], name: "MK KOKO", grade: "Y4", status: "unmarked" },
-        { id: students[3][0], name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
+        {
+          id: students[1][0],
+          name: "MK ABSENT",
+          grade: "Y4",
+          status: "absent",
+          events: ["absent"],
+        },
+        {
+          id: students[0][0],
+          name: "MK ARRIVED",
+          grade: "Y4",
+          status: "arrived",
+          events: ["arrive", "shower", "meal", "homework", "supplement"],
+        },
+        { id: students[2][0], name: "MK KOKO", grade: "Y4", status: "unmarked", events: [] },
+        { id: students[3][0], name: "MK UNMARKED", grade: "Y4", status: "unmarked", events: [] },
       ],
     });
     const currentClass = await readJson(await apiWithD1(

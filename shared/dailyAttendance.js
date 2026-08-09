@@ -1,4 +1,12 @@
 export const PRIMARY_ATTENDANCE_EVENTS = ["arrive", "absent"];
+export const DASHBOARD_ATTENDANCE_EVENTS = [
+  "arrive",
+  "absent",
+  "shower",
+  "meal",
+  "homework",
+  "supplement",
+];
 
 const STATUS_PRIORITY = [
   ["absent", "absent"],
@@ -20,8 +28,15 @@ export function dailyAttendanceResult(students) {
   };
   const items = students.map(({ id, name, grade, events }) => {
     const status = primaryStatusFor(events);
+    const activeEvents = new Set(events ?? []);
     summary[status] += 1;
-    return { id, name, grade, status };
+    return {
+      id,
+      name,
+      grade,
+      status,
+      events: DASHBOARD_ATTENDANCE_EVENTS.filter((eventCode) => activeEvents.has(eventCode)),
+    };
   });
   summary.notArrived = summary.unmarked;
   return { summary, students: items };

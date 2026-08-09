@@ -11,3 +11,5 @@ Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts
 Roster profile editing must have an obvious one-action entry on every student card. Avoid requiring teachers to discover that the student's name is a selector or to scroll manually to unlock the profile form.
 
 Student profile entry must preserve the original STP controlled choices: fixed schools, grade-aware school-class options, time controls, parent/Van transport, Van details, and weekday stay-time choices. Use the same profile controls for existing students and Enrol.
+
+Dashboard student rows must show every daily point-marking item in the same order as the roster buttons. Active items change color, inactive items stay gray, and legacy KOKO records remain hidden.

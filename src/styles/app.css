@@ -635,7 +635,7 @@ button {
 .dashboard-student {
   display: flex;
   min-width: 0;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   border-left: 4px solid #9eabbc;
@@ -653,11 +653,47 @@ button {
   white-space: nowrap;
 }
 
-.dashboard-student span {
+.dashboard-student__details {
+  display: grid;
+  min-width: 0;
+  justify-items: end;
+  gap: 6px;
+}
+
+.dashboard-student__status {
   flex: 0 0 auto;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 800;
+  white-space: nowrap;
+}
+
+.dashboard-student__events {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.dashboard-student__event {
+  display: inline-flex;
+  min-width: 26px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cfdded;
+  border-radius: 999px;
+  background: #fff;
+  color: #647894;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.dashboard-student__event--active {
+  border-color: var(--color-blue);
+  background: var(--color-blue);
+  color: #fff;
 }
 
 .dashboard-student--arrived {

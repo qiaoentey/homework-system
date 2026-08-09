@@ -25,7 +25,12 @@ describe("daily primary attendance contract", () => {
 
   it("calculates the five approved totals and one status per student", () => {
     expect(dailyAttendanceResult([
-      { id: "a", name: "ARRIVED", grade: "Y1", events: ["arrive"] },
+      {
+        id: "a",
+        name: "ARRIVED",
+        grade: "Y1",
+        events: ["supplement", "arrive", "homework", "meal", "shower"],
+      },
       { id: "b", name: "ABSENT", grade: "Y2", events: ["absent"] },
       { id: "c", name: "KOKO", grade: "Y3", events: ["koko"] },
       { id: "d", name: "UNMARKED", grade: "Y4", events: [] },
@@ -38,10 +43,16 @@ describe("daily primary attendance contract", () => {
         unmarked: 2,
       },
       students: [
-        { id: "a", name: "ARRIVED", grade: "Y1", status: "arrived" },
-        { id: "b", name: "ABSENT", grade: "Y2", status: "absent" },
-        { id: "c", name: "KOKO", grade: "Y3", status: "unmarked" },
-        { id: "d", name: "UNMARKED", grade: "Y4", status: "unmarked" },
+        {
+          id: "a",
+          name: "ARRIVED",
+          grade: "Y1",
+          status: "arrived",
+          events: ["arrive", "shower", "meal", "homework", "supplement"],
+        },
+        { id: "b", name: "ABSENT", grade: "Y2", status: "absent", events: ["absent"] },
+        { id: "c", name: "KOKO", grade: "Y3", status: "unmarked", events: [] },
+        { id: "d", name: "UNMARKED", grade: "Y4", status: "unmarked", events: [] },
       ],
     });
   });

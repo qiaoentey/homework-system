@@ -820,7 +820,7 @@ async function dailyDashboard(database, url) {
        ON ae.student_id = s.id
       AND ae.attendance_date = ?
       AND ae.is_active = 1
-      AND ae.event_code IN ('arrive', 'absent')
+      AND ae.event_code IN ('arrive', 'absent', 'shower', 'meal', 'homework', 'supplement')
      WHERE s.status = 'active'
      ORDER BY s.group_code, lower(s.name), s.id, ae.event_code`,
     [date],

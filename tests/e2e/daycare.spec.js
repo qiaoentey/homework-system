@@ -133,7 +133,7 @@ test("Dashboard shows every class and expands daily student statuses", async ({ 
 
   await mkHappy.getByRole("button", { name: "展开 MK HAPPY 名单" }).click();
   await expect(mkHappy.locator(".dashboard-student").first()).toBeVisible();
-  await expect(mkHappy.locator(".dashboard-student").first().locator("span"))
+  await expect(mkHappy.locator(".dashboard-student").first().locator(".dashboard-student__status"))
     .toContainText(/· (已到|缺席|未点)/u);
 
   await page.getByRole("button", { name: "WS", exact: true }).click();
@@ -167,9 +167,40 @@ test("class roster places Dashboard beside attendance records and returns to the
   ]);
   await expect(page.getByText("KOKO", { exact: true })).toHaveCount(0);
 
+  const firstStudent = page.getByTestId("student-card").first();
+  const studentName = (await firstStudent.locator(".student-card__name-line strong").textContent()).trim();
+  for (const label of ["到", "冲", "餐", "功", "补"]) {
+    const eventButton = firstStudent.getByRole("button", { name: label, exact: true });
+    if (await eventButton.getAttribute("aria-pressed") !== "true") {
+      await eventButton.click();
+    }
+    await expect(eventButton).toHaveAttribute("aria-pressed", "true");
+    await expect(eventButton).toBeEnabled();
+  }
+
   await actions.getByRole("button", { name: "Dashboard" }).click();
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await expect(page.getByRole("article")).toHaveCount(11);
+  const selectedEvents = page.getByRole("list", { name: `${studentName} 点名项目` });
+  await expect(selectedEvents.getByRole("listitem"))
+    .toHaveText(["到", "缺席", "冲", "餐", "功", "补"]);
+  for (const label of ["到", "冲", "餐", "功", "补"]) {
+    await expect(selectedEvents.getByRole("listitem", { name: `${label} 已点` }))
+      .toHaveClass(/dashboard-student__event--active/u);
+  }
+  const inactiveEvent = selectedEvents.getByRole("listitem", { name: "缺席 未点" });
+  await expect(inactiveEvent)
+    .not.toHaveClass(/dashboard-student__event--active/u);
+  const activeBackgrounds = await Promise.all(
+    ["到", "冲", "餐", "功", "补"].map((label) => (
+      selectedEvents.getByRole("listitem", { name: `${label} 已点` })
+        .evaluate((element) => getComputedStyle(element).backgroundColor)
+    )),
+  );
+  expect(new Set(activeBackgrounds).size).toBe(1);
+  expect(activeBackgrounds[0]).not.toBe("rgb(255, 255, 255)");
+  expect(await inactiveEvent.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe("rgb(255, 255, 255)");
   await page.getByRole("button", { name: "返回班级" }).click();
   await expect(page.getByRole("heading", { name: "MK HAPPY" })).toBeVisible();
   expect(browserErrors).toEqual([]);

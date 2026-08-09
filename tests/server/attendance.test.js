@@ -520,6 +520,10 @@ describe("attendance API", () => {
       groupCode: "WS HUILING",
     });
     await insertEvent(pool, arrived.id, "arrive");
+    await insertEvent(pool, arrived.id, "shower");
+    await insertEvent(pool, arrived.id, "meal");
+    await insertEvent(pool, arrived.id, "homework");
+    await insertEvent(pool, arrived.id, "supplement");
     await insertEvent(pool, absent.id, "absent");
     await insertEvent(pool, koko.id, "koko");
     await insertEvent(pool, stopped.id, "arrive");
@@ -547,10 +551,22 @@ describe("attendance API", () => {
         unmarked: 2,
       },
       students: [
-        { id: absent.id, name: "MK ABSENT", grade: "Y4", status: "absent" },
-        { id: arrived.id, name: "MK ARRIVED", grade: "Y4", status: "arrived" },
-        { id: koko.id, name: "MK KOKO", grade: "Y4", status: "unmarked" },
-        { id: unmarked.id, name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
+        {
+          id: absent.id,
+          name: "MK ABSENT",
+          grade: "Y4",
+          status: "absent",
+          events: ["absent"],
+        },
+        {
+          id: arrived.id,
+          name: "MK ARRIVED",
+          grade: "Y4",
+          status: "arrived",
+          events: ["arrive", "shower", "meal", "homework", "supplement"],
+        },
+        { id: koko.id, name: "MK KOKO", grade: "Y4", status: "unmarked", events: [] },
+        { id: unmarked.id, name: "MK UNMARKED", grade: "Y4", status: "unmarked", events: [] },
       ],
     });
     const currentClass = await agent
@@ -566,7 +582,13 @@ describe("attendance API", () => {
           absent: 0,
           unmarked: 1,
         },
-        students: [{ id: wsKoko.id, name: "WS KOKO", grade: "Y4", status: "unmarked" }],
+        students: [{
+          id: wsKoko.id,
+          name: "WS KOKO",
+          grade: "Y4",
+          status: "unmarked",
+          events: [],
+        }],
       });
     expect(response.body.groups.find(({ groupCode }) => groupCode === "MK WEN XUAN"))
       .toMatchObject({

@@ -21,10 +21,16 @@ const dashboard = {
         unmarked: 2,
       },
       students: [
-        { id: "1", name: "AMY", grade: "Y1", status: "arrived" },
-        { id: "2", name: "BEN", grade: "Y2", status: "absent" },
-        { id: "3", name: "CARA", grade: "Y3", status: "unmarked" },
-        { id: "4", name: "DAN", grade: "Y4", status: "unmarked" },
+        {
+          id: "1",
+          name: "AMY",
+          grade: "Y1",
+          status: "arrived",
+          events: ["arrive", "shower", "meal", "homework", "supplement"],
+        },
+        { id: "2", name: "BEN", grade: "Y2", status: "absent", events: ["absent"] },
+        { id: "3", name: "CARA", grade: "Y3", status: "unmarked", events: [] },
+        { id: "4", name: "DAN", grade: "Y4", status: "unmarked", events: [] },
       ],
     },
     {
@@ -38,7 +44,7 @@ const dashboard = {
         absent: 0,
         unmarked: 1,
       },
-      students: [{ id: "5", name: "EVA", grade: "Y5", status: "unmarked" }],
+      students: [{ id: "5", name: "EVA", grade: "Y5", status: "unmarked", events: [] }],
     },
   ],
 };
@@ -105,6 +111,25 @@ describe("daily Dashboard", () => {
     expect(within(mkCard).getByText("Y2 · 缺席")).toBeVisible();
     expect(within(mkCard).getByText("Y3 · 未点")).toBeVisible();
     expect(within(mkCard).getByText("Y4 · 未点")).toBeVisible();
+    const amyEvents = within(mkCard).getByRole("list", { name: "AMY 点名项目" });
+    expect(within(amyEvents).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "到",
+      "缺席",
+      "冲",
+      "餐",
+      "功",
+      "补",
+    ]);
+    expect(within(amyEvents).getByRole("listitem", { name: "到 已点" }))
+      .toHaveClass("dashboard-student__event--active");
+    expect(within(amyEvents).getByRole("listitem", { name: "缺席 未点" }))
+      .not.toHaveClass("dashboard-student__event--active");
+    const benEvents = within(mkCard).getByRole("list", { name: "BEN 点名项目" });
+    expect(within(benEvents).getByRole("listitem", { name: "缺席 已点" }))
+      .toHaveClass("dashboard-student__event--active");
+    const caraEvents = within(mkCard).getByRole("list", { name: "CARA 点名项目" });
+    expect(within(caraEvents).getAllByRole("listitem")).toHaveLength(6);
+    expect(within(caraEvents).queryByLabelText(/已点$/u)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "WS" }));
     expect(screen.queryByRole("article", { name: "MK HAPPY" })).not.toBeInTheDocument();
