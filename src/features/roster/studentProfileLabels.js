@@ -6,6 +6,8 @@ const WEEKDAYS = [
   { short: "五", van: "vanFriday", homework: "homeworkFriday", dinner: "dinnerFriday", stay: "lateStayFriday" },
 ];
 
+const DETENTION_OPTIONS = ["听写留堂", "功课留堂", "不可以留堂"];
+
 function clean(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -51,6 +53,18 @@ function dinnerSummaries(profile) {
   });
 }
 
+function needsDinner(profile) {
+  if (clean(profile?.dinnerRequired) === "需要") return true;
+  return WEEKDAYS.some((day) => ["小", "大", "需要"].includes(
+    clean(profile?.[day.dinner]),
+  ));
+}
+
+function detentionSummary(profile) {
+  const selected = new Set(clean(profile?.detentionType).split("|").filter(Boolean));
+  return DETENTION_OPTIONS.filter((option) => selected.has(option)).join("、");
+}
+
 function profileLabel(kind, icon, title, details = []) {
   const text = [title, ...details.filter(Boolean)].join(" · ");
   return { kind, icon, text, ariaLabel: text };
@@ -78,8 +92,8 @@ export function studentProfileLabels(profile) {
     ]));
   }
 
-  if (clean(profile?.dinnerRequired) === "需要") {
-    labels.push(profileLabel("dinner", "餐", "晚餐", dinnerSummaries(profile)));
+  if (needsDinner(profile)) {
+    labels.push(profileLabel("dinner", "餐", "需要晚餐", dinnerSummaries(profile)));
   }
 
   const stayDetails = staySummaries(profile);
@@ -90,6 +104,11 @@ export function studentProfileLabels(profile) {
   const showerRequired = clean(profile?.showerRequired);
   if (showerRequired === "需要" || showerRequired === "不需要") {
     labels.push(profileLabel("shower", "澡", "洗澡", [showerRequired]));
+  }
+
+  const detention = detentionSummary(profile);
+  if (detention) {
+    labels.push(profileLabel("detention", "堂", "留堂事项", [detention]));
   }
 
   const specialNotes = [

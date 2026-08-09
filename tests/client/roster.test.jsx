@@ -132,7 +132,7 @@ describe("virtualized current-group roster", () => {
         lateStayWednesday: "17:00",
         lateStayFriday: "18:00",
         showerRequired: "需要",
-        detentionType: "功课留堂",
+        detentionType: "听写留堂|功课留堂",
         specialNoteHighC: "需要",
         specialNoteDailyHomeworkPhoto: "需要",
         specialNoteNotifyIncompleteHomework: "需要",
@@ -151,16 +151,17 @@ describe("virtualized current-group roster", () => {
     const card = await screen.findByTestId("student-card");
     expect(within(card).getByText("启智 · 1J")).toBeVisible();
     const labelList = within(card).getByRole("list", { name: "Adam Herwan 资料标签" });
-    expect(within(labelList).getAllByRole("listitem")).toHaveLength(9);
+    expect(within(labelList).getAllByRole("listitem")).toHaveLength(10);
     expect(within(card).getByRole("button", { name: "选择 Adam Herwan" }))
       .not.toContainElement(labelList);
 
     const expectedLabels = [
       ["Van载送 · Uncle Kent · 周一、三、五 · 17:00", "van"],
       ["功课班 · 周一、三、五 · 14:00–18:00", "homework"],
-      ["晚餐 · 小：周一、三 · 大：周二 · 未选大小：周五", "dinner"],
+      ["需要晚餐 · 小：周一、三 · 大：周二 · 未选大小：周五", "dinner"],
       ["留校 · 周一、三 17:00 · 周五 18:00", "stay"],
       ["洗澡 · 需要", "shower"],
+      ["留堂事项 · 听写留堂、功课留堂", "detention"],
       ["特别备注 · 高c", "note"],
       ["特别备注 · 一定要每天拍照功课进群组给家长", "note"],
       ["特别备注 · 来不及完成功课一定要通知家长", "note"],
@@ -169,6 +170,30 @@ describe("virtualized current-group roster", () => {
     for (const [label, kind] of expectedLabels) {
       expect(within(card).getByLabelText(label)).toHaveClass(`profile-label--${kind}`);
     }
+  });
+
+  it("shows dinner from saved weekday data even when the old global flag is missing", async () => {
+    const dinnerStudent = student(2, {
+      name: "DINNER STUDENT",
+      profile: {
+        ...EMPTY_PROFILE,
+        dinnerRequired: "",
+        dinnerMonday: "小",
+        dinnerTuesday: "不需要",
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [dinnerStudent], nextCursor: null, total: 1 });
+      }
+      return rosterSupport(url);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" />);
+
+    const card = await screen.findByTestId("student-card");
+    expect(within(card).getByLabelText("需要晚餐 · 小：周一"))
+      .toHaveClass("profile-label--dinner");
   });
 
   it("omits unsaved label types and missing Van details", async () => {

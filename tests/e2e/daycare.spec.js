@@ -373,7 +373,11 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     "功课班 · 周一、三、五 · 14:00–18:00",
     { exact: true },
   )).toBeVisible();
-  await expect(studentCard.getByLabel("晚餐 · 小：周一", { exact: true })).toBeVisible();
+  await expect(studentCard.getByLabel("需要晚餐 · 小：周一", { exact: true })).toBeVisible();
+  await expect(studentCard.getByLabel(
+    "留堂事项 · 听写留堂、功课留堂",
+    { exact: true },
+  )).toBeVisible();
   await expect(studentCard.getByLabel(
     "留校 · 周一、三 17:00 · 周五 16:00",
     { exact: true },

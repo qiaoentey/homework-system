@@ -602,12 +602,14 @@ button {
   color: #5e4900;
 }
 
+.profile-label--detention,
 .profile-label--note {
   border-color: #b9a3ed;
   background: #f3efff;
   color: #5b3ea8;
 }
 
+.profile-label--detention .profile-label__icon,
 .profile-label--note .profile-label__icon {
   background: #7755c9;
 }
