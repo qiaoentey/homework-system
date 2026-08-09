@@ -248,10 +248,14 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     "二校",
     "启智",
     "姚贞暖",
+    "幼儿园",
   ]);
   for (const removedSchool of ["南益", "民义", "旺小", "桥南", "中华小学", "中华中学"]) {
     await expect(school.locator(`option[value="${removedSchool}"]`)).toHaveCount(0);
   }
+  await school.selectOption("幼儿园");
+  await expect(enrol.getByLabel("学校班级", { exact: true }).locator("option"))
+    .toHaveText(["请选择学校班级"]);
   await school.selectOption("一校");
   await enrol.getByLabel("学校班级", { exact: true }).selectOption("3J");
   await enrol.getByLabel("回家载送", { exact: true }).selectOption("Van");

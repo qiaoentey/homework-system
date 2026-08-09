@@ -103,6 +103,7 @@ describe("restored student profile choices", () => {
     }
     expect(schoolClassesFor("MK", "南益", "Y3")).toEqual([]);
     expect(schoolClassesFor("MK", "姚贞暖", "Y3")).toEqual([]);
+    expect(schoolClassesFor("MK", "幼儿园", "Y3")).toEqual([]);
     expect(schoolClassesFor("MK", "一校", "三年级")).toEqual([
       "3J", "3B", "3M", "3U",
     ]);
@@ -126,6 +127,7 @@ describe("restored student profile choices", () => {
       "二校",
       "启智",
       "姚贞暖",
+      "幼儿园",
     ]);
     expect(school).toHaveValue("");
     expect(screen.getByRole("combobox", { name: "学校班级" })).toHaveValue("");
@@ -142,6 +144,12 @@ describe("restored student profile choices", () => {
 
     fireEvent.change(school, { target: { value: "姚贞暖" } });
     const emptySchoolClass = screen.getByRole("combobox", { name: "学校班级" });
+    expect(within(emptySchoolClass).getAllByRole("option").map((option) => (
+      option.textContent
+    ))).toEqual(["请选择学校班级"]);
+    expect(emptySchoolClass).toHaveValue("");
+
+    fireEvent.change(school, { target: { value: "幼儿园" } });
     expect(within(emptySchoolClass).getAllByRole("option").map((option) => (
       option.textContent
     ))).toEqual(["请选择学校班级"]);

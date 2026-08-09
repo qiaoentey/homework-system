@@ -32,7 +32,7 @@ export const STUDENT_GRADE_OPTIONS = [
   "六年级",
 ];
 
-const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智", "姚贞暖"];
+const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智", "姚贞暖", "幼儿园"];
 
 const MK_SCHOOL_CLASSES = {
   一校: {
