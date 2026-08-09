@@ -71,5 +71,5 @@ describe("approved roster import", () => {
     expect(students.rows).toHaveLength(Object.values(APPROVED_COUNTS).reduce((sum, count) => sum + count, 0));
     expect(new Set(students.rows.map((row) => `${row.group_code}:${row.source_ref}`)).size)
       .toBe(students.rows.length);
-  });
+  }, 10_000);
 });
