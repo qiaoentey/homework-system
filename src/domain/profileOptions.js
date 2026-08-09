@@ -7,6 +7,31 @@ export const SCHOOL_OPTIONS = [
   "中华中学",
 ];
 
+export const STUDENT_GRADE_OPTIONS = [
+  "K1",
+  "K2",
+  "K1+K2",
+  "F1",
+  "F2",
+  "F3",
+  "F4",
+  "F5",
+  "F6",
+  "Y1",
+  "Y2",
+  "Y3",
+  "Y4",
+  "Y5",
+  "Y6",
+  "幼儿班",
+  "一年级",
+  "二年级",
+  "三年级",
+  "四年级",
+  "五年级",
+  "六年级",
+];
+
 const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智", "姚贞暖"];
 
 const MK_SCHOOL_CLASSES = {

@@ -1,12 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
+import { STUDENT_GRADE_OPTIONS } from "../../domain/profileOptions.js";
 import { LifecycleDialog } from "./LifecycleDialog.jsx";
-
-const GRADES = [
-  "K1", "K2", "K1+K2", "F1", "F2", "F3",
-  "Y1", "Y2", "Y3", "Y4", "Y5", "Y6",
-  "幼儿班", "一年级", "二年级", "三年级", "四年级", "五年级", "六年级",
-];
 
 function identity(student) {
   return `${student.name} · ${student.grade} · ${student.groupCode}`;
@@ -175,7 +170,9 @@ export function StopDialog({
               onChange={(event) => resetResolution(() => setGrade(event.target.value))}
             >
               <option value="">请选择年级</option>
-              {GRADES.map((item) => <option key={item} value={item}>{item}</option>)}
+              {STUDENT_GRADE_OPTIONS.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
             </select>
           </label>
           <label>

@@ -35,7 +35,7 @@
 - Produces: `STUDENT_GRADE_OPTIONS: string[]` and an optional `onGradeChange(nextGrade)` prop on `StudentProfileFields`.
 - Consumes: `rosterApi.saveProfile({ branchCode, groupCode, studentId, updatedAt, grade, profile })`.
 
-- [ ] **Step 1: Write a failing client behavior test**
+- [x] **Step 1: Write a failing client behavior test**
 
 Open an existing student's profile, assert `年级` is preselected as `Y3`, change it to `Y4`, and save. Require this literal request body and immediate card update:
 
@@ -50,13 +50,13 @@ expect(within(card).getByText("Y4", { exact: true })).toBeVisible();
 
 Also assert the selector includes `F4`, `F5`, and `F6`, and that changing from `Y3` to `Y4` clears incompatible `3K` while preserving the school.
 
-- [ ] **Step 2: Run the client test and verify RED**
+- [x] **Step 2: Run the client test and verify RED**
 
 Run: `npm test -- tests/client/profile-search.test.jsx --testTimeout=20000 --maxWorkers=1`
 
 Expected: FAIL because no editable grade selector exists and the client does not send `grade`.
 
-- [ ] **Step 3: Implement the minimal client flow**
+- [x] **Step 3: Implement the minimal client flow**
 
 Export the canonical catalog:
 
@@ -71,7 +71,7 @@ export const STUDENT_GRADE_OPTIONS = [
 
 Use it in Enrol, Stop, and the conditional profile grade selector. In `ProfilePanel`, initialize grade from the selected student, clear only an incompatible `schoolClass` using `schoolClassesFor`, and pass grade into `saveProfile`. Make `src/api/client.js` serialize `{ updatedAt, grade, profile }`.
 
-- [ ] **Step 4: Run the client test and verify GREEN**
+- [x] **Step 4: Run the client test and verify GREEN**
 
 Run: `npm test -- tests/client/profile-search.test.jsx --testTimeout=20000 --maxWorkers=1`
 
@@ -88,7 +88,7 @@ Expected: all profile-search tests pass.
 - Consumes: `PATCH /api/students/:id/profile` body `{ updatedAt, grade?, profile? }`.
 - Produces: the updated student row with a new `updatedAt` and a `profile_update` activity containing the supplied changes.
 
-- [ ] **Step 1: Write a failing Express API test**
+- [x] **Step 1: Write a failing Express API test**
 
 Patch an existing student from `Y4` to `Y5` with one profile field, then assert:
 
@@ -103,13 +103,13 @@ expect(activity.rows[0].details).toEqual({
 
 Keep the stale `updatedAt` conflict assertion and add blank-grade rejection.
 
-- [ ] **Step 2: Run the server test and verify RED**
+- [x] **Step 2: Run the server test and verify RED**
 
 Run: `npm test -- tests/server/students.test.js --testTimeout=20000 --maxWorkers=1`
 
 Expected: FAIL because the strict request schema rejects `grade`.
 
-- [ ] **Step 3: Implement schema and repository updates**
+- [x] **Step 3: Implement schema and repository updates**
 
 Make `grade` and `profile` optional individually but require at least one change. In one transaction, compute:
 
@@ -120,7 +120,7 @@ const mergedProfile = profile ? { ...student.profile, ...profile } : student.pro
 
 Update `grade`, `profile`, and `updated_at` in the same SQL statement, then store only supplied fields in the existing `profile_update` details object.
 
-- [ ] **Step 4: Run the server test and verify GREEN**
+- [x] **Step 4: Run the server test and verify GREEN**
 
 Run: `npm test -- tests/server/students.test.js --testTimeout=20000 --maxWorkers=1`
 
@@ -136,17 +136,17 @@ Expected: all student API tests pass.
 - Consumes: the same `{ updatedAt, grade?, profile? }` PATCH contract.
 - Produces: one D1 batch that updates the scoped student and appends activity only when the optimistic update succeeds.
 
-- [ ] **Step 1: Write a failing Sites Worker test**
+- [x] **Step 1: Write a failing Sites Worker test**
 
 Update an existing student's grade, then query the roster and assert the same UUID has the new grade. Create attendance and a message before the update and assert both remain queryable afterward.
 
-- [ ] **Step 2: Run the Sites test and verify RED**
+- [x] **Step 2: Run the Sites test and verify RED**
 
 Run: `npm run test:sites`
 
 Expected: FAIL because the Worker rejects the additional `grade` key.
 
-- [ ] **Step 3: Implement the D1 atomic update**
+- [x] **Step 3: Implement the D1 atomic update**
 
 Validate optional non-empty `grade` and optional partial `profile`, requiring at least one. Bind the new or current grade and merged or current profile in one optimistic SQL update:
 
@@ -158,7 +158,7 @@ WHERE id = ? AND branch_code = ? AND group_code = ? AND updated_at = ?
 
 Keep the activity insert guarded by `WHERE changes() = 1`.
 
-- [ ] **Step 4: Run the Sites test and verify GREEN**
+- [x] **Step 4: Run the Sites test and verify GREEN**
 
 Run: `npm run test:sites`
 
@@ -173,11 +173,11 @@ Expected: all Sites Worker tests pass.
 - Consumes: an enrolled student's editable grade selector and the saved student response.
 - Produces: desktop/mobile proof of grade editing on the same student.
 
-- [ ] **Step 1: Extend the existing enrol lifecycle browser test**
+- [x] **Step 1: Extend the existing enrol lifecycle browser test**
 
 After enrolling and attaching attendance/message history, open the student's profile, change `Y3` to `Y4`, save, and assert the card plus API return the same UUID with grade `Y4`. Continue stop/restore using `Y4` and verify the previously saved attendance and message remain linked.
 
-- [ ] **Step 2: Run complete verification**
+- [x] **Step 2: Run complete verification**
 
 Run:
 
@@ -192,6 +192,6 @@ git diff --check
 
 Expected: every command exits successfully with zero failed tests.
 
-- [ ] **Step 3: Commit, push, package, and save one Sites version**
+- [x] **Step 3: Commit, push, package, and save one Sites version**
 
 Commit the exact verified source, push the existing feature branch and Sites source branch, package the exact build, and save one Sites version. Do not publicly deploy until explicit approval is received.

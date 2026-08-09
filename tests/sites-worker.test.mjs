@@ -1252,9 +1252,10 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
   await withD1(async (env) => {
     const roster = await readJson(await apiWithD1(
       env,
-      "/api/students?branch=MK&group=MK%20WEN%20XUAN&status=active&limit=1",
+      "/api/students?branch=MK&group=MK%20WEN%20XUAN&status=active&search=%E9%BB%84%E5%AE%87%E6%88%90",
     ));
     const original = roster.items[0];
+    assert.equal(original.grade, "Y1");
     const headers = groupHeaders("MK", "MK WEN XUAN");
     const profile = await readJson(await apiWithD1(
       env,
@@ -1264,6 +1265,7 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
         headers,
         body: {
           updatedAt: original.updatedAt,
+          grade: "Y2",
           profile: {
             usualPickupTime: "17:30",
             pickupMethod: "Van",
@@ -1273,6 +1275,8 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
         },
       },
     ));
+    assert.equal(profile.id, original.id);
+    assert.equal(profile.grade, "Y2");
     await readJson(await apiWithD1(
       env,
       `/api/students/${original.id}/attendance/2026-07-27/arrive`,
@@ -1292,12 +1296,13 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
         headers,
         body: {
           name: original.name,
-          grade: original.grade,
+          grade: profile.grade,
           groupCode: original.groupCode,
         },
       },
     ));
     assert.equal(stopped.id, original.id);
+    assert.equal(stopped.grade, "Y2");
     assert.equal(stopped.status, "stopped");
     assert.equal(stopped.profile.usualPickupTime, "17:30");
     assert.equal(stopped.profile.pickupMethod, "Van");
@@ -1316,6 +1321,7 @@ test("stop and restore preserve the UUID, profile, attendance, and messages", as
       { method: "POST", headers, body: {} },
     ));
     assert.equal(restored.id, original.id);
+    assert.equal(restored.grade, "Y2");
     assert.equal(restored.status, "active");
     assert.equal(restored.profile.usualPickupTime, "17:30");
     assert.equal(restored.profile.pickupMethod, "Van");

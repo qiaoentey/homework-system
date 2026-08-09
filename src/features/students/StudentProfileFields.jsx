@@ -1,6 +1,7 @@
 import {
   PICKUP_METHOD_OPTIONS,
   STAY_TIME_OPTIONS,
+  STUDENT_GRADE_OPTIONS,
   schoolClassesFor,
   schoolOptionsFor,
   vanDriverOptionsFor,
@@ -40,6 +41,7 @@ export function StudentProfileFields({
   grade,
   values,
   disabled,
+  onGradeChange,
   onChange,
   fieldTestId,
 }) {
@@ -77,6 +79,24 @@ export function StudentProfileFields({
   return (
     <div className="student-profile-fields">
       <div className="student-profile-fields__grid">
+        {onGradeChange ? (
+          <label data-testid={fieldTestId}>
+            <span>年级</span>
+            <select
+              aria-label="年级"
+              required
+              disabled={disabled}
+              value={grade}
+              onChange={(event) => onGradeChange(event.target.value)}
+            >
+              <option value="">请选择年级</option>
+              {STUDENT_GRADE_OPTIONS.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+              <ExistingOption value={grade} choices={STUDENT_GRADE_OPTIONS} />
+            </select>
+          </label>
+        ) : null}
         <label data-testid={fieldTestId}>
           <span>学校</span>
           <select

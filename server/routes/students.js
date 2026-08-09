@@ -51,8 +51,11 @@ const stopSchema = z.object({
 
 const profileUpdateSchema = z.object({
   updatedAt: z.string().datetime({ offset: true }),
-  profile: partialProfileSchema.refine((profile) => Object.keys(profile).length > 0),
-}).strict();
+  grade: trimmedRequired.optional(),
+  profile: partialProfileSchema.optional(),
+}).strict().refine(({ grade, profile }) => (
+  Boolean(grade) || Boolean(profile && Object.keys(profile).length > 0)
+));
 
 function error(response, status, code, message) {
   return response.status(status).json({ code, error: message });

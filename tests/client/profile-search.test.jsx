@@ -55,6 +55,7 @@ const HAYDEN = {
 };
 
 const PROFILE_LABELS = [
+  "年级",
   "学校",
   "学校班级",
   "平常回家时间",
@@ -76,7 +77,7 @@ const PROFILE_LABELS = [
 ];
 
 const BASE_PROFILE_LABELS = PROFILE_LABELS.filter((label) => (
-  !label.startsWith("Van ") && !/^星期[一二三四五]晚餐$/u.test(label)
+  label !== "年级" && !label.startsWith("Van ") && !/^星期[一二三四五]晚餐$/u.test(label)
 ));
 
 function jsonResponse(status, body) {
@@ -117,9 +118,11 @@ function setupFetch() {
       });
     }
     if (url.includes("/profile") && options.method === "PATCH") {
+      const body = JSON.parse(options.body);
       return jsonResponse(200, {
         ...HAYDEN,
-        profile: JSON.parse(options.body).profile,
+        grade: body.grade ?? HAYDEN.grade,
+        profile: body.profile,
         updatedAt: "2026-07-27T01:00:00.000Z",
       });
     }
@@ -160,8 +163,8 @@ describe("current-group search and safe profile selection", () => {
       }));
 
       expect(await screen.findByRole("heading", { name: "HAYDEN CHIN" })).toBeVisible();
-      await waitFor(() => expect(screen.getByLabelText("学校")).toBeEnabled());
-      expect(screen.getByLabelText("学校")).toHaveFocus();
+      await waitFor(() => expect(screen.getByLabelText("年级")).toBeEnabled());
+      expect(screen.getByLabelText("年级")).toHaveFocus();
       expect(scrollIntoView).toHaveBeenCalledWith({
         behavior: "smooth",
         block: "start",
@@ -206,6 +209,7 @@ describe("current-group search and safe profile selection", () => {
     expect(await screen.findByText("找不到学生")).toBeVisible();
     expect(screen.queryByRole("button", { name: "保存学生资料" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "写留言" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("年级")).not.toBeInTheDocument();
     for (const label of BASE_PROFILE_LABELS) {
       expect(screen.getByLabelText(label)).toHaveValue("");
     }
@@ -217,7 +221,7 @@ describe("current-group search and safe profile selection", () => {
     expect(searchUrl).toContain("group=WS+HUILING");
   });
 
-  it("renders the complete profile contract and saves only the selected UUID with scope", async () => {
+  it("edits an existing student's grade, clears only an incompatible class, and updates the card", async () => {
     let profileRequest;
     const fetchMock = setupFetch();
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
@@ -231,12 +235,20 @@ describe("current-group search and safe profile selection", () => {
     for (const label of PROFILE_LABELS) {
       expect(screen.getByLabelText(label)).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(18);
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(19);
+    const grade = screen.getByLabelText("年级");
+    expect(grade).toHaveValue("Y3");
+    for (const option of ["F4", "F5", "F6"]) {
+      expect(within(grade).getByRole("option", { name: option })).toBeVisible();
+    }
 
-    fireEvent.change(screen.getByLabelText("学校班级"), { target: { value: "3B" } });
+    fireEvent.change(grade, { target: { value: "Y4" } });
+    expect(screen.getByLabelText("学校")).toHaveValue("南益");
+    expect(screen.getByLabelText("学校班级")).toHaveValue("");
     fireEvent.click(screen.getByRole("button", { name: "保存学生资料" }));
 
     expect(await screen.findByText("资料已保存")).toBeVisible();
+    expect(within(card).getByText("Y4", { exact: true })).toBeVisible();
     expect(profileRequest.url).toBe(`/api/students/${HAYDEN.id}/profile`);
     expect(profileRequest.options.headers).toMatchObject({
       "X-Branch-Code": "WS",
@@ -244,11 +256,28 @@ describe("current-group search and safe profile selection", () => {
     });
     expect(JSON.parse(profileRequest.options.body)).toEqual({
       updatedAt: HAYDEN.updatedAt,
+      grade: "Y4",
       profile: {
         ...PROFILE,
-        schoolClass: "3B",
+        schoolClass: "",
       },
     });
+  });
+
+  it("preserves a non-catalog current grade as an editable existing choice", () => {
+    render(
+      <ProfilePanel
+        branchCode="WS"
+        groupCode="WS HUILING"
+        student={{ ...HAYDEN, grade: "TRANSITION" }}
+        noResults={false}
+        onSaved={() => {}}
+        onOpenMessages={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "年级" })).toHaveValue("TRANSITION");
+    expect(screen.getByRole("option", { name: "TRANSITION（现有资料）" })).toBeVisible();
   });
 
   it("keeps student B saving when student A's older profile request resolves", async () => {

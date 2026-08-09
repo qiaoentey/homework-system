@@ -589,9 +589,11 @@ async function updateProfile(request, database, id, identity) {
   const invalidContext = contextError(context);
   const body = await requestBody(request);
   if (
-    !hasOnlyKeys(body, ["updatedAt", "profile"])
+    !hasOnlyKeys(body, ["updatedAt", "grade", "profile"], ["updatedAt"])
     || !validIsoDate(body.updatedAt)
-    || !partialProfile(body.profile)
+    || (body.grade === undefined && body.profile === undefined)
+    || (body.grade !== undefined && !isNonemptyString(body.grade))
+    || (body.profile !== undefined && !partialProfile(body.profile))
   ) {
     return apiError(400, "INVALID_PROFILE", "Invalid student profile");
   }
@@ -600,16 +602,25 @@ async function updateProfile(request, database, id, identity) {
   if (scoped.response) return scoped.response;
   const activityId = crypto.randomUUID();
   const now = new Date().toISOString();
+  const grade = body.grade === undefined ? scoped.student.grade : body.grade.trim();
+  const profile = body.profile === undefined
+    ? parseProfile(scoped.student.profile)
+    : { ...parseProfile(scoped.student.profile), ...body.profile };
+  const details = {
+    ...(body.grade === undefined ? {} : { grade }),
+    ...(body.profile === undefined ? {} : { profile: body.profile }),
+  };
   const results = await database.batch([
     database.prepare(
       `UPDATE students
-       SET profile = ?, updated_at = ?
+       SET grade = ?, profile = ?, updated_at = ?
        WHERE id = ?
          AND branch_code = ?
          AND group_code = ?
          AND updated_at = ?`,
     ).bind(
-      JSON.stringify({ ...parseProfile(scoped.student.profile), ...body.profile }),
+      grade,
+      JSON.stringify(profile),
       timestampAfter(scoped.student.updated_at),
       id,
       context.branchCode,
@@ -625,7 +636,7 @@ async function updateProfile(request, database, id, identity) {
       activityId,
       id,
       identity.email,
-      JSON.stringify({ profile: body.profile }),
+      JSON.stringify(details),
       now,
     ),
   ]);

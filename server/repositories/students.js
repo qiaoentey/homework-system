@@ -321,6 +321,7 @@ export async function updateStudentProfile(pool, {
   branchCode,
   groupCode,
   updatedAt,
+  grade,
   profile,
   actor,
 }) {
@@ -339,18 +340,23 @@ export async function updateStudentProfile(pool, {
       throw new StudentRepositoryError("STUDENT_CHANGED");
     }
 
-    const mergedProfile = { ...student.profile, ...profile };
+    const nextGrade = grade ?? student.grade;
+    const mergedProfile = profile ? { ...student.profile, ...profile } : student.profile;
     const updated = await client.query(
       `update students
-       set profile = $2, updated_at = $3
+       set grade = $2, profile = $3, updated_at = $4
        where id = $1
        returning id, name, grade, branch_code, group_code, status, profile, updated_at`,
-      [id, mergedProfile, nextUpdatedAt(student.updated_at)],
+      [id, nextGrade, mergedProfile, nextUpdatedAt(student.updated_at)],
     );
+    const details = {
+      ...(grade === undefined ? {} : { grade }),
+      ...(profile === undefined ? {} : { profile }),
+    };
     await client.query(
       `insert into student_activity (student_id, action, actor, details)
        values ($1, 'profile_update', $2, $3)`,
-      [id, actor, { profile }],
+      [id, actor, details],
     );
     return mapStudent(updated.rows[0]);
   });

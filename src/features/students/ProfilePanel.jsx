@@ -4,7 +4,10 @@ import {
   EMPTY_PROFILE,
   normalizeProfile,
 } from "../../domain/profile.js";
-import { schoolOptionsFor } from "../../domain/profileOptions.js";
+import {
+  schoolClassesFor,
+  schoolOptionsFor,
+} from "../../domain/profileOptions.js";
 import { StudentProfileFields } from "./StudentProfileFields.jsx";
 
 function normalizeProfileForBranch(profile, branchCode) {
@@ -29,6 +32,7 @@ export function ProfilePanel({
   onOpenMessages,
 }) {
   const [values, setValues] = useState(EMPTY_PROFILE);
+  const [grade, setGrade] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const requestGeneration = useRef(0);
@@ -43,6 +47,7 @@ export function ProfilePanel({
     setValues(student
       ? normalizeProfileForBranch(student.profile, branchCode)
       : { ...EMPTY_PROFILE });
+    setGrade(student?.grade ?? "");
     setStatus("idle");
     setError("");
   }, [branchCode, student?.id]);
@@ -60,6 +65,7 @@ export function ProfilePanel({
         groupCode,
         studentId: student.id,
         updatedAt: student.updatedAt,
+        grade,
         profile: values,
       });
       if (
@@ -82,6 +88,19 @@ export function ProfilePanel({
     }
   }
 
+  function changeGrade(nextGrade) {
+    setGrade(nextGrade);
+    setValues((current) => {
+      if (
+        !current.schoolClass ||
+        schoolClassesFor(branchCode, current.school, nextGrade).includes(current.schoolClass)
+      ) {
+        return current;
+      }
+      return { ...current, schoolClass: "" };
+    });
+  }
+
   return (
     <section ref={panelRef} className="profile-panel" aria-labelledby="profile-title">
       <div className="profile-panel__heading">
@@ -101,10 +120,11 @@ export function ProfilePanel({
       <form className="profile-form" onSubmit={save}>
         <StudentProfileFields
           branchCode={branchCode}
-          grade={student?.grade ?? ""}
+          grade={grade}
           values={values}
           disabled={!student || status === "saving"}
           fieldTestId="profile-field"
+          onGradeChange={student ? changeGrade : undefined}
           onChange={(field, value) => setValues((current) => ({
             ...current,
             [field]: value,

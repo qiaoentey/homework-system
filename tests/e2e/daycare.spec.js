@@ -192,7 +192,7 @@ test("one tap opens the selected student's editable profile", async ({ page }) =
   await expect(profileHeading).toBeVisible();
   await expect(profileHeading).toBeInViewport();
   await expect(page.getByLabel("学校", { exact: true })).toBeEnabled();
-  await expect(page.getByLabel("学校", { exact: true })).toBeFocused();
+  await expect(page.getByLabel("年级", { exact: true })).toBeFocused();
 });
 
 test("WS enrol offers and saves only its requested Van drivers", async ({
@@ -291,6 +291,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   const enrolled = await listStudents(page, "MK", "MK WEN XUAN", "active", name);
   expect(enrolled.body.items).toHaveLength(1);
   const createdId = enrolled.body.items[0].id;
+  expect(enrolled.body.items[0].grade).toBe("Y3");
   expect(enrolled.body.items[0].profile).toMatchObject({
     school: "一校",
     schoolClass: "3J",
@@ -344,12 +345,25 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await expect(messageDialog.getByText(message)).toBeVisible();
   await messageDialog.getByRole("button", { name: "关闭" }).click();
 
+  await page.getByLabel("年级", { exact: true }).selectOption("Y4");
+  await expect(page.getByLabel("学校", { exact: true })).toHaveValue("一校");
+  await expect(page.getByLabel("学校班级", { exact: true })).toHaveValue("");
+  await page.getByRole("button", { name: "保存学生资料" }).click();
+  await expect(page.getByText("资料已保存")).toBeVisible();
+  await expect(studentCard.getByText("Y4", { exact: true })).toBeVisible();
+  const regraded = await listStudents(page, "MK", "MK WEN XUAN", "active", name);
+  expect(regraded.body.items).toHaveLength(1);
+  expect(regraded.body.items[0]).toMatchObject({
+    id: createdId,
+    grade: "Y4",
+  });
+
   await page.getByRole("button", { name: "停补学生" }).click();
   const stop = page.getByRole("dialog", { name: "停补学生" });
   await stop.getByLabel("学生姓名").fill(name);
-  await stop.getByLabel("年级").selectOption("Y3");
+  await stop.getByLabel("年级").selectOption("Y4");
   await stop.getByRole("button", { name: "查找学生" }).click();
-  await expect(stop.getByText(`${name} · Y3 · MK WEN XUAN`)).toBeVisible();
+  await expect(stop.getByText(`${name} · Y4 · MK WEN XUAN`)).toBeVisible();
   await stop.getByRole("button", { name: "确认停补" }).click();
   await expect(page.getByText("学生已停补")).toBeVisible();
 
@@ -359,16 +373,17 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
 
   await page.getByRole("button", { name: "恢复学生" }).click();
   const restore = page.getByRole("dialog", { name: "恢复学生" });
-  await restore.getByLabel(`${name} · Y3 · MK WEN XUAN`).check();
+  await restore.getByLabel(`${name} · Y4 · MK WEN XUAN`).check();
   await restore.getByRole("button", { name: "确认恢复" }).click();
   await expect(page.getByText("学生已恢复")).toBeVisible();
 
   const active = await listStudents(page, "MK", "MK WEN XUAN", "active", name);
   expect(active.body.items).toHaveLength(1);
   expect(active.body.items[0].id).toBe(createdId);
+  expect(active.body.items[0].grade).toBe("Y4");
   expect(active.body.items[0].profile).toMatchObject({
     school: "一校",
-    schoolClass: "3J",
+    schoolClass: "",
     pickupMethod: "Van",
     vanDriver: "Mr Kent",
     vanHomeTime: "17:00",

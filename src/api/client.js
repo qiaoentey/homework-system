@@ -158,11 +158,11 @@ export const rosterApi = {
       groupCode,
     },
   ),
-  saveProfile: ({ branchCode, groupCode, studentId, updatedAt, profile }) => apiRequest(
+  saveProfile: ({ branchCode, groupCode, studentId, updatedAt, grade, profile }) => apiRequest(
     `/api/students/${encodeURIComponent(studentId)}/profile`,
     {
       method: "PATCH",
-      body: { updatedAt, profile },
+      body: { updatedAt, grade, profile },
       branchCode,
       groupCode,
     },

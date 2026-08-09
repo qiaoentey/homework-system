@@ -643,7 +643,7 @@ describe("student API", () => {
       .expect(400);
   });
 
-  it("updates only allowed profile fields with optimistic locking and history", async () => {
+  it("updates grade and allowed profile fields atomically with optimistic locking and history", async () => {
     const student = await insertStudent(pool);
     const current = await agent
       .get("/api/students?branch=MK&group=MK%20HAPPY")
@@ -654,6 +654,7 @@ describe("student API", () => {
       .set(studentHeaders())
       .send({
         updatedAt: current.body.items[0].updatedAt,
+        grade: "Y5",
         profile: {
           school: "New School",
           usualPickupTime: "17:30",
@@ -666,6 +667,10 @@ describe("student API", () => {
       })
       .expect(200);
 
+    expect(response.body).toMatchObject({
+      id: student.id,
+      grade: "Y5",
+    });
     expect(response.body.profile).toEqual({
       school: "New School",
       usualPickupTime: "17:30",
@@ -681,6 +686,7 @@ describe("student API", () => {
     )).rows).toEqual([{
       action: "profile_update",
       details: {
+        grade: "Y5",
         profile: {
           school: "New School",
           usualPickupTime: "17:30",
@@ -691,6 +697,15 @@ describe("student API", () => {
           dinnerTuesday: "不需要",
         },
       },
+    }]);
+    const stored = await pool.query(
+      "select id, grade, profile from students where id = $1",
+      [student.id],
+    );
+    expect(stored.rows).toEqual([{
+      id: student.id,
+      grade: "Y5",
+      profile: response.body.profile,
     }]);
 
     const conflict = await agent
@@ -706,6 +721,16 @@ describe("student API", () => {
 
   it("rejects unknown profile keys, non-UUID targets, and deleted selections", async () => {
     const student = await insertStudent(pool);
+
+    await agent
+      .patch(`/api/students/${student.id}/profile`)
+      .set(studentHeaders())
+      .send({
+        updatedAt: student.updated_at.toISOString(),
+        grade: "   ",
+        profile: { school: "Valid" },
+      })
+      .expect(400);
 
     await agent
       .patch(`/api/students/${student.id}/profile`)
