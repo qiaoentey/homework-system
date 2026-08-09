@@ -6,7 +6,7 @@ const APPROVED_COUNTS = {
   "MK HAPPY": 82,
   "MK QIAO EN": 40,
   "MK WEN XUAN": 18,
-  "WS HUILING": 46,
+  "WS HUILING": 89,
   "WS JIA WEN": 61,
   "WS MIXIN": 42,
   "巧恩 STP": 90,

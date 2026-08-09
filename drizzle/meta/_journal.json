@@ -36,6 +36,13 @@
       "when": 1785850000000,
       "tag": "0004_stp_janice",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786262400000,
+      "tag": "0005_ws_huiling_additions",
+      "breakpoints": true
     }
   ]
 }

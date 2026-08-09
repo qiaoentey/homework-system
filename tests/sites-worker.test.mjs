@@ -9,6 +9,7 @@ import {
 } from "jose";
 import { parseRosterCsv, ROSTER_FILES } from "../scripts/import-rosters.mjs";
 import { JANICE_ROSTER } from "./fixtures/janiceRoster.js";
+import { WS_HUILING_REQUESTED_ROSTER } from "./fixtures/wsHuilingRequestedRoster.js";
 import * as workerAuth from "../worker/auth.js";
 import worker from "../worker/index.js";
 import { createSitesD1 } from "./helpers/sitesD1.mjs";
@@ -52,6 +53,11 @@ const emptyProfile = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  detentionType: "",
+  specialNoteHighC: "",
+  specialNoteDailyHomeworkPhoto: "",
+  specialNoteNotifyIncompleteHomework: "",
+  specialNoteOther: "",
 };
 const enrolmentConflictCases = [
   ["name", { name: "ANOTHER STUDENT" }, groupHeaders()],
@@ -77,7 +83,7 @@ const approvedCounts = {
   "SY STP": 50,
   "YUAN NING STP": 43,
   "JANICE STP": 52,
-  "WS HUILING": 46,
+  "WS HUILING": 89,
   "WS JIA WEN": 61,
   "WS MIXIN": 42,
 };
@@ -544,7 +550,7 @@ test("applies the breakpoint-delimited Sites migration idempotently with exact a
       )));
       total += response.total;
     }
-    assert.equal(total, 607);
+    assert.equal(total, 650);
 
     const branchByGroup = Object.fromEntries(
       Object.keys(approvedCounts).map((groupCode) => [
@@ -595,6 +601,22 @@ test("applies the breakpoint-delimited Sites migration idempotently with exact a
       janice.results.map(({ name, grade }) => [name, grade]),
       JANICE_ROSTER,
     );
+
+    const wsHuiling = await env.DB.prepare(
+      `SELECT name, grade
+       FROM students
+       WHERE group_code = 'WS HUILING' AND status = 'active'
+       ORDER BY source_ref`,
+    ).all();
+    assert.equal(wsHuiling.results.length, 89);
+    const wsHuilingIdentities = new Set(
+      wsHuiling.results.map(({ name, grade }) => `${name}\u0000${grade}`),
+    );
+    for (const [name, grade] of WS_HUILING_REQUESTED_ROSTER) {
+      assert.ok(wsHuilingIdentities.has(`${name}\u0000${grade}`), `${name} ${grade}`);
+    }
+    assert.equal(wsHuilingIdentities.has("chen yi qi\u0000Y1"), false);
+    assert.equal(wsHuilingIdentities.has("胡浩文\u0000Y3"), false);
 
     const transferred = await env.DB.prepare(
       `SELECT id, source_ref, group_code
@@ -886,6 +908,11 @@ test("atomically rejects one of two concurrent profile updates with the same ver
             dinnerRequired: "需要",
             dinnerMonday: "需要",
             dinnerTuesday: "不需要",
+            detentionType: "功课留堂",
+            specialNoteHighC: "需要",
+            specialNoteDailyHomeworkPhoto: "需要",
+            specialNoteNotifyIncompleteHomework: "需要",
+            specialNoteOther: "放学前提醒带水壶",
             careProgram: "功课班",
             homeworkArrivalTime: "14:00",
             homeworkDepartureTime: "18:00",
@@ -905,6 +932,11 @@ test("atomically rejects one of two concurrent profile updates with the same ver
     assert.equal(seeded.profile.dinnerRequired, "需要");
     assert.equal(seeded.profile.dinnerMonday, "需要");
     assert.equal(seeded.profile.dinnerTuesday, "不需要");
+    assert.equal(seeded.profile.detentionType, "功课留堂");
+    assert.equal(seeded.profile.specialNoteHighC, "需要");
+    assert.equal(seeded.profile.specialNoteDailyHomeworkPhoto, "需要");
+    assert.equal(seeded.profile.specialNoteNotifyIncompleteHomework, "需要");
+    assert.equal(seeded.profile.specialNoteOther, "放学前提醒带水壶");
     assert.equal(seeded.profile.careProgram, "功课班");
     assert.equal(seeded.profile.homeworkArrivalTime, "14:00");
     assert.equal(seeded.profile.homeworkDepartureTime, "18:00");
@@ -1442,6 +1474,7 @@ test("emits the files required by Sites packaging", async () => {
   await access(new URL("../dist/.openai/drizzle/0000_daycare_sites.sql", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/0001_enrolment_idempotency.sql", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/0002_shared_password_access.sql", import.meta.url));
+  await access(new URL("../dist/.openai/drizzle/0005_ws_huiling_additions.sql", import.meta.url));
   await access(new URL("../dist/.openai/drizzle/meta/_journal.json", import.meta.url));
   const packagedSchema = await import("../dist/db/schema.ts");
   assert.ok(packagedSchema.students);

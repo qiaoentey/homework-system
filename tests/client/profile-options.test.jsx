@@ -38,6 +38,11 @@ const EMPTY_PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  detentionType: "",
+  specialNoteHighC: "",
+  specialNoteDailyHomeworkPhoto: "",
+  specialNoteNotifyIncompleteHomework: "",
+  specialNoteOther: "",
 };
 
 function student(overrides = {}) {
@@ -482,5 +487,34 @@ describe("restored student profile choices", () => {
     expect(screen.getByRole("option", { name: "其他司机（现有资料）" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "星期一" })).toHaveValue("18:00");
     expect(screen.getByRole("option", { name: "18:00（现有资料）" })).toBeInTheDocument();
+  });
+
+  it("records one detention choice, multiple special notes, and custom note text", () => {
+    renderProfile();
+
+    const detention = screen.getByRole("combobox", { name: "留堂" });
+    expect(within(detention).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择",
+      "听写留堂",
+      "功课留堂",
+      "不可以留堂",
+    ]);
+    fireEvent.change(detention, { target: { value: "功课留堂" } });
+    expect(detention).toHaveValue("功课留堂");
+
+    for (const note of [
+      "高c",
+      "一定要每天拍照功课进群组给家长",
+      "来不及完成功课一定要通知家长",
+    ]) {
+      const checkbox = screen.getByRole("checkbox", { name: note, exact: true });
+      expect(checkbox).not.toBeChecked();
+      fireEvent.click(checkbox);
+      expect(checkbox).toBeChecked();
+    }
+
+    const other = screen.getByRole("textbox", { name: "其他备注" });
+    fireEvent.change(other, { target: { value: "放学前提醒带水壶" } });
+    expect(other).toHaveValue("放学前提醒带水壶");
   });
 });

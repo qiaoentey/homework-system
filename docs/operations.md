@@ -88,7 +88,7 @@ The approved counts are:
 | MK | MK HAPPY | 82 |
 | MK | MK QIAO EN | 40 |
 | MK | MK WEN XUAN | 18 |
-| WS | WS HUILING | 46 |
+| WS | WS HUILING | 89 |
 | WS | WS JIA WEN | 61 |
 | WS | WS MIXIN | 42 |
 | STP | 巧恩 STP | 90 |

@@ -602,6 +602,16 @@ button {
   color: #5e4900;
 }
 
+.profile-label--note {
+  border-color: #b9a3ed;
+  background: #f3efff;
+  color: #5b3ea8;
+}
+
+.profile-label--note .profile-label__icon {
+  background: #7755c9;
+}
+
 .student-card__pickup {
   display: grid;
   grid-template-columns: auto auto;
@@ -915,6 +925,57 @@ button {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
+}
+
+.student-profile-fields__notes {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-line);
+}
+
+.student-profile-fields__notes > h3,
+.student-profile-fields__special-notes > h4 {
+  margin: 0;
+  color: var(--color-navy);
+  font-size: 14px;
+}
+
+.student-profile-fields__notes > label {
+  max-width: 260px;
+}
+
+.student-profile-fields__special-notes {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(119, 85, 201, 0.22);
+  border-radius: 14px;
+  background: #f8f5ff;
+}
+
+.profile-form .student-profile-fields__special-notes > label:not(.student-profile-fields__other-note),
+.lifecycle-form .student-profile-fields__special-notes > label:not(.student-profile-fields__other-note) {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1.5px solid #d8cdef;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+}
+
+.profile-form .student-profile-fields__special-notes input[type="checkbox"],
+.lifecycle-form .student-profile-fields__special-notes input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: #7755c9;
 }
 
 .profile-form__actions {

@@ -666,6 +666,11 @@ describe("student API", () => {
           dinnerRequired: "需要",
           dinnerMonday: "需要",
           dinnerTuesday: "不需要",
+          detentionType: "功课留堂",
+          specialNoteHighC: "需要",
+          specialNoteDailyHomeworkPhoto: "需要",
+          specialNoteNotifyIncompleteHomework: "需要",
+          specialNoteOther: "放学前提醒带水壶",
         },
       })
       .expect(200);
@@ -685,6 +690,11 @@ describe("student API", () => {
       dinnerRequired: "需要",
       dinnerMonday: "需要",
       dinnerTuesday: "不需要",
+      detentionType: "功课留堂",
+      specialNoteHighC: "需要",
+      specialNoteDailyHomeworkPhoto: "需要",
+      specialNoteNotifyIncompleteHomework: "需要",
+      specialNoteOther: "放学前提醒带水壶",
     });
     expect((await pool.query(
       "select action, details from student_activity where student_id = $1",
@@ -704,6 +714,11 @@ describe("student API", () => {
           dinnerRequired: "需要",
           dinnerMonday: "需要",
           dinnerTuesday: "不需要",
+          detentionType: "功课留堂",
+          specialNoteHighC: "需要",
+          specialNoteDailyHomeworkPhoto: "需要",
+          specialNoteNotifyIncompleteHomework: "需要",
+          specialNoteOther: "放学前提醒带水壶",
         },
       },
     }]);

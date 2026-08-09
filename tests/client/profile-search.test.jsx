@@ -46,6 +46,11 @@ const PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  detentionType: "",
+  specialNoteHighC: "",
+  specialNoteDailyHomeworkPhoto: "",
+  specialNoteNotifyIncompleteHomework: "",
+  specialNoteOther: "",
 };
 
 const HAYDEN = {
@@ -84,6 +89,14 @@ const PROFILE_LABELS = [
   "星期三",
   "星期四",
   "星期五",
+  "留堂",
+  "其他备注",
+];
+
+const SPECIAL_NOTE_LABELS = [
+  "高c",
+  "一定要每天拍照功课进群组给家长",
+  "来不及完成功课一定要通知家长",
 ];
 
 const BASE_PROFILE_LABELS = PROFILE_LABELS.filter((label) => (
@@ -251,7 +264,10 @@ describe("current-group search and safe profile selection", () => {
           : screen.getByLabelText(label, { exact: true });
       expect(field).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(24);
+    for (const label of SPECIAL_NOTE_LABELS) {
+      expect(screen.getByRole("checkbox", { name: label, exact: true })).toBeVisible();
+    }
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(29);
     const grade = screen.getByLabelText("年级");
     expect(grade).toHaveValue("Y3");
     for (const option of ["F4", "F5", "F6"]) {

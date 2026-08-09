@@ -50,7 +50,7 @@ export function StudentCard({
                 <span
                   aria-label={label.ariaLabel}
                   className={`profile-label profile-label--${label.kind}`}
-                  key={label.kind}
+                  key={`${label.kind}:${label.text}`}
                   role="listitem"
                 >
                   <span aria-hidden="true" className="profile-label__icon">{label.icon}</span>

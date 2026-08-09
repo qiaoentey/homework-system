@@ -29,6 +29,11 @@ export const PROFILE_FIELDS = [
   ["homeworkWednesday", "星期三有来"],
   ["homeworkThursday", "星期四有来"],
   ["homeworkFriday", "星期五有来"],
+  ["detentionType", "留堂"],
+  ["specialNoteHighC", "高c"],
+  ["specialNoteDailyHomeworkPhoto", "一定要每天拍照功课进群组给家长"],
+  ["specialNoteNotifyIncompleteHomework", "来不及完成功课一定要通知家长"],
+  ["specialNoteOther", "其他备注"],
 ];
 
 export const EMPTY_PROFILE = Object.fromEntries(

@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it } from "vitest";
 import { importRosters, ROSTER_FILES } from "../../scripts/import-rosters.mjs";
 import { createTestDatabase } from "../helpers/testDatabase.js";
 import { JANICE_ROSTER } from "../fixtures/janiceRoster.js";
+import { WS_HUILING_REQUESTED_ROSTER } from "../fixtures/wsHuilingRequestedRoster.js";
 
 const APPROVED_COUNTS = {
   "MK HAPPY": 82,
   "MK QIAO EN": 40,
   "MK WEN XUAN": 18,
-  "WS HUILING": 46,
+  "WS HUILING": 89,
   "WS JIA WEN": 61,
   "WS MIXIN": 42,
   "巧恩 STP": 90,
@@ -42,6 +43,14 @@ describe("approved roster import", () => {
       .filter((row) => row.groupCode === "JANICE STP")
       .map(({ name, grade }) => [name, grade]))
       .toEqual(JANICE_ROSTER);
+    const wsHuiling = result.rows.filter((row) => row.groupCode === "WS HUILING");
+    expect(wsHuiling).toHaveLength(89);
+    expect(wsHuiling.map(({ name, grade }) => [name, grade]))
+      .toEqual(expect.arrayContaining(WS_HUILING_REQUESTED_ROSTER));
+    expect(wsHuiling.filter(({ name }) => name === "颜凯峯").map(({ grade }) => grade))
+      .toEqual(["Y3", "Y2"]);
+    expect(wsHuiling).not.toContainEqual(expect.objectContaining({ name: "chen yi qi" }));
+    expect(wsHuiling).not.toContainEqual(expect.objectContaining({ name: "胡浩文" }));
     for (const label of ["假期通知", "午餐伙食", "晚餐伙食", "liew妈妈", "Daycare助理"]) {
       expect(result.rows).not.toContainEqual(expect.objectContaining({
         groupCode: "MK HAPPY",

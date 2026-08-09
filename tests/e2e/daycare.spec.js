@@ -157,6 +157,22 @@ test("Qiao En STP loads all 90 students through browser-safe headers", async ({ 
   await expect(page.getByText("名单载入失败，请重试")).toHaveCount(0);
 });
 
+test("WS Huiling merges the supplied roster without duplicating same-grade students", async ({ page }) => {
+  await openRoster(page, "WS", "HUILING", "WS HUILING");
+  await expect(page.getByText("只显示当前老师的在读学生 · 共 89 名")).toBeVisible();
+
+  const duplicate = await listStudents(page, "WS", "WS HUILING", "active", "颜凯峯");
+  expect(duplicate.status).toBe(200);
+  expect(duplicate.body.total).toBe(2);
+  expect(duplicate.body.items.map(({ name, grade }) => [name, grade])
+    .sort((left, right) => left[1].localeCompare(right[1])))
+    .toEqual([["颜凯峯", "Y2"], ["颜凯峯", "Y3"]]);
+
+  const corrected = await listStudents(page, "WS", "WS HUILING", "active", "陈怡棋");
+  expect(corrected.body.items.map(({ name, grade }) => [name, grade]))
+    .toEqual([["陈怡棋", "Y1"]]);
+});
+
 test("Yuan Ning STP loads only the approved 43 students", async ({ page }) => {
   await openRoster(page, "STP", "YUAN NING", "YUAN NING STP");
   await expect(page.getByText("只显示当前老师的在读学生 · 共 43 名")).toBeVisible();
@@ -287,6 +303,14 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await enrol.getByRole("combobox", { name: "星期一", exact: true }).selectOption("17:00");
   await enrol.getByRole("combobox", { name: "星期三", exact: true }).selectOption("17:00");
   await enrol.getByRole("combobox", { name: "星期五", exact: true }).selectOption("16:00");
+  await enrol.getByRole("combobox", { name: "留堂", exact: true }).selectOption("功课留堂");
+  await enrol.getByRole("checkbox", { name: "高c", exact: true }).check();
+  await enrol.getByRole("checkbox", {
+    name: "一定要每天拍照功课进群组给家长",
+    exact: true,
+  }).check();
+  await enrol.getByRole("textbox", { name: "其他备注", exact: true })
+    .fill("放学前提醒带水壶");
   const createdResponse = page.waitForResponse((response) => (
     response.url().endsWith("/api/students") &&
     response.request().method() === "POST" &&
@@ -327,6 +351,11 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     lateStayMonday: "17:00",
     lateStayWednesday: "17:00",
     lateStayFriday: "16:00",
+    detentionType: "功课留堂",
+    specialNoteHighC: "需要",
+    specialNoteDailyHomeworkPhoto: "需要",
+    specialNoteNotifyIncompleteHomework: "",
+    specialNoteOther: "放学前提醒带水壶",
   });
 
   const studentCard = page.getByTestId("student-card").filter({
@@ -346,6 +375,15 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     "留校 · 周一、三 17:00 · 周五 16:00",
     { exact: true },
   )).toBeVisible();
+  await expect(studentCard.getByLabel("特别备注 · 高c", { exact: true })).toBeVisible();
+  await expect(studentCard.getByLabel(
+    "特别备注 · 一定要每天拍照功课进群组给家长",
+    { exact: true },
+  )).toBeVisible();
+  await expect(studentCard.getByLabel(
+    "特别备注 · 放学前提醒带水壶",
+    { exact: true },
+  )).toBeVisible();
   const arrive = studentCard.getByRole("button", { name: "到", exact: true });
   await arrive.click();
   await expect(studentCard.getByText("已保存")).toBeVisible();
@@ -361,7 +399,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await expect(page.getByLabel("学校", { exact: true })).toHaveValue("一校");
   await expect(page.getByLabel("学校班级", { exact: true })).toHaveValue("");
   await page.getByRole("button", { name: "保存学生资料" }).click();
-  await expect(page.getByText("资料已保存")).toBeVisible();
+  await expect(page.getByText("资料已保存", { exact: true })).toBeVisible();
   await expect(studentCard.getByText("Y4", { exact: true })).toBeVisible();
   const regraded = await listStudents(page, "MK", "MK WEN XUAN", "active", name);
   expect(regraded.body.items).toHaveLength(1);
@@ -421,6 +459,11 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     lateStayMonday: "17:00",
     lateStayWednesday: "17:00",
     lateStayFriday: "16:00",
+    detentionType: "功课留堂",
+    specialNoteHighC: "需要",
+    specialNoteDailyHomeworkPhoto: "需要",
+    specialNoteNotifyIncompleteHomework: "",
+    specialNoteOther: "放学前提醒带水壶",
   });
 
   const attendance = await attendanceFor(
@@ -518,8 +561,11 @@ test("empty search clears the previous profile and removes its save action", asy
   await expect(page.getByRole("heading", { name: "请选择学生" })).toBeVisible();
   await expect(page.getByRole("button", { name: "保存学生资料" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "写留言" })).toHaveCount(0);
-  for (const input of await page.locator(".profile-form input").all()) {
+  for (const input of await page.locator('.profile-form input:not([type="checkbox"])').all()) {
     await expect(input).toHaveValue("");
+  }
+  for (const checkbox of await page.locator('.profile-form input[type="checkbox"]').all()) {
+    await expect(checkbox).not.toBeChecked();
   }
 });
 

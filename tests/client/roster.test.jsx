@@ -40,6 +40,11 @@ const EMPTY_PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  detentionType: "",
+  specialNoteHighC: "",
+  specialNoteDailyHomeworkPhoto: "",
+  specialNoteNotifyIncompleteHomework: "",
+  specialNoteOther: "",
 };
 
 function student(index, overrides = {}) {
@@ -123,6 +128,11 @@ describe("virtualized current-group roster", () => {
         lateStayMonday: "17:00",
         lateStayWednesday: "17:00",
         lateStayFriday: "18:00",
+        detentionType: "功课留堂",
+        specialNoteHighC: "需要",
+        specialNoteDailyHomeworkPhoto: "需要",
+        specialNoteNotifyIncompleteHomework: "需要",
+        specialNoteOther: "放学前提醒带水壶",
       },
     });
     vi.stubGlobal("fetch", vi.fn(async (url) => {
@@ -137,7 +147,7 @@ describe("virtualized current-group roster", () => {
     const card = await screen.findByTestId("student-card");
     expect(within(card).getByText("启智 · 1J")).toBeVisible();
     const labelList = within(card).getByRole("list", { name: "Adam Herwan 资料标签" });
-    expect(within(labelList).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(labelList).getAllByRole("listitem")).toHaveLength(8);
     expect(within(card).getByRole("button", { name: "选择 Adam Herwan" }))
       .not.toContainElement(labelList);
 
@@ -146,6 +156,10 @@ describe("virtualized current-group roster", () => {
       ["功课班 · 周一、三、五 · 14:00–18:00", "homework"],
       ["晚餐 · 周一、三", "dinner"],
       ["留校 · 周一、三 17:00 · 周五 18:00", "stay"],
+      ["特别备注 · 高c", "note"],
+      ["特别备注 · 一定要每天拍照功课进群组给家长", "note"],
+      ["特别备注 · 来不及完成功课一定要通知家长", "note"],
+      ["特别备注 · 放学前提醒带水壶", "note"],
     ];
     for (const [label, kind] of expectedLabels) {
       expect(within(card).getByLabelText(label)).toHaveClass(`profile-label--${kind}`);

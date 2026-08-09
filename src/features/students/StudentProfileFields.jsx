@@ -39,6 +39,12 @@ const HOMEWORK_DAY_FIELDS = [
   ["homeworkFriday", "星期五"],
 ];
 
+const SPECIAL_NOTE_FIELDS = [
+  ["specialNoteHighC", "高c"],
+  ["specialNoteDailyHomeworkPhoto", "一定要每天拍照功课进群组给家长"],
+  ["specialNoteNotifyIncompleteHomework", "来不及完成功课一定要通知家长"],
+];
+
 function ExistingOption({ value, choices }) {
   if (!value || choices.includes(value)) return null;
   return <option value={value}>{value}（现有资料）</option>;
@@ -327,6 +333,49 @@ export function StudentProfileFields({
               </select>
             </label>
           ))}
+        </div>
+      </div>
+
+      <div className="student-profile-fields__notes">
+        <h3>留堂与特别备注</h3>
+        <label data-testid={fieldTestId}>
+          <span>留堂</span>
+          <select
+            aria-label="留堂"
+            disabled={disabled}
+            value={values.detentionType}
+            onChange={(event) => onChange("detentionType", event.target.value)}
+          >
+            <option value="">请选择</option>
+            <option value="听写留堂">听写留堂</option>
+            <option value="功课留堂">功课留堂</option>
+            <option value="不可以留堂">不可以留堂</option>
+          </select>
+        </label>
+        <div className="student-profile-fields__special-notes">
+          <h4>特别备注</h4>
+          {SPECIAL_NOTE_FIELDS.map(([field, label]) => (
+            <label data-testid={fieldTestId} key={field}>
+              <input
+                aria-label={label}
+                type="checkbox"
+                disabled={disabled}
+                checked={values[field] === "需要"}
+                onChange={(event) => onChange(field, event.target.checked ? "需要" : "")}
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+          <label data-testid={fieldTestId} className="student-profile-fields__other-note">
+            <span>其他备注</span>
+            <input
+              aria-label="其他备注"
+              type="text"
+              disabled={disabled}
+              value={values.specialNoteOther}
+              onChange={(event) => onChange("specialNoteOther", event.target.value)}
+            />
+          </label>
         </div>
       </div>
     </div>

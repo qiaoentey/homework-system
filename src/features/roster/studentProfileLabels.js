@@ -76,5 +76,18 @@ export function studentProfileLabels(profile) {
     labels.push(profileLabel("stay", "留", "留校", stayDetails));
   }
 
+  const specialNotes = [
+    ["specialNoteHighC", "高c"],
+    ["specialNoteDailyHomeworkPhoto", "一定要每天拍照功课进群组给家长"],
+    ["specialNoteNotifyIncompleteHomework", "来不及完成功课一定要通知家长"],
+  ];
+  for (const [field, note] of specialNotes) {
+    if (clean(profile?.[field]) === "需要") {
+      labels.push(profileLabel("note", "备", "特别备注", [note]));
+    }
+  }
+  const otherNote = clean(profile?.specialNoteOther);
+  if (otherNote) labels.push(profileLabel("note", "备", "特别备注", [otherNote]));
+
   return labels;
 }

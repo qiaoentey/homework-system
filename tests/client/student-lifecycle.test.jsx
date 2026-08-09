@@ -52,6 +52,11 @@ const EMPTY_PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  detentionType: "",
+  specialNoteHighC: "",
+  specialNoteDailyHomeworkPhoto: "",
+  specialNoteNotifyIncompleteHomework: "",
+  specialNoteOther: "",
 };
 
 function student(index, overrides = {}) {
@@ -209,7 +214,7 @@ describe("student enrolment", () => {
       "WS MIXIN",
     ]);
     expect(within(dialog).queryByRole("option", { name: "MK HAPPY" })).not.toBeInTheDocument();
-    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(11);
+    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(16);
     expect(within(dialog).getByRole("button", { name: "保存学生" })).toBeDisabled();
 
     fireEvent.change(within(dialog).getByLabelText("学生姓名"), {
@@ -249,6 +254,17 @@ describe("student enrolment", () => {
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期一" }));
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期三" }));
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期五" }));
+    fireEvent.change(within(dialog).getByRole("combobox", { name: "留堂" }), {
+      target: { value: "功课留堂" },
+    });
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "高c", exact: true }));
+    fireEvent.click(within(dialog).getByRole("checkbox", {
+      name: "来不及完成功课一定要通知家长",
+      exact: true,
+    }));
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "其他备注" }), {
+      target: { value: "放学前提醒带水壶" },
+    });
     const save = within(dialog).getByRole("button", { name: "保存学生" });
     fireEvent.click(save);
     fireEvent.click(save);
@@ -292,6 +308,10 @@ describe("student enrolment", () => {
         homeworkWednesday: "有来",
         homeworkThursday: "",
         homeworkFriday: "有来",
+        detentionType: "功课留堂",
+        specialNoteHighC: "需要",
+        specialNoteNotifyIncompleteHomework: "需要",
+        specialNoteOther: "放学前提醒带水壶",
       },
     });
 

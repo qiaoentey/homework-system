@@ -52,6 +52,11 @@ const PROFILE_FIELDS = [
   "homeworkWednesday",
   "homeworkThursday",
   "homeworkFriday",
+  "detentionType",
+  "specialNoteHighC",
+  "specialNoteDailyHomeworkPhoto",
+  "specialNoteNotifyIncompleteHomework",
+  "specialNoteOther",
 ];
 const ATTENDANCE_EVENTS = new Set([
   "pickup",
