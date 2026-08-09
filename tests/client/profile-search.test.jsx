@@ -72,7 +72,7 @@ const PROFILE_LABELS = [
   "平常回家时间",
   "回家载送",
   "Van 司机",
-  "Van 回程时间",
+  "Van 载送时间",
   "星期一 Van",
   "星期二 Van",
   "星期三 Van",

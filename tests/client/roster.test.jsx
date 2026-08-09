@@ -113,7 +113,7 @@ describe("virtualized current-group roster", () => {
         usualPickupTime: "17:30",
         pickupMethod: "Van",
         vanDriver: "Uncle Kent",
-        vanHomeTime: "17:00",
+        vanHomeTime: "19:00",
         vanMonday: "需要",
         vanWednesday: "需要",
         vanFriday: "需要",
@@ -156,7 +156,7 @@ describe("virtualized current-group roster", () => {
       .not.toContainElement(labelList);
 
     const expectedLabels = [
-      ["Van载送 · Uncle Kent · 周一、三、五 · 17:00", "van"],
+      ["Van载送 · Uncle Kent · 周一、三、五 · 7:00 PM", "van"],
       ["功课班 · 周一、三、五 · 14:00–18:00", "homework"],
       ["需要晚餐 · 小：周一、三 · 大：周二 · 未选大小：周五", "dinner"],
       ["留校 · 周一、三 17:00 · 周五 18:00", "stay"],
@@ -217,7 +217,7 @@ describe("virtualized current-group roster", () => {
 
     const card = await screen.findByTestId("student-card");
     expect(within(card).getByText("启智")).toBeVisible();
-    expect(within(card).getByLabelText("Van载送 · 平日 · 16:30"))
+    expect(within(card).getByLabelText("Van载送 · 平日 · 4:30 PM"))
       .toHaveClass("profile-label--van");
     expect(within(card).getByLabelText("洗澡 · 不需要"))
       .toHaveClass("profile-label--shower");

@@ -237,7 +237,7 @@ describe("student enrolment", () => {
     fireEvent.change(within(dialog).getByLabelText("Van 司机"), {
       target: { value: "Tong" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Van 回程时间"), {
+    fireEvent.change(within(dialog).getByLabelText("Van 载送时间"), {
       target: { value: "17:30" },
     });
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期一 Van" }));

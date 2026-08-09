@@ -31,6 +31,12 @@ const VAN_DAY_FIELDS = [
   ["vanFriday", "星期五 Van", "星期五"],
 ];
 
+const VAN_HOME_TIME_OPTIONS = [
+  ["17:30", "5:30 PM"],
+  ["19:00", "7:00 PM"],
+  ["20:45", "8:45 PM"],
+];
+
 const HOMEWORK_DAY_FIELDS = [
   ["homeworkMonday", "星期一"],
   ["homeworkTuesday", "星期二"],
@@ -76,6 +82,7 @@ export function StudentProfileFields({
   const vanDriverOptions = vanDriverOptionsFor(branchCode);
   const stayTimeOptions = stayTimeOptionsFor(branchCode, values.school);
   const stayValues = stayTimeOptions.map(([value]) => value);
+  const vanHomeTimeValues = VAN_HOME_TIME_OPTIONS.map(([value]) => value);
   const detentionTypes = parseDetentionTypes(values.detentionType);
 
   function changeSchool(nextSchool) {
@@ -215,16 +222,6 @@ export function StudentProfileFields({
                 <ExistingOption value={values.vanDriver} choices={vanDriverOptions} />
               </select>
             </label>
-            <label data-testid={fieldTestId}>
-              <span>Van 回程时间</span>
-              <input
-                aria-label="Van 回程时间"
-                type="time"
-                disabled={disabled}
-                value={values.vanHomeTime}
-                onChange={(event) => onChange("vanHomeTime", event.target.value)}
-              />
-            </label>
             <div className="student-profile-fields__van-days">
               <h3>Van 载送星期</h3>
               <div>
@@ -242,6 +239,21 @@ export function StudentProfileFields({
                 ))}
               </div>
             </div>
+            <label data-testid={fieldTestId} className="student-profile-fields__van-time">
+              <span>Van 载送时间</span>
+              <select
+                aria-label="Van 载送时间"
+                disabled={disabled}
+                value={values.vanHomeTime}
+                onChange={(event) => onChange("vanHomeTime", event.target.value)}
+              >
+                <option value="">请选择时间</option>
+                {VAN_HOME_TIME_OPTIONS.map(([value, text]) => (
+                  <option key={value} value={value}>{text}</option>
+                ))}
+                <ExistingOption value={values.vanHomeTime} choices={vanHomeTimeValues} />
+              </select>
+            </label>
           </>
         ) : null}
       </div>

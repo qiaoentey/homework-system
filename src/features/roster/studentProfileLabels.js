@@ -12,6 +12,15 @@ function clean(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function displayTime(value) {
+  const normalized = clean(value);
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/u.exec(normalized);
+  if (!match) return normalized;
+
+  const hour = Number(match[1]);
+  return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? "AM" : "PM"}`;
+}
+
 function weekdaySummary(profile, field, activeValue) {
   const days = WEEKDAYS
     .filter((day) => clean(profile?.[day[field]]) === activeValue)
@@ -81,7 +90,7 @@ export function studentProfileLabels(profile) {
     labels.push(profileLabel("van", "V", "Van载送", [
       clean(profile?.vanDriver),
       weekdaySummary(profile, "van", "需要") || "平日",
-      clean(profile?.vanHomeTime) || clean(profile?.usualPickupTime),
+      displayTime(profile?.vanHomeTime) || displayTime(profile?.usualPickupTime),
     ]));
   }
 

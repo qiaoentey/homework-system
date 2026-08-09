@@ -4,7 +4,7 @@ export const PROFILE_FIELDS = [
   ["usualPickupTime", "平常回家时间"],
   ["pickupMethod", "回家载送"],
   ["vanDriver", "Van 司机"],
-  ["vanHomeTime", "Van 回程时间"],
+  ["vanHomeTime", "Van 载送时间"],
   ["vanMonday", "星期一 Van"],
   ["vanTuesday", "星期二 Van"],
   ["vanWednesday", "星期三 Van"],

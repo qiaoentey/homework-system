@@ -868,6 +868,11 @@ button {
   grid-column: 1 / -1;
 }
 
+.student-profile-fields__van-time {
+  grid-column: 1 / -1;
+  max-width: 260px;
+}
+
 .student-profile-fields__homework-days h3,
 .student-profile-fields__van-days h3 {
   margin: 0;
