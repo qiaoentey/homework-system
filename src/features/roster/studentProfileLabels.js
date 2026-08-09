@@ -38,6 +38,19 @@ function staySummaries(profile) {
   return [...daysByTime].map(([time, days]) => `周${days.join("、")} ${time}`);
 }
 
+function dinnerSummaries(profile) {
+  return [
+    ["小", "小"],
+    ["大", "大"],
+    ["需要", "未选大小"],
+  ].flatMap(([value, label]) => {
+    const days = WEEKDAYS
+      .filter((day) => clean(profile?.[day.dinner]) === value)
+      .map((day) => day.short);
+    return days.length > 0 ? [`${label}：周${days.join("、")}`] : [];
+  });
+}
+
 function profileLabel(kind, icon, title, details = []) {
   const text = [title, ...details.filter(Boolean)].join(" · ");
   return { kind, icon, text, ariaLabel: text };
@@ -66,9 +79,7 @@ export function studentProfileLabels(profile) {
   }
 
   if (clean(profile?.dinnerRequired) === "需要") {
-    labels.push(profileLabel("dinner", "餐", "晚餐", [
-      weekdaySummary(profile, "dinner", "需要"),
-    ]));
+    labels.push(profileLabel("dinner", "餐", "晚餐", dinnerSummaries(profile)));
   }
 
   const stayDetails = staySummaries(profile);

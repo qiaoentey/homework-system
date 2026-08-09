@@ -28,9 +28,9 @@ const PROFILE = {
   vanThursday: "",
   vanFriday: "需要",
   dinnerRequired: "需要",
-  dinnerMonday: "需要",
+  dinnerMonday: "小",
   dinnerTuesday: "不需要",
-  dinnerWednesday: "需要",
+  dinnerWednesday: "大",
   dinnerThursday: "不需要",
   dinnerFriday: "不需要",
   lateStayMonday: "17:00",
@@ -91,9 +91,10 @@ const PROFILE_LABELS = [
   "星期四",
   "星期五",
   "洗澡",
-  "留堂",
   "其他备注",
 ];
+
+const DETENTION_LABELS = ["听写留堂", "功课留堂", "不可以留堂"];
 
 const SPECIAL_NOTE_LABELS = [
   "高c",
@@ -239,6 +240,9 @@ describe("current-group search and safe profile selection", () => {
     for (const label of BASE_PROFILE_LABELS) {
       expect(screen.getByLabelText(label, { exact: true })).toHaveValue("");
     }
+    for (const label of DETENTION_LABELS) {
+      expect(screen.getByRole("checkbox", { name: label, exact: true })).not.toBeChecked();
+    }
 
     const searchUrl = fetchMock.mock.calls
       .map(([url]) => url)
@@ -269,7 +273,10 @@ describe("current-group search and safe profile selection", () => {
     for (const label of SPECIAL_NOTE_LABELS) {
       expect(screen.getByRole("checkbox", { name: label, exact: true })).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(30);
+    for (const label of DETENTION_LABELS) {
+      expect(screen.getByRole("checkbox", { name: label, exact: true })).toBeVisible();
+    }
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(32);
     const grade = screen.getByLabelText("年级");
     expect(grade).toHaveValue("Y3");
     for (const option of ["F4", "F5", "F6"]) {

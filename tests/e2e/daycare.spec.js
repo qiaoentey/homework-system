@@ -293,7 +293,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await enrol.getByRole("checkbox", { name: "星期三 Van", exact: true }).check();
   await enrol.getByRole("checkbox", { name: "星期五 Van", exact: true }).check();
   await enrol.getByLabel("是否需要晚餐", { exact: true }).selectOption("需要");
-  await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("需要");
+  await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("小");
   await enrol.getByLabel("学生类型", { exact: true }).selectOption("功课班");
   await enrol.getByLabel("来校时间", { exact: true }).fill("14:00");
   await enrol.getByLabel("回家时间", { exact: true }).fill("18:00");
@@ -303,7 +303,8 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await enrol.getByRole("combobox", { name: "星期一", exact: true }).selectOption("17:00");
   await enrol.getByRole("combobox", { name: "星期三", exact: true }).selectOption("17:00");
   await enrol.getByRole("combobox", { name: "星期五", exact: true }).selectOption("16:00");
-  await enrol.getByRole("combobox", { name: "留堂", exact: true }).selectOption("功课留堂");
+  await enrol.getByRole("checkbox", { name: "听写留堂", exact: true }).check();
+  await enrol.getByRole("checkbox", { name: "功课留堂", exact: true }).check();
   await enrol.getByRole("combobox", { name: "洗澡", exact: true }).selectOption("需要");
   await enrol.getByRole("checkbox", { name: "高c", exact: true }).check();
   await enrol.getByRole("checkbox", {
@@ -336,7 +337,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     vanThursday: "",
     vanFriday: "需要",
     dinnerRequired: "需要",
-    dinnerMonday: "需要",
+    dinnerMonday: "小",
     dinnerTuesday: "不需要",
     dinnerWednesday: "不需要",
     dinnerThursday: "不需要",
@@ -352,7 +353,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     lateStayMonday: "17:00",
     lateStayWednesday: "17:00",
     lateStayFriday: "16:00",
-    detentionType: "功课留堂",
+    detentionType: "听写留堂|功课留堂",
     showerRequired: "需要",
     specialNoteHighC: "需要",
     specialNoteDailyHomeworkPhoto: "需要",
@@ -372,7 +373,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     "功课班 · 周一、三、五 · 14:00–18:00",
     { exact: true },
   )).toBeVisible();
-  await expect(studentCard.getByLabel("晚餐 · 周一", { exact: true })).toBeVisible();
+  await expect(studentCard.getByLabel("晚餐 · 小：周一", { exact: true })).toBeVisible();
   await expect(studentCard.getByLabel(
     "留校 · 周一、三 17:00 · 周五 16:00",
     { exact: true },
@@ -446,7 +447,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     vanThursday: "",
     vanFriday: "需要",
     dinnerRequired: "需要",
-    dinnerMonday: "需要",
+    dinnerMonday: "小",
     dinnerTuesday: "不需要",
     dinnerWednesday: "不需要",
     dinnerThursday: "不需要",
@@ -462,7 +463,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     lateStayMonday: "17:00",
     lateStayWednesday: "17:00",
     lateStayFriday: "16:00",
-    detentionType: "功课留堂",
+    detentionType: "听写留堂|功课留堂",
     showerRequired: "需要",
     specialNoteHighC: "需要",
     specialNoteDailyHomeworkPhoto: "需要",

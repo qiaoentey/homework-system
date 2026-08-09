@@ -215,7 +215,7 @@ describe("student enrolment", () => {
       "WS MIXIN",
     ]);
     expect(within(dialog).queryByRole("option", { name: "MK HAPPY" })).not.toBeInTheDocument();
-    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(17);
+    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(19);
     expect(within(dialog).getByRole("button", { name: "保存学生" })).toBeDisabled();
 
     fireEvent.change(within(dialog).getByLabelText("学生姓名"), {
@@ -229,7 +229,7 @@ describe("student enrolment", () => {
       target: { value: "需要" },
     });
     fireEvent.change(within(dialog).getByLabelText("星期一晚餐"), {
-      target: { value: "需要" },
+      target: { value: "小" },
     });
     fireEvent.change(within(dialog).getByLabelText("回家载送"), {
       target: { value: "Van" },
@@ -255,9 +255,8 @@ describe("student enrolment", () => {
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期一" }));
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期三" }));
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期五" }));
-    fireEvent.change(within(dialog).getByRole("combobox", { name: "留堂" }), {
-      target: { value: "功课留堂" },
-    });
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "听写留堂" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "功课留堂" }));
     fireEvent.change(within(dialog).getByRole("combobox", { name: "洗澡" }), {
       target: { value: "需要" },
     });
@@ -299,7 +298,7 @@ describe("student enrolment", () => {
         vanWednesday: "需要",
         vanFriday: "需要",
         dinnerRequired: "需要",
-        dinnerMonday: "需要",
+        dinnerMonday: "小",
         dinnerTuesday: "不需要",
         dinnerWednesday: "不需要",
         dinnerThursday: "不需要",
@@ -313,7 +312,7 @@ describe("student enrolment", () => {
         homeworkThursday: "",
         homeworkFriday: "有来",
         showerRequired: "需要",
-        detentionType: "功课留堂",
+        detentionType: "听写留堂|功课留堂",
         specialNoteHighC: "需要",
         specialNoteNotifyIncompleteHomework: "需要",
         specialNoteOther: "放学前提醒带水壶",
