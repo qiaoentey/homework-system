@@ -550,6 +550,10 @@ describe("attendance API", () => {
         { id: unmarked.id, name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
       ],
     });
+    const currentClass = await agent
+      .get("/api/summary?branch=MK&group=MK%20HAPPY&date=2026-07-27")
+      .expect(200);
+    expect(currentClass.body).toEqual(mkHappy.summary);
     expect(response.body.groups.find(({ groupCode }) => groupCode === "WS HUILING"))
       .toMatchObject({
         summary: {

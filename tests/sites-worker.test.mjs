@@ -823,6 +823,11 @@ test("returns a signed-in daily dashboard for every daycare group", async () => 
         { id: students[3][0], name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
       ],
     });
+    const currentClass = await readJson(await apiWithD1(
+      env,
+      "/api/summary?branch=MK&group=MK%20HAPPY&date=2026-07-27",
+    ));
+    assert.deepEqual(currentClass, mkHappy.summary);
     assert.deepEqual(
       dashboard.groups.find(({ groupCode }) => groupCode === "MK WEN XUAN").summary,
       { expected: 0, arrived: 0, notArrived: 0, absent: 0, koko: 0, unmarked: 0 },

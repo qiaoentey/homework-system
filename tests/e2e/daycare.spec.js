@@ -117,6 +117,37 @@ test("first screen is usable and contains only the three approved branches", asy
   }
 });
 
+test("Dashboard shows every class and expands daily student statuses", async ({ page }, testInfo) => {
+  await page.getByRole("button", { name: "Dashboard" }).click();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(11);
+
+  const mkHappy = page.getByRole("article", { name: "MK HAPPY" });
+  await expect(mkHappy.locator(".dashboard-metric")).toHaveCount(6);
+  await expect(mkHappy.getByText("应到", { exact: true })).toBeVisible();
+  await expect(mkHappy.getByText("已到", { exact: true })).toBeVisible();
+  await expect(mkHappy.getByText("还没有", { exact: true })).toBeVisible();
+  await expect(mkHappy.getByText("缺席", { exact: true })).toBeVisible();
+  await expect(mkHappy.getByText("KOKO", { exact: true })).toBeVisible();
+  await expect(mkHappy.getByText("未点", { exact: true })).toBeVisible();
+
+  await mkHappy.getByRole("button", { name: "展开 MK HAPPY 名单" }).click();
+  await expect(mkHappy.locator(".dashboard-student").first()).toBeVisible();
+  await expect(mkHappy.locator(".dashboard-student").first().locator("span"))
+    .toContainText(/· (已到|缺席|KOKO|未点)/u);
+
+  await page.getByRole("button", { name: "WS", exact: true }).click();
+  await expect(page.getByRole("article")).toHaveCount(3);
+  await expect(page.getByRole("article", { name: "MK HAPPY" })).toHaveCount(0);
+
+  if (testInfo.project.name === "mobile-chromium") {
+    const box = await page.getByRole("article").first().boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  }
+});
+
 test("every branch exposes only its approved teacher groups", async ({ page }) => {
   for (const [branch, groups] of Object.entries(CATALOG)) {
     await page.getByRole("button", { name: branch, exact: true }).click();
@@ -518,10 +549,10 @@ test("failed attendance can be retried without leaving stale optimistic state", 
 
   const card = page.getByTestId("student-card").first();
   await expect(card.locator(".event-grid .event-button")).toHaveText([
-    "到", "缺席", "冲", "餐", "功", "补",
+    "到", "缺席", "KOKO", "冲", "餐", "功", "补",
   ]);
   await expect(page.getByRole("region", { name: "当前班级统计" })
-    .getByText("KOKO", { exact: true })).toHaveCount(0);
+    .getByText("KOKO", { exact: true })).toBeVisible();
   await expect(card.getByRole("button", { name: "清除今日", exact: true })).toHaveCount(0);
   const arrive = card.getByRole("button", { name: "到", exact: true });
   const previous = await arrive.getAttribute("aria-pressed");
