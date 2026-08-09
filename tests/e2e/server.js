@@ -17,6 +17,7 @@ const app = createApp({
     environment: "test",
     googleClientId: "e2e-client.apps.googleusercontent.com",
     allowedEmails: ["qiaoen9816@gmail.com"],
+    dashboardAllowedEmails: ["qiaoen9816@gmail.com"],
     emergencyPasswordHash,
   },
   googleVerifier: async (credential) => {

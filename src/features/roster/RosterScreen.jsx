@@ -345,9 +345,11 @@ export function RosterScreen({
         <button className="secondary-button" type="button" onClick={() => setLifecycleDialog("records")}>
           点名记录
         </button>
-        <button className="dashboard-button" type="button" onClick={onDashboard}>
-          Dashboard
-        </button>
+        {onDashboard ? (
+          <button className="dashboard-button" type="button" onClick={onDashboard}>
+            Dashboard
+          </button>
+        ) : null}
       </div>
 
       {toast ? <div className="lifecycle-toast" role="status">{toast}</div> : null}

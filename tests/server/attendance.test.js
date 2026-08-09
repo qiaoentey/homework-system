@@ -13,6 +13,7 @@ function testConfig() {
     environment: "test",
     googleClientId: "test-client.apps.googleusercontent.com",
     allowedEmails: ["teacher@example.com"],
+    dashboardAllowedEmails: ["emergency@local"],
     emergencyPasswordHash,
   };
 }
@@ -88,6 +89,30 @@ describe("attendance API", () => {
     await request(app)
       .get("/api/dashboard?date=2026-07-27")
       .expect(401);
+  });
+
+  it("rejects the three-branch Dashboard for a signed-in teacher outside the admin list", async () => {
+    const restrictedApp = createApp({
+      config: {
+        ...testConfig(),
+        dashboardAllowedEmails: ["teacher@example.com"],
+      },
+      pool,
+    });
+    const regularTeacher = request.agent(restrictedApp);
+    await regularTeacher
+      .post("/api/session/emergency")
+      .send({ password: "test-access" })
+      .expect(204);
+
+    const catalog = await regularTeacher.get("/api/catalog").expect(200);
+    expect(catalog.body.permissions).toEqual({ canViewDashboard: false });
+    await regularTeacher
+      .get("/api/dashboard?date=2026-07-27")
+      .expect(403, {
+        code: "DASHBOARD_ACCESS_DENIED",
+        error: "Dashboard access is not allowed",
+      });
   });
 
   it("lists scoped present, absent, unmarked, stopped-history, and conflict records", async () => {

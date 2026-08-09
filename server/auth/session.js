@@ -43,3 +43,24 @@ export function requireSession(request, response, next) {
   request.user = request.session.user;
   return next();
 }
+
+export function canViewDashboard(email, allowedEmails) {
+  if (typeof email !== "string" || !Array.isArray(allowedEmails)) return false;
+  const normalized = email.trim().toLowerCase();
+  return Boolean(normalized) && allowedEmails.some(
+    (allowedEmail) => typeof allowedEmail === "string"
+      && allowedEmail.trim().toLowerCase() === normalized,
+  );
+}
+
+export function requireDashboardAccess(allowedEmails) {
+  return (request, response, next) => {
+    if (!canViewDashboard(request.user?.email, allowedEmails)) {
+      return response.status(403).json({
+        code: "DASHBOARD_ACCESS_DENIED",
+        error: "Dashboard access is not allowed",
+      });
+    }
+    return next();
+  };
+}

@@ -1,5 +1,6 @@
 import {
   authenticateGoogle,
+  canViewDashboard,
   clearSessionCookie,
   readSession,
 } from "./auth.js";
@@ -307,8 +308,9 @@ async function scopedStudent(database, id, branchCode, groupCode, outsideStatus 
   return { student };
 }
 
-function catalogResponse() {
+function catalogResponse(dashboardAccess) {
   return {
+    permissions: { canViewDashboard: dashboardAccess },
     branches: BRANCHES.map((branch) => ({
       ...branch,
       groups: GROUPS
@@ -986,7 +988,16 @@ async function handleApi(request, env, url) {
       headers: { "set-cookie": clearSessionCookie() },
     });
   }
-  if (pathname === "/api/catalog" && request.method === "GET") return json(catalogResponse());
+  if (pathname === "/api/catalog" && request.method === "GET") {
+    return json(catalogResponse(canViewDashboard(identity, env)));
+  }
+  if (
+    pathname === "/api/dashboard"
+    && request.method === "GET"
+    && !canViewDashboard(identity, env)
+  ) {
+    return apiError(403, "DASHBOARD_ACCESS_DENIED", "Dashboard access is not allowed");
+  }
   const databaseRoute = [
     "/api/students",
     "/api/attendance",

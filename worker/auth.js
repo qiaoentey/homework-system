@@ -45,6 +45,21 @@ function allowedGoogleEmails(env) {
   ].map(normalizedEmail).filter(Boolean));
 }
 
+function dashboardAllowedEmails(env) {
+  return new Set(
+    (typeof env?.DASHBOARD_ALLOWED_EMAILS === "string"
+      ? env.DASHBOARD_ALLOWED_EMAILS.split(",")
+      : [])
+      .map(normalizedEmail)
+      .filter(Boolean),
+  );
+}
+
+export function canViewDashboard(identity, env) {
+  const email = normalizedEmail(identity?.email);
+  return Boolean(email) && dashboardAllowedEmails(env).has(email);
+}
+
 function validSessionSecret(env) {
   return typeof env?.ACCESS_SESSION_SECRET === "string"
     && env.ACCESS_SESSION_SECRET.length >= 32;

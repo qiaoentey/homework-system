@@ -159,6 +159,7 @@ function workerEnv(env = {}) {
     ACCESS_SESSION_SECRET: TEST_SESSION_SECRET,
     GOOGLE_CLIENT_ID: TEST_GOOGLE_CLIENT_ID,
     GOOGLE_ALLOWED_EMAIL: TEST_ALLOWED_EMAIL,
+    DASHBOARD_ALLOWED_EMAILS: TEST_ALLOWED_EMAIL,
     ...env,
   };
 }
@@ -230,6 +231,7 @@ async function apiWithD1(env, path, {
   body,
   headers = {},
   authenticated = true,
+  runtimeEnv = {},
 } = {}) {
   const cookie = authenticated ? await loginCookie(env.DB) : null;
   return worker.fetch(new Request(`https://example.test${path}`, {
@@ -240,7 +242,7 @@ async function apiWithD1(env, path, {
       ...(body === undefined ? {} : { "content-type": "application/json" }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  }), workerEnv({ DB: env.DB }));
+  }), workerEnv({ DB: env.DB, ...runtimeEnv }));
 }
 
 function groupHeaders(branchCode = "MK", groupCode = "MK HAPPY") {
@@ -450,6 +452,7 @@ test("serves the verified Google session and fixed branch catalog after login", 
     const catalog = await apiWithD1(env, "/api/catalog");
     assert.equal(catalog.status, 200);
     assert.deepEqual(await catalog.json(), {
+      permissions: { canViewDashboard: true },
       branches: [
         {
           code: "MK",
@@ -482,6 +485,36 @@ test("serves the verified Google session and fixed branch catalog after login", 
         },
       ],
     });
+  });
+});
+
+test("limits the three-branch Dashboard to the configured Gmail administrators", async () => {
+  await withD1(async (env) => {
+    const blockedRuntime = { DASHBOARD_ALLOWED_EMAILS: TEST_SECOND_ALLOWED_EMAIL };
+    const blockedCatalog = await readJson(await apiWithD1(env, "/api/catalog", {
+      runtimeEnv: blockedRuntime,
+    }));
+    assert.deepEqual(blockedCatalog.permissions, { canViewDashboard: false });
+
+    const blockedDashboard = await apiWithD1(env, "/api/dashboard?date=2026-07-27", {
+      runtimeEnv: blockedRuntime,
+    });
+    assert.equal(blockedDashboard.status, 403);
+    assert.deepEqual(await blockedDashboard.json(), {
+      code: "DASHBOARD_ACCESS_DENIED",
+      error: "Dashboard access is not allowed",
+    });
+
+    const adminRuntime = {
+      DASHBOARD_ALLOWED_EMAILS: ` ${TEST_SECOND_ALLOWED_EMAIL}, ${TEST_ALLOWED_EMAIL.toUpperCase()} `,
+    };
+    const adminCatalog = await readJson(await apiWithD1(env, "/api/catalog", {
+      runtimeEnv: adminRuntime,
+    }));
+    assert.deepEqual(adminCatalog.permissions, { canViewDashboard: true });
+    assert.equal((await apiWithD1(env, "/api/dashboard?date=2026-07-27", {
+      runtimeEnv: adminRuntime,
+    })).status, 200);
   });
 });
 

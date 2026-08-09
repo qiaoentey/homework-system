@@ -9,6 +9,7 @@ import { apiRequest } from "../../src/api/client.js";
 import { flowReducer, initialFlowState } from "../../src/state/flowReducer.js";
 
 const catalog = {
+  permissions: { canViewDashboard: true },
   branches: [
     {
       code: "MK",
@@ -52,13 +53,13 @@ function jsonResponse(status, body) {
   };
 }
 
-function signedInFetch() {
+function signedInFetch(catalogResponse = catalog) {
   return vi.fn(async (url, options = {}) => {
     if (url === "/api/session" && (options.method ?? "GET") === "GET") {
       return jsonResponse(200, { email: "teacher@example.com" });
     }
     if (url === "/api/catalog" && (options.method ?? "GET") === "GET") {
-      return jsonResponse(200, catalog);
+      return jsonResponse(200, catalogResponse);
     }
     if (url.startsWith("/api/dashboard?date=")) {
       return jsonResponse(200, { date: "2026-07-27", groups: [] });
@@ -141,6 +142,29 @@ describe.each([
     fireEvent.click(screen.getByRole("button", { name: "WS" }));
     expect(screen.getByRole("button", { name: "HUILING" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "HAPPY" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Dashboard permission", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("hides every Dashboard entry when the signed-in teacher lacks three-branch access", async () => {
+    vi.stubGlobal("fetch", signedInFetch({
+      ...catalog,
+      permissions: { canViewDashboard: false },
+    }));
+
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "请选择分院" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Dashboard" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "MK" }));
+    fireEvent.click(screen.getByRole("button", { name: "HAPPY" }));
+    expect(await screen.findByRole("heading", { name: "MK HAPPY" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Dashboard" })).not.toBeInTheDocument();
   });
 });
 

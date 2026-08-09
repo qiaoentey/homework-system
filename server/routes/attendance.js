@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireSession } from "../auth/session.js";
+import { requireDashboardAccess, requireSession } from "../auth/session.js";
 import { ATTENDANCE_EVENTS } from "../domain/attendance.js";
 import { BRANCHES, GROUPS } from "../domain/catalog.js";
 import { decodeHeaderValue } from "../http/headers.js";
@@ -107,7 +107,7 @@ function parseStudentContext(request, response) {
   return { id: id.data, date: date.data, ...context.value };
 }
 
-export function createAttendanceRouter({ pool }) {
+export function createAttendanceRouter({ pool, dashboardAllowedEmails = [] }) {
   const router = Router();
 
   router.get("/attendance", requireSession, route(async (request, response) => {
@@ -140,14 +140,19 @@ export function createAttendanceRouter({ pool }) {
     }));
   }));
 
-  router.get("/dashboard", requireSession, route(async (request, response) => {
-    const parsed = dashboardDateSchema.safeParse(request.query);
-    if (!parsed.success) {
-      error(response, 400, "INVALID_DASHBOARD_QUERY", "Invalid dashboard date");
-      return;
-    }
-    response.json(await getDailyDashboard(pool, parsed.data));
-  }));
+  router.get(
+    "/dashboard",
+    requireSession,
+    requireDashboardAccess(dashboardAllowedEmails),
+    route(async (request, response) => {
+      const parsed = dashboardDateSchema.safeParse(request.query);
+      if (!parsed.success) {
+        error(response, 400, "INVALID_DASHBOARD_QUERY", "Invalid dashboard date");
+        return;
+      }
+      response.json(await getDailyDashboard(pool, parsed.data));
+    }),
+  );
 
   router.put(
     "/students/:id/attendance/:date/:eventCode",

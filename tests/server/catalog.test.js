@@ -28,6 +28,7 @@ describe("GET /api/catalog", () => {
     await agent.post("/api/session/emergency").send({ password: "test-access" }).expect(204);
 
     expect((await agent.get("/api/catalog").expect(200)).body).toEqual({
+      permissions: { canViewDashboard: false },
       branches: [
         {
           code: "MK",

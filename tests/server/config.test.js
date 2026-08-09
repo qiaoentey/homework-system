@@ -6,6 +6,16 @@ describe("loadConfig", () => {
     expect(loadConfig({ NODE_ENV: "test" }).sessionSecret).toBe("development-session-secret");
   });
 
+  it("normalizes the comma-separated Dashboard administrator Gmail list", () => {
+    expect(loadConfig({
+      NODE_ENV: "test",
+      DASHBOARD_ALLOWED_EMAILS: " Admin@Example.com, qiaoen9816@gmail.com, ",
+    }).dashboardAllowedEmails).toEqual([
+      "admin@example.com",
+      "qiaoen9816@gmail.com",
+    ]);
+  });
+
   it("rejects a missing session secret in production", () => {
     expect(() => loadConfig({ NODE_ENV: "production" })).toThrow();
   });

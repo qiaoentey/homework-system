@@ -98,13 +98,16 @@ export function App() {
   }
 
   const branches = catalog?.branches ?? [];
+  const canViewDashboard = catalog?.permissions?.canViewDashboard === true;
   const selectedBranch = branches.find((branch) => branch.code === flow.branchCode);
   if (flow.screen === "branch") {
     return (
       <AppShell>
         <BranchGateway
           branches={branches}
-          onDashboard={() => dispatch({ type: "OPEN_DASHBOARD" })}
+          onDashboard={canViewDashboard
+            ? () => dispatch({ type: "OPEN_DASHBOARD" })
+            : undefined}
           onSelect={(branchCode) => dispatch({ type: "SELECT_BRANCH", branchCode })}
         />
       </AppShell>
@@ -145,7 +148,9 @@ export function App() {
           groups={selectedBranch.groups}
           onBackGroups={() => dispatch({ type: "BACK_TO_GROUPS" })}
           onBackBranches={() => dispatch({ type: "BACK_TO_BRANCHES" })}
-          onDashboard={() => dispatch({ type: "OPEN_DASHBOARD" })}
+          onDashboard={canViewDashboard
+            ? () => dispatch({ type: "OPEN_DASHBOARD" })
+            : undefined}
         />
       </AppShell>
     );

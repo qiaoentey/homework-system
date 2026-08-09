@@ -39,8 +39,13 @@ export function createApp({
     emergencyThrottle,
     emergencyThrottleOptions,
   }));
-  app.use("/api/catalog", createCatalogRouter());
-  app.use("/api", createAttendanceRouter({ pool: databasePool }));
+  app.use("/api/catalog", createCatalogRouter({
+    dashboardAllowedEmails: config.dashboardAllowedEmails,
+  }));
+  app.use("/api", createAttendanceRouter({
+    pool: databasePool,
+    dashboardAllowedEmails: config.dashboardAllowedEmails,
+  }));
   app.use("/api", createMessagesRouter({ pool: databasePool }));
   app.use("/api/students", createStudentsRouter({ pool: databasePool }));
   return app;
