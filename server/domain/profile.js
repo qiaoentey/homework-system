@@ -29,6 +29,7 @@ export const PROFILE_FIELDS = [
   "homeworkWednesday",
   "homeworkThursday",
   "homeworkFriday",
+  "showerRequired",
   "detentionType",
   "specialNoteHighC",
   "specialNoteDailyHomeworkPhoto",

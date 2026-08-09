@@ -304,6 +304,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await enrol.getByRole("combobox", { name: "星期三", exact: true }).selectOption("17:00");
   await enrol.getByRole("combobox", { name: "星期五", exact: true }).selectOption("16:00");
   await enrol.getByRole("combobox", { name: "留堂", exact: true }).selectOption("功课留堂");
+  await enrol.getByRole("combobox", { name: "洗澡", exact: true }).selectOption("需要");
   await enrol.getByRole("checkbox", { name: "高c", exact: true }).check();
   await enrol.getByRole("checkbox", {
     name: "一定要每天拍照功课进群组给家长",
@@ -352,6 +353,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     lateStayWednesday: "17:00",
     lateStayFriday: "16:00",
     detentionType: "功课留堂",
+    showerRequired: "需要",
     specialNoteHighC: "需要",
     specialNoteDailyHomeworkPhoto: "需要",
     specialNoteNotifyIncompleteHomework: "",
@@ -376,6 +378,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     { exact: true },
   )).toBeVisible();
   await expect(studentCard.getByLabel("特别备注 · 高c", { exact: true })).toBeVisible();
+  await expect(studentCard.getByLabel("洗澡 · 需要", { exact: true })).toBeVisible();
   await expect(studentCard.getByLabel(
     "特别备注 · 一定要每天拍照功课进群组给家长",
     { exact: true },
@@ -460,6 +463,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     lateStayWednesday: "17:00",
     lateStayFriday: "16:00",
     detentionType: "功课留堂",
+    showerRequired: "需要",
     specialNoteHighC: "需要",
     specialNoteDailyHomeworkPhoto: "需要",
     specialNoteNotifyIncompleteHomework: "",
@@ -509,7 +513,7 @@ test("failed attendance can be retried without leaving stale optimistic state", 
 
   const card = page.getByTestId("student-card").first();
   await expect(card.locator(".event-grid .event-button")).toHaveText([
-    "到", "缺席", "冲", "餐", "功", "补", "复", "回", "KOKO",
+    "到", "缺席", "冲", "餐", "功", "补", "复", "KOKO",
   ]);
   await expect(card.getByRole("button", { name: "清除今日", exact: true })).toHaveCount(0);
   const arrive = card.getByRole("button", { name: "到", exact: true });

@@ -29,6 +29,7 @@ export const PROFILE_FIELDS = [
   ["homeworkWednesday", "星期三有来"],
   ["homeworkThursday", "星期四有来"],
   ["homeworkFriday", "星期五有来"],
+  ["showerRequired", "洗澡"],
   ["detentionType", "留堂"],
   ["specialNoteHighC", "高c"],
   ["specialNoteDailyHomeworkPhoto", "一定要每天拍照功课进群组给家长"],

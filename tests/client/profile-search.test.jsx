@@ -46,6 +46,7 @@ const PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  showerRequired: "需要",
   detentionType: "",
   specialNoteHighC: "",
   specialNoteDailyHomeworkPhoto: "",
@@ -89,6 +90,7 @@ const PROFILE_LABELS = [
   "星期三",
   "星期四",
   "星期五",
+  "洗澡",
   "留堂",
   "其他备注",
 ];
@@ -267,7 +269,7 @@ describe("current-group search and safe profile selection", () => {
     for (const label of SPECIAL_NOTE_LABELS) {
       expect(screen.getByRole("checkbox", { name: label, exact: true })).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(29);
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(30);
     const grade = screen.getByLabelText("年级");
     expect(grade).toHaveValue("Y3");
     for (const option of ["F4", "F5", "F6"]) {

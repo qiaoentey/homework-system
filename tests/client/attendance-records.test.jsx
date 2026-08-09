@@ -37,6 +37,7 @@ const PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  showerRequired: "",
   detentionType: "",
   specialNoteHighC: "",
   specialNoteDailyHomeworkPhoto: "",

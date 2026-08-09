@@ -6,7 +6,6 @@ export const EVENT_BUTTONS = [
   ["homework", "功"],
   ["supplement", "补"],
   ["review", "复"],
-  ["home", "回"],
   ["koko", "KOKO"],
 ];
 

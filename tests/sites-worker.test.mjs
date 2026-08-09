@@ -53,6 +53,7 @@ const emptyProfile = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  showerRequired: "",
   detentionType: "",
   specialNoteHighC: "",
   specialNoteDailyHomeworkPhoto: "",
@@ -727,6 +728,13 @@ test("writes, lists, summarizes, and clears attendance", async () => {
       assert.equal(event.updatedBy, TEST_ALLOWED_EMAIL);
     }
 
+    const removedHome = await readJson(await apiWithD1(env, `${prefix}/home`, {
+      method: "PUT",
+      headers: groupHeaders(),
+      body: { active: true },
+    }), 400);
+    assert.equal(removedHome.code, "INVALID_ATTENDANCE_EVENT");
+
     const attendance = await readJson(await apiWithD1(
       env,
       "/api/attendance?branch=MK&group=MK%20HAPPY&date=2026-07-27",
@@ -908,6 +916,7 @@ test("atomically rejects one of two concurrent profile updates with the same ver
             dinnerRequired: "需要",
             dinnerMonday: "需要",
             dinnerTuesday: "不需要",
+            showerRequired: "需要",
             detentionType: "功课留堂",
             specialNoteHighC: "需要",
             specialNoteDailyHomeworkPhoto: "需要",
@@ -932,6 +941,7 @@ test("atomically rejects one of two concurrent profile updates with the same ver
     assert.equal(seeded.profile.dinnerRequired, "需要");
     assert.equal(seeded.profile.dinnerMonday, "需要");
     assert.equal(seeded.profile.dinnerTuesday, "不需要");
+    assert.equal(seeded.profile.showerRequired, "需要");
     assert.equal(seeded.profile.detentionType, "功课留堂");
     assert.equal(seeded.profile.specialNoteHighC, "需要");
     assert.equal(seeded.profile.specialNoteDailyHomeworkPhoto, "需要");

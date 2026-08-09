@@ -38,6 +38,7 @@ const EMPTY_PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  showerRequired: "",
   detentionType: "",
   specialNoteHighC: "",
   specialNoteDailyHomeworkPhoto: "",
@@ -516,5 +517,18 @@ describe("restored student profile choices", () => {
     const other = screen.getByRole("textbox", { name: "其他备注" });
     fireEvent.change(other, { target: { value: "放学前提醒带水壶" } });
     expect(other).toHaveValue("放学前提醒带水壶");
+  });
+
+  it("records whether the student needs a shower", () => {
+    renderProfile();
+
+    const shower = screen.getByRole("combobox", { name: "洗澡" });
+    expect(within(shower).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择",
+      "需要",
+      "不需要",
+    ]);
+    fireEvent.change(shower, { target: { value: "不需要" } });
+    expect(shower).toHaveValue("不需要");
   });
 });

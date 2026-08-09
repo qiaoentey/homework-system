@@ -40,6 +40,7 @@ const EMPTY_PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  showerRequired: "",
   detentionType: "",
   specialNoteHighC: "",
   specialNoteDailyHomeworkPhoto: "",
@@ -128,6 +129,7 @@ describe("virtualized current-group roster", () => {
         lateStayMonday: "17:00",
         lateStayWednesday: "17:00",
         lateStayFriday: "18:00",
+        showerRequired: "需要",
         detentionType: "功课留堂",
         specialNoteHighC: "需要",
         specialNoteDailyHomeworkPhoto: "需要",
@@ -147,7 +149,7 @@ describe("virtualized current-group roster", () => {
     const card = await screen.findByTestId("student-card");
     expect(within(card).getByText("启智 · 1J")).toBeVisible();
     const labelList = within(card).getByRole("list", { name: "Adam Herwan 资料标签" });
-    expect(within(labelList).getAllByRole("listitem")).toHaveLength(8);
+    expect(within(labelList).getAllByRole("listitem")).toHaveLength(9);
     expect(within(card).getByRole("button", { name: "选择 Adam Herwan" }))
       .not.toContainElement(labelList);
 
@@ -156,6 +158,7 @@ describe("virtualized current-group roster", () => {
       ["功课班 · 周一、三、五 · 14:00–18:00", "homework"],
       ["晚餐 · 周一、三", "dinner"],
       ["留校 · 周一、三 17:00 · 周五 18:00", "stay"],
+      ["洗澡 · 需要", "shower"],
       ["特别备注 · 高c", "note"],
       ["特别备注 · 一定要每天拍照功课进群组给家长", "note"],
       ["特别备注 · 来不及完成功课一定要通知家长", "note"],
@@ -173,6 +176,7 @@ describe("virtualized current-group roster", () => {
         school: "启智",
         pickupMethod: "Van",
         usualPickupTime: "16:30",
+        showerRequired: "不需要",
       },
     });
     vi.stubGlobal("fetch", vi.fn(async (url) => {
@@ -188,6 +192,8 @@ describe("virtualized current-group roster", () => {
     expect(within(card).getByText("启智")).toBeVisible();
     expect(within(card).getByLabelText("Van载送 · 平日 · 16:30"))
       .toHaveClass("profile-label--van");
+    expect(within(card).getByLabelText("洗澡 · 不需要"))
+      .toHaveClass("profile-label--shower");
     expect(card.querySelector(".profile-label--homework")).not.toBeInTheDocument();
     expect(card.querySelector(".profile-label--dinner")).not.toBeInTheDocument();
     expect(card.querySelector(".profile-label--stay")).not.toBeInTheDocument();
@@ -211,7 +217,7 @@ describe("virtualized current-group roster", () => {
     const labels = within(card.querySelector(".event-grid"))
       .getAllByRole("button")
       .map((button) => button.textContent);
-    expect(labels).toEqual(["到", "缺席", "冲", "餐", "功", "补", "复", "回", "KOKO"]);
+    expect(labels).toEqual(["到", "缺席", "冲", "餐", "功", "补", "复", "KOKO"]);
   });
 
   it("mounts fewer than 30 cards for 121 students and requests 50 rows at a time", async () => {

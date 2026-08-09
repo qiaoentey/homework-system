@@ -612,6 +612,16 @@ button {
   background: #7755c9;
 }
 
+.profile-label--shower {
+  border-color: #83cbd2;
+  background: #eaf9fa;
+  color: #176a72;
+}
+
+.profile-label--shower .profile-label__icon {
+  background: #269aa5;
+}
+
 .student-card__pickup {
   display: grid;
   grid-template-columns: auto auto;
@@ -636,7 +646,7 @@ button {
 
 .event-grid {
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -1420,7 +1430,7 @@ button {
   }
 
   .event-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .student-profile-fields__grid {

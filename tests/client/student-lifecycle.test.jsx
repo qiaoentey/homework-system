@@ -52,6 +52,7 @@ const EMPTY_PROFILE = {
   homeworkWednesday: "",
   homeworkThursday: "",
   homeworkFriday: "",
+  showerRequired: "",
   detentionType: "",
   specialNoteHighC: "",
   specialNoteDailyHomeworkPhoto: "",
@@ -214,7 +215,7 @@ describe("student enrolment", () => {
       "WS MIXIN",
     ]);
     expect(within(dialog).queryByRole("option", { name: "MK HAPPY" })).not.toBeInTheDocument();
-    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(16);
+    expect(within(dialog).getAllByTestId("enrol-profile-field")).toHaveLength(17);
     expect(within(dialog).getByRole("button", { name: "保存学生" })).toBeDisabled();
 
     fireEvent.change(within(dialog).getByLabelText("学生姓名"), {
@@ -256,6 +257,9 @@ describe("student enrolment", () => {
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期五" }));
     fireEvent.change(within(dialog).getByRole("combobox", { name: "留堂" }), {
       target: { value: "功课留堂" },
+    });
+    fireEvent.change(within(dialog).getByRole("combobox", { name: "洗澡" }), {
+      target: { value: "需要" },
     });
     fireEvent.click(within(dialog).getByRole("checkbox", { name: "高c", exact: true }));
     fireEvent.click(within(dialog).getByRole("checkbox", {
@@ -308,6 +312,7 @@ describe("student enrolment", () => {
         homeworkWednesday: "有来",
         homeworkThursday: "",
         homeworkFriday: "有来",
+        showerRequired: "需要",
         detentionType: "功课留堂",
         specialNoteHighC: "需要",
         specialNoteNotifyIncompleteHomework: "需要",

@@ -76,6 +76,11 @@ export function studentProfileLabels(profile) {
     labels.push(profileLabel("stay", "留", "留校", stayDetails));
   }
 
+  const showerRequired = clean(profile?.showerRequired);
+  if (showerRequired === "需要" || showerRequired === "不需要") {
+    labels.push(profileLabel("shower", "澡", "洗澡", [showerRequired]));
+  }
+
   const specialNotes = [
     ["specialNoteHighC", "高c"],
     ["specialNoteDailyHomeworkPhoto", "一定要每天拍照功课进群组给家长"],

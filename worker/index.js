@@ -52,6 +52,7 @@ const PROFILE_FIELDS = [
   "homeworkWednesday",
   "homeworkThursday",
   "homeworkFriday",
+  "showerRequired",
   "detentionType",
   "specialNoteHighC",
   "specialNoteDailyHomeworkPhoto",
@@ -66,7 +67,6 @@ const ATTENDANCE_EVENTS = new Set([
   "homework",
   "supplement",
   "review",
-  "home",
   "absent",
   "koko",
 ]);

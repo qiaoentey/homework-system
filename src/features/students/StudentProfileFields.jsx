@@ -281,6 +281,20 @@ export function StudentProfileFields({
 
       <div className="student-profile-fields__dinner">
         <label data-testid={fieldTestId}>
+          <span>洗澡</span>
+          <select
+            aria-label="洗澡"
+            disabled={disabled}
+            value={values.showerRequired}
+            onChange={(event) => onChange("showerRequired", event.target.value)}
+          >
+            <option value="">请选择</option>
+            <option value="需要">需要</option>
+            <option value="不需要">不需要</option>
+          </select>
+        </label>
+
+        <label data-testid={fieldTestId}>
           <span>是否需要晚餐</span>
           <select
             aria-label="是否需要晚餐"
