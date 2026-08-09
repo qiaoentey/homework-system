@@ -5,8 +5,6 @@ export const EVENT_BUTTONS = [
   ["meal", "餐"],
   ["homework", "功"],
   ["supplement", "补"],
-  ["review", "复"],
-  ["koko", "KOKO"],
 ];
 
 export function nextAttendanceEvents(previous, eventCode, active) {

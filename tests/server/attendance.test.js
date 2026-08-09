@@ -327,6 +327,16 @@ describe("attendance API", () => {
       .send({ active: true })
       .expect(400);
     await agent
+      .put(`${prefix}/2026-07-27/review`)
+      .set(groupHeaders())
+      .send({ active: true })
+      .expect(400);
+    await agent
+      .put(`${prefix}/2026-07-27/koko`)
+      .set(groupHeaders())
+      .send({ active: true })
+      .expect(400);
+    await agent
       .put(`${prefix}/2026-07-27/arrive`)
       .set(groupHeaders())
       .send({ active: "true" })

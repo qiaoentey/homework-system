@@ -513,8 +513,10 @@ test("failed attendance can be retried without leaving stale optimistic state", 
 
   const card = page.getByTestId("student-card").first();
   await expect(card.locator(".event-grid .event-button")).toHaveText([
-    "到", "缺席", "冲", "餐", "功", "补", "复", "KOKO",
+    "到", "缺席", "冲", "餐", "功", "补",
   ]);
+  await expect(page.getByRole("region", { name: "当前班级统计" })
+    .getByText("KOKO", { exact: true })).toHaveCount(0);
   await expect(card.getByRole("button", { name: "清除今日", exact: true })).toHaveCount(0);
   const arrive = card.getByRole("button", { name: "到", exact: true });
   const previous = await arrive.getAttribute("aria-pressed");

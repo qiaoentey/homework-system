@@ -217,7 +217,9 @@ describe("virtualized current-group roster", () => {
     const labels = within(card.querySelector(".event-grid"))
       .getAllByRole("button")
       .map((button) => button.textContent);
-    expect(labels).toEqual(["到", "缺席", "冲", "餐", "功", "补", "复", "KOKO"]);
+    expect(labels).toEqual(["到", "缺席", "冲", "餐", "功", "补"]);
+    expect(within(screen.getByRole("region", { name: "当前班级统计" }))
+      .queryByText("KOKO", { exact: true })).not.toBeInTheDocument();
   });
 
   it("mounts fewer than 30 cards for 121 students and requests 50 rows at a time", async () => {
