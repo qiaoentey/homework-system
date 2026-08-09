@@ -134,6 +134,7 @@ export const rosterApi = {
     }),
     { branchCode, groupCode },
   ),
+  dashboard: ({ date }) => apiRequest(queryPath("/api/dashboard", { date })),
   setAttendance: ({
     branchCode,
     groupCode,

@@ -1,4 +1,8 @@
-import { PRIMARY_ATTENDANCE_EVENTS } from "../../shared/dailyAttendance.js";
+import {
+  PRIMARY_ATTENDANCE_EVENTS,
+  dailyAttendanceResult,
+} from "../../shared/dailyAttendance.js";
+import { GROUPS } from "../domain/catalog.js";
 
 function dateString(value) {
   if (typeof value === "string") return value.slice(0, 10);
@@ -189,7 +193,7 @@ export async function getGroupSummary(pool, {
   date,
 }) {
   const result = await pool.query(
-    `select s.id as student_id, ae.event_code
+    `select s.id, s.name, s.grade, ae.event_code
      from students s
      left join attendance_events ae
        on ae.student_id = s.id
@@ -199,43 +203,52 @@ export async function getGroupSummary(pool, {
      where s.branch_code = $1
        and s.group_code = $2
        and s.status = 'active'
-     order by s.id`,
+     order by lower(s.name), s.id, ae.event_code`,
     [branchCode, groupCode, date],
   );
+  return resultFromAttendanceRows(result.rows).summary;
+}
 
-  const eventsByStudent = new Map();
+function resultFromAttendanceRows(rows) {
+  const students = new Map();
+  for (const row of rows) {
+    if (!students.has(row.id)) {
+      students.set(row.id, {
+        id: row.id,
+        name: row.name,
+        grade: row.grade,
+        events: new Set(),
+      });
+    }
+    if (row.event_code) students.get(row.id).events.add(row.event_code);
+  }
+  return dailyAttendanceResult([...students.values()]);
+}
+
+export async function getDailyDashboard(pool, { date }) {
+  const result = await pool.query(
+    `select s.id, s.name, s.grade, s.group_code, ae.event_code
+     from students s
+     left join attendance_events ae
+       on ae.student_id = s.id
+      and ae.attendance_date = $1
+      and ae.is_active = true
+      and ae.event_code in ('arrive', 'absent', 'koko')
+     where s.status = 'active'
+     order by s.group_code, lower(s.name), s.id, ae.event_code`,
+    [date],
+  );
+  const rowsByGroup = new Map(GROUPS.map(({ code }) => [code, []]));
   for (const row of result.rows) {
-    if (!eventsByStudent.has(row.student_id)) {
-      eventsByStudent.set(row.student_id, new Set());
-    }
-    if (row.event_code) eventsByStudent.get(row.student_id).add(row.event_code);
+    rowsByGroup.get(row.group_code)?.push(row);
   }
-
-  let arrived = 0;
-  let absent = 0;
-  let koko = 0;
-  let notArrived = 0;
-  let unmarked = 0;
-  for (const events of eventsByStudent.values()) {
-    if (events.has("arrive")) arrived += 1;
-    if (events.has("absent")) absent += 1;
-    if (events.has("koko")) koko += 1;
-    if (!events.has("arrive") && !events.has("absent")) notArrived += 1;
-    if (
-      !events.has("arrive") &&
-      !events.has("absent") &&
-      !events.has("koko")
-    ) {
-      unmarked += 1;
-    }
-  }
-
   return {
-    expected: eventsByStudent.size,
-    arrived,
-    notArrived,
-    absent,
-    koko,
-    unmarked,
+    date,
+    groups: GROUPS.map((group) => ({
+      branchCode: group.branch,
+      groupCode: group.code,
+      groupLabel: group.label,
+      ...resultFromAttendanceRows(rowsByGroup.get(group.code)),
+    })),
   };
 }

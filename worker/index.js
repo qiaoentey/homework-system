@@ -3,7 +3,10 @@ import {
   clearSessionCookie,
   readSession,
 } from "./auth.js";
-import { PRIMARY_ATTENDANCE_EVENTS } from "../shared/dailyAttendance.js";
+import {
+  PRIMARY_ATTENDANCE_EVENTS,
+  dailyAttendanceResult,
+} from "../shared/dailyAttendance.js";
 const BRANCHES = [
   { code: "MK", label: "MK" },
   { code: "STP", label: "STP" },
@@ -770,7 +773,7 @@ async function summary(database, url) {
   }
   const rows = await all(
     database,
-    `SELECT s.id AS student_id, ae.event_code
+    `SELECT s.id, s.name, s.grade, ae.event_code
      FROM students s
      LEFT JOIN attendance_events ae
        ON ae.student_id = s.id
@@ -780,33 +783,59 @@ async function summary(database, url) {
      WHERE s.branch_code = ?
        AND s.group_code = ?
        AND s.status = 'active'
-     ORDER BY s.id`,
+     ORDER BY lower(s.name), s.id, ae.event_code`,
     [date, branchCode, groupCode],
   );
-  const eventsByStudent = new Map();
+  return json(resultFromAttendanceRows(rows).summary);
+}
+
+function resultFromAttendanceRows(rows) {
+  const students = new Map();
   for (const row of rows) {
-    if (!eventsByStudent.has(row.student_id)) eventsByStudent.set(row.student_id, new Set());
-    if (row.event_code) eventsByStudent.get(row.student_id).add(row.event_code);
+    if (!students.has(row.id)) {
+      students.set(row.id, {
+        id: row.id,
+        name: row.name,
+        grade: row.grade,
+        events: new Set(),
+      });
+    }
+    if (row.event_code) students.get(row.id).events.add(row.event_code);
   }
-  let arrived = 0;
-  let absent = 0;
-  let koko = 0;
-  let notArrived = 0;
-  let unmarked = 0;
-  for (const events of eventsByStudent.values()) {
-    if (events.has("arrive")) arrived += 1;
-    if (events.has("absent")) absent += 1;
-    if (events.has("koko")) koko += 1;
-    if (!events.has("arrive") && !events.has("absent")) notArrived += 1;
-    if (!events.has("arrive") && !events.has("absent") && !events.has("koko")) unmarked += 1;
+  return dailyAttendanceResult([...students.values()]);
+}
+
+async function dailyDashboard(database, url) {
+  const date = url.searchParams.get("date");
+  if (
+    [...url.searchParams.keys()].some((key) => key !== "date")
+    || !validDate(date)
+  ) {
+    return apiError(400, "INVALID_DASHBOARD_QUERY", "Invalid dashboard date");
   }
+  const rows = await all(
+    database,
+    `SELECT s.id, s.name, s.grade, s.group_code, ae.event_code
+     FROM students s
+     LEFT JOIN attendance_events ae
+       ON ae.student_id = s.id
+      AND ae.attendance_date = ?
+      AND ae.is_active = 1
+      AND ae.event_code IN ('arrive', 'absent', 'koko')
+     WHERE s.status = 'active'
+     ORDER BY s.group_code, lower(s.name), s.id, ae.event_code`,
+    [date],
+  );
+  const rowsByGroup = new Map(GROUPS.map(({ code }) => [code, []]));
+  for (const row of rows) rowsByGroup.get(row.group_code)?.push(row);
   return json({
-    expected: eventsByStudent.size,
-    arrived,
-    notArrived,
-    absent,
-    koko,
-    unmarked,
+    date,
+    groups: GROUPS.map((group) => ({
+      branchCode: group.branch,
+      groupCode: group.code,
+      groupLabel: group.label,
+      ...resultFromAttendanceRows(rowsByGroup.get(group.code)),
+    })),
   });
 }
 
@@ -964,6 +993,7 @@ async function handleApi(request, env, url) {
     "/api/attendance",
     "/api/attendance-records",
     "/api/summary",
+    "/api/dashboard",
   ].includes(pathname)
     || /^\/api\/students\/[^/]+\/(?:attendance|profile|messages|stop|restore)(?:\/|$)/u.test(pathname);
   if (databaseRoute && !env.DB) {
@@ -983,6 +1013,9 @@ async function handleApi(request, env, url) {
     return attendanceRecord(env.DB, url);
   }
   if (pathname === "/api/summary" && request.method === "GET") return summary(env.DB, url);
+  if (pathname === "/api/dashboard" && request.method === "GET") {
+    return dailyDashboard(env.DB, url);
+  }
 
   let match = pathname.match(/^\/api\/students\/([^/]+)\/attendance\/([^/]+)\/([^/]+)$/u);
   if (match && request.method === "PUT") {

@@ -763,6 +763,73 @@ test("writes, lists, summarizes, and clears attendance", async () => {
   });
 });
 
+test("returns a signed-in daily dashboard for every daycare group", async () => {
+  await withD1(async (env) => {
+    assert.equal((await apiWithD1(env, "/api/dashboard?date=2026-07-27", {
+      authenticated: false,
+    })).status, 401);
+    assert.equal((await apiWithD1(env, "/api/dashboard?date=2026-02-30")).status, 400);
+    assert.equal((await apiWithD1(env, "/api/dashboard?date=2026-07-27&branch=MK")).status, 400);
+
+    await env.DB.prepare(
+      "DELETE FROM students WHERE group_code IN (?, ?, ?)",
+    ).bind("MK HAPPY", "MK WEN XUAN", "WS HUILING").run();
+    const students = [
+      ["10000000-0000-4000-8000-000000000201", "MK ARRIVED", "MK", "MK HAPPY"],
+      ["10000000-0000-4000-8000-000000000202", "MK ABSENT", "MK", "MK HAPPY"],
+      ["10000000-0000-4000-8000-000000000203", "MK KOKO", "MK", "MK HAPPY"],
+      ["10000000-0000-4000-8000-000000000204", "MK UNMARKED", "MK", "MK HAPPY"],
+      ["10000000-0000-4000-8000-000000000205", "WS KOKO", "WS", "WS HUILING"],
+    ];
+    await env.DB.batch(students.map(([id, name, branchCode, groupCode]) => env.DB.prepare(
+      `INSERT INTO students (id, name, grade, branch_code, group_code, status, source_ref)
+       VALUES (?, ?, 'Y4', ?, ?, 'active', ?)`,
+    ).bind(id, name, branchCode, groupCode, `dashboard-${id}`)));
+    const events = [
+      [students[0][0], "arrive"],
+      [students[1][0], "absent"],
+      [students[2][0], "koko"],
+      [students[4][0], "koko"],
+    ];
+    await env.DB.batch(events.map(([studentId, eventCode]) => env.DB.prepare(
+      `INSERT INTO attendance_events
+         (student_id, attendance_date, event_code, is_active, updated_by)
+       VALUES (?, '2026-07-27', ?, 1, 'fixture@example.com')`,
+    ).bind(studentId, eventCode)));
+
+    const dashboard = await readJson(await apiWithD1(
+      env,
+      "/api/dashboard?date=2026-07-27",
+    ));
+    assert.equal(dashboard.date, "2026-07-27");
+    assert.equal(dashboard.groups.length, 11);
+    const mkHappy = dashboard.groups.find(({ groupCode }) => groupCode === "MK HAPPY");
+    assert.deepEqual(mkHappy, {
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      groupLabel: "HAPPY",
+      summary: {
+        expected: 4,
+        arrived: 1,
+        notArrived: 2,
+        absent: 1,
+        koko: 1,
+        unmarked: 1,
+      },
+      students: [
+        { id: students[1][0], name: "MK ABSENT", grade: "Y4", status: "absent" },
+        { id: students[0][0], name: "MK ARRIVED", grade: "Y4", status: "arrived" },
+        { id: students[2][0], name: "MK KOKO", grade: "Y4", status: "koko" },
+        { id: students[3][0], name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
+      ],
+    });
+    assert.deepEqual(
+      dashboard.groups.find(({ groupCode }) => groupCode === "MK WEN XUAN").summary,
+      { expected: 0, arrived: 0, notArrived: 0, absent: 0, koko: 0, unmarked: 0 },
+    );
+  });
+});
+
 test("lists scoped attendance records including stopped history and conflicts", async () => {
   await withD1(async (env) => {
     await env.DB.prepare("DELETE FROM students WHERE group_code = ?").bind("MK HAPPY").run();

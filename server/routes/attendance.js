@@ -7,6 +7,7 @@ import { decodeHeaderValue } from "../http/headers.js";
 import {
   AttendanceRepositoryError,
   clearAttendanceDate,
+  getDailyDashboard,
   getAttendanceRecord,
   getGroupSummary,
   listAttendance,
@@ -26,6 +27,7 @@ const groupDateSchema = z.object({
   group: groupSchema,
   date: dateSchema,
 }).strict();
+const dashboardDateSchema = z.object({ date: dateSchema }).strict();
 const updateSchema = z.object({ active: z.boolean() }).strict();
 
 function error(response, status, code, message) {
@@ -136,6 +138,15 @@ export function createAttendanceRouter({ pool }) {
       groupCode: parsed.group,
       date: parsed.date,
     }));
+  }));
+
+  router.get("/dashboard", requireSession, route(async (request, response) => {
+    const parsed = dashboardDateSchema.safeParse(request.query);
+    if (!parsed.success) {
+      error(response, 400, "INVALID_DASHBOARD_QUERY", "Invalid dashboard date");
+      return;
+    }
+    response.json(await getDailyDashboard(pool, parsed.data));
   }));
 
   router.put(

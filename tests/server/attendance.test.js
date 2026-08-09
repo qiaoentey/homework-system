@@ -1,6 +1,7 @@
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../server/app.js";
+import { GROUPS } from "../../server/domain/catalog.js";
 import { listAttendance } from "../../server/repositories/attendance.js";
 import { createTestDatabase } from "../helpers/testDatabase.js";
 
@@ -83,6 +84,9 @@ describe("attendance API", () => {
       .expect(401);
     await request(app)
       .get("/api/attendance-records?branch=MK&group=MK%20HAPPY&date=2026-07-27")
+      .expect(401);
+    await request(app)
+      .get("/api/dashboard?date=2026-07-27")
       .expect(401);
   });
 
@@ -365,6 +369,12 @@ describe("attendance API", () => {
       .get("/api/attendance-records?branch=MK&group=WS%20HUILING&date=2026-07-27")
       .expect(400);
     expect(recordMismatch.body.code).toBe("GROUP_BRANCH_MISMATCH");
+    await agent
+      .get("/api/dashboard?date=2026-02-30")
+      .expect(400);
+    await agent
+      .get("/api/dashboard?date=2026-07-27&branch=MK")
+      .expect(400);
   });
 
   it("keeps only the newest primary attendance state active", async () => {
@@ -468,8 +478,101 @@ describe("attendance API", () => {
       arrived: 2,
       notArrived: 3,
       absent: 1,
-      koko: 2,
+      koko: 1,
       unmarked: 2,
     });
+  });
+
+  it("returns every daycare group with the same daily status calculation", async () => {
+    await pool.query(
+      "delete from students where group_code = any($1::text[])",
+      [["MK HAPPY", "MK WEN XUAN", "WS HUILING"]],
+    );
+    const arrived = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000101",
+      name: "MK ARRIVED",
+    });
+    const absent = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000102",
+      name: "MK ABSENT",
+    });
+    const koko = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000103",
+      name: "MK KOKO",
+    });
+    const unmarked = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000104",
+      name: "MK UNMARKED",
+    });
+    const stopped = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000105",
+      name: "STOPPED",
+      status: "stopped",
+    });
+    const wsKoko = await insertStudent(pool, {
+      id: "00000000-0000-4000-8000-000000000106",
+      name: "WS KOKO",
+      branchCode: "WS",
+      groupCode: "WS HUILING",
+    });
+    await insertEvent(pool, arrived.id, "arrive");
+    await insertEvent(pool, absent.id, "absent");
+    await insertEvent(pool, koko.id, "koko");
+    await insertEvent(pool, stopped.id, "arrive");
+    await insertEvent(pool, wsKoko.id, "koko");
+
+    const response = await agent
+      .get("/api/dashboard?date=2026-07-27")
+      .expect(200);
+
+    expect(response.body.date).toBe("2026-07-27");
+    expect(response.body.groups).toHaveLength(GROUPS.length);
+    expect(response.body.groups.map(({ groupCode }) => groupCode))
+      .toEqual(GROUPS.map(({ code }) => code));
+
+    const mkHappy = response.body.groups.find(({ groupCode }) => groupCode === "MK HAPPY");
+    expect(mkHappy).toEqual({
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      groupLabel: "HAPPY",
+      summary: {
+        expected: 4,
+        arrived: 1,
+        notArrived: 2,
+        absent: 1,
+        koko: 1,
+        unmarked: 1,
+      },
+      students: [
+        { id: absent.id, name: "MK ABSENT", grade: "Y4", status: "absent" },
+        { id: arrived.id, name: "MK ARRIVED", grade: "Y4", status: "arrived" },
+        { id: koko.id, name: "MK KOKO", grade: "Y4", status: "koko" },
+        { id: unmarked.id, name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
+      ],
+    });
+    expect(response.body.groups.find(({ groupCode }) => groupCode === "WS HUILING"))
+      .toMatchObject({
+        summary: {
+          expected: 1,
+          arrived: 0,
+          notArrived: 1,
+          absent: 0,
+          koko: 1,
+          unmarked: 0,
+        },
+        students: [{ id: wsKoko.id, name: "WS KOKO", grade: "Y4", status: "koko" }],
+      });
+    expect(response.body.groups.find(({ groupCode }) => groupCode === "MK WEN XUAN"))
+      .toMatchObject({
+        summary: {
+          expected: 0,
+          arrived: 0,
+          notArrived: 0,
+          absent: 0,
+          koko: 0,
+          unmarked: 0,
+        },
+        students: [],
+      });
   });
 });
