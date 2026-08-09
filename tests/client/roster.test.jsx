@@ -91,6 +91,86 @@ afterEach(() => {
 });
 
 describe("virtualized current-group roster", () => {
+  it("shows saved school and color-coded schedule labels beside the student name", async () => {
+    const labelledStudent = student(1, {
+      name: "Adam Herwan",
+      grade: "Y1",
+      profile: {
+        ...EMPTY_PROFILE,
+        school: "启智",
+        schoolClass: "1J",
+        usualPickupTime: "17:30",
+        pickupMethod: "Van",
+        vanDriver: "Uncle Kent",
+        vanHomeTime: "17:00",
+        dinnerRequired: "需要",
+        dinnerMonday: "需要",
+        dinnerWednesday: "需要",
+        careProgram: "功课班",
+        homeworkArrivalTime: "14:00",
+        homeworkDepartureTime: "18:00",
+        homeworkMonday: "有来",
+        homeworkWednesday: "有来",
+        homeworkFriday: "有来",
+        lateStayMonday: "17:00",
+        lateStayWednesday: "17:00",
+        lateStayFriday: "18:00",
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [labelledStudent], nextCursor: null, total: 1 });
+      }
+      return rosterSupport(url);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" />);
+
+    const card = await screen.findByTestId("student-card");
+    expect(within(card).getByText("启智 · 1J")).toBeVisible();
+    const labelList = within(card).getByRole("list", { name: "Adam Herwan 资料标签" });
+    expect(within(labelList).getAllByRole("listitem")).toHaveLength(4);
+    expect(within(card).getByRole("button", { name: "选择 Adam Herwan" }))
+      .not.toContainElement(labelList);
+
+    const expectedLabels = [
+      ["Van载送 · Uncle Kent · 平日 · 17:00", "van"],
+      ["功课班 · 周一、三、五 · 14:00–18:00", "homework"],
+      ["晚餐 · 周一、三", "dinner"],
+      ["留校 · 周一、三 17:00 · 周五 18:00", "stay"],
+    ];
+    for (const [label, kind] of expectedLabels) {
+      expect(within(card).getByLabelText(label)).toHaveClass(`profile-label--${kind}`);
+    }
+  });
+
+  it("omits unsaved label types and missing Van details", async () => {
+    const partialStudent = student(1, {
+      profile: {
+        ...EMPTY_PROFILE,
+        school: "启智",
+        pickupMethod: "Van",
+        usualPickupTime: "16:30",
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [partialStudent], nextCursor: null, total: 1 });
+      }
+      return rosterSupport(url);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" />);
+
+    const card = await screen.findByTestId("student-card");
+    expect(within(card).getByText("启智")).toBeVisible();
+    expect(within(card).getByLabelText("Van载送 · 平日 · 16:30"))
+      .toHaveClass("profile-label--van");
+    expect(card.querySelector(".profile-label--homework")).not.toBeInTheDocument();
+    expect(card.querySelector(".profile-label--dinner")).not.toBeInTheDocument();
+    expect(card.querySelector(".profile-label--stay")).not.toBeInTheDocument();
+  });
+
   it("places absent directly beside arrive in the point-marking controls", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url) => {
       if (url.startsWith("/api/students?")) {

@@ -7,7 +7,7 @@ Show useful saved profile details beside each student name so teachers can see s
 ## Display design
 
 - Show the saved school and school class as neutral text below the student's name and grade, for example `启智 · 1J`.
-- Show profile labels in the same identity area. Labels wrap onto additional lines on narrow screens so the name and attendance buttons remain usable.
+- Show profile labels in the same identity area, immediately below the name button. Keeping the labels outside the button makes each schedule readable to assistive technology. Labels wrap onto additional lines on narrow screens so the name and attendance buttons remain usable.
 - Use four distinct label treatments:
   - Van transport: green icon and green-tinted label.
   - Homework class: orange icon and orange-tinted label.
@@ -58,4 +58,3 @@ Example: `留校 · 周一、三 17:00 · 周五 18:00`.
 - Add a roster test that supplies all four kinds of profile data and verifies the school/class and exact schedule summaries.
 - Add a partial-profile test proving labels omit missing details and absent label types.
 - Run the full client/server test suite, Sites Worker tests, production build, and desktop/mobile end-to-end tests.
-

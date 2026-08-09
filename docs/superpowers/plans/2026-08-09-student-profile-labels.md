@@ -29,21 +29,21 @@
 - Consumes: the existing normalized `student.profile` object.
 - Produces: `studentSchoolSummary(profile): string` and `studentProfileLabels(profile): Array<{ kind: string, icon: string, text: string, ariaLabel: string }>`.
 
-- [ ] **Step 1: Write the failing roster tests**
+- [x] **Step 1: Write the failing roster tests**
 
 Add a roster response with school `启智`, class `1J`, Van driver `Uncle Kent`, Van time `17:00`, homework days Monday/Wednesday/Friday from `14:00` to `18:00`, Monday/Wednesday dinner, and late-stay times. Assert the school summary and exact four accessible label texts. Add a partial-profile case that omits unsaved label kinds and missing details.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- tests/client/roster.test.jsx --testTimeout=20000 --maxWorkers=1`
 
 Expected: FAIL because the school summary and profile labels are not rendered.
 
-- [ ] **Step 3: Implement the minimal formatter and card markup**
+- [x] **Step 3: Implement the minimal formatter and card markup**
 
-Create weekday field maps with literal compact Chinese day labels. Format Van, homework-class, dinner, and late-stay details according to the design. Render the school summary and returned labels inside the existing identity button, using `profile-label--<kind>` classes and an `aria-label` for each complete label.
+Create weekday field maps with literal compact Chinese day labels. Format Van, homework-class, dinner, and late-stay details according to the design. Render the school summary inside the existing identity button and render an accessible label list immediately below it, using `profile-label--<kind>` classes and an `aria-label` for each complete label.
 
-- [ ] **Step 4: Run the focused test and verify GREEN**
+- [x] **Step 4: Run the focused test and verify GREEN**
 
 Run: `npm test -- tests/client/roster.test.jsx --testTimeout=20000 --maxWorkers=1`
 
@@ -59,21 +59,21 @@ Expected: PASS.
 - Consumes: `student-card__school`, `student-card__labels`, `profile-label`, and modifier classes from Task 1.
 - Produces: wrapping, readable profile labels with distinct requested colors.
 
-- [ ] **Step 1: Add semantic color-class expectations to the failing test**
+- [x] **Step 1: Add semantic color-class expectations to the failing test**
 
 Assert that each accessible label uses the correct modifier: `profile-label--van`, `profile-label--homework`, `profile-label--dinner`, and `profile-label--stay`.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- tests/client/roster.test.jsx --testTimeout=20000 --maxWorkers=1`
 
 Expected: FAIL if any label kind is missing or mapped to the wrong visual class.
 
-- [ ] **Step 3: Add responsive label styles**
+- [x] **Step 3: Add responsive label styles**
 
 Define shared pill layout, CSS text icons, green/orange/red/yellow modifier colors, label wrapping, and small-screen spacing. Replace the broad `.student-card__identity span` selector with explicit grade and school selectors so label spans keep their own colors.
 
-- [ ] **Step 4: Verify tests and production build**
+- [x] **Step 4: Verify tests and production build**
 
 Run: `npm test -- --testTimeout=20000 --maxWorkers=1`
 
@@ -92,11 +92,11 @@ Expected: all commands exit successfully with zero failed tests.
 - Consumes: a student fixture containing all requested profile fields.
 - Produces: desktop and mobile proof that labels render after profile data loads.
 
-- [ ] **Step 1: Add end-to-end label assertions before implementation is considered complete**
+- [x] **Step 1: Add end-to-end label assertions before implementation is considered complete**
 
 Assert the school summary and each label's accessible name for the existing fixture after roster load or enrolment.
 
-- [ ] **Step 2: Run desktop and mobile Playwright verification**
+- [x] **Step 2: Run desktop and mobile Playwright verification**
 
 Run: `npx playwright test --project=desktop-chromium --reporter=dot`
 
@@ -107,4 +107,3 @@ Expected: both projects pass.
 - [ ] **Step 3: Commit, push, package, and save one Sites version**
 
 Commit the exact verified source, push `codex/daycare-optimized` and the configured Sites source branch, package the build, and save one Sites version using the pushed commit SHA. Do not publicly deploy without explicit approval for that saved version.
-

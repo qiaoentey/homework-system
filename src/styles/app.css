@@ -474,8 +474,14 @@ button {
   margin-bottom: 16px;
 }
 
+.student-card__identity-area {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .student-card__identity {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   min-width: 0;
   border: 0;
   background: transparent;
@@ -487,6 +493,14 @@ button {
   text-align: left;
 }
 
+.student-card__name-line {
+  display: flex;
+  max-width: 100%;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+}
+
 .student-card__identity strong {
   overflow: hidden;
   max-width: 390px;
@@ -495,11 +509,97 @@ button {
   white-space: nowrap;
 }
 
-.student-card__identity span {
-  margin-top: 4px;
+.student-card__grade,
+.student-card__school {
   color: var(--color-muted);
   font-size: 13px;
   font-weight: 700;
+}
+
+.student-card__school {
+  margin-top: 5px;
+}
+
+.student-card__labels {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.profile-label {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 28px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 3px 9px 3px 4px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.profile-label__icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: white;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.profile-label__text {
+  overflow-wrap: anywhere;
+}
+
+.profile-label--van {
+  border-color: #80cda2;
+  background: #e8f8ef;
+  color: #146b3d;
+}
+
+.profile-label--van .profile-label__icon {
+  background: #1e9e58;
+}
+
+.profile-label--homework {
+  border-color: #f1bd70;
+  background: #fff3df;
+  color: #985006;
+}
+
+.profile-label--homework .profile-label__icon {
+  background: #ef8e16;
+}
+
+.profile-label--dinner {
+  border-color: #eda0a0;
+  background: #fff0f0;
+  color: #a52e2e;
+}
+
+.profile-label--dinner .profile-label__icon {
+  background: #d94141;
+}
+
+.profile-label--stay {
+  border-color: #e4ca59;
+  background: #fff8d9;
+  color: #755d00;
+}
+
+.profile-label--stay .profile-label__icon {
+  background: #f2c94c;
+  color: #5e4900;
 }
 
 .student-card__pickup {
@@ -1227,6 +1327,24 @@ button {
   .student-card__identity strong {
     max-width: 210px;
     font-size: 17px;
+  }
+
+  .student-card__labels {
+    gap: 5px;
+    margin-top: 7px;
+  }
+
+  .profile-label {
+    min-height: 26px;
+    padding: 3px 8px 3px 4px;
+    font-size: 11px;
+  }
+
+  .profile-label__icon {
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
+    font-size: 10px;
   }
 
   .event-grid {

@@ -1,4 +1,8 @@
 import { EVENT_BUTTONS } from "../../domain/attendance.js";
+import {
+  studentProfileLabels,
+  studentSchoolSummary,
+} from "./studentProfileLabels.js";
 
 export function StudentCard({
   student,
@@ -11,6 +15,8 @@ export function StudentCard({
 }) {
   const saving = saveState?.status === "saving";
   const eventSet = new Set(activeEvents);
+  const schoolSummary = studentSchoolSummary(student.profile);
+  const profileLabels = studentProfileLabels(student.profile);
 
   return (
     <article
@@ -18,16 +24,42 @@ export function StudentCard({
       data-testid="student-card"
     >
       <header className="student-card__header">
-        <button
-          className="student-card__identity"
-          type="button"
-          aria-label={`选择 ${student.name}`}
-          aria-pressed={selected}
-          onClick={() => onSelect(student.id)}
-        >
-          <strong>{student.name}</strong>
-          <span>{student.grade}</span>
-        </button>
+        <div className="student-card__identity-area">
+          <button
+            className="student-card__identity"
+            type="button"
+            aria-label={`选择 ${student.name}`}
+            aria-pressed={selected}
+            onClick={() => onSelect(student.id)}
+          >
+            <span className="student-card__name-line">
+              <strong>{student.name}</strong>
+              <span className="student-card__grade">{student.grade}</span>
+            </span>
+            {schoolSummary ? (
+              <span className="student-card__school">{schoolSummary}</span>
+            ) : null}
+          </button>
+          {profileLabels.length > 0 ? (
+            <div
+              aria-label={`${student.name} 资料标签`}
+              className="student-card__labels"
+              role="list"
+            >
+              {profileLabels.map((label) => (
+                <span
+                  aria-label={label.ariaLabel}
+                  className={`profile-label profile-label--${label.kind}`}
+                  key={label.kind}
+                  role="listitem"
+                >
+                  <span aria-hidden="true" className="profile-label__icon">{label.icon}</span>
+                  <span className="profile-label__text">{label.text}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className="student-card__pickup">
           <span>接送</span>
           <strong>{student.profile?.usualPickupTime || "未填写"}</strong>

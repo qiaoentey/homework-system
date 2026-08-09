@@ -226,7 +226,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   }
   await school.selectOption("一校");
   await enrol.getByLabel("学校班级", { exact: true }).selectOption("3J");
-  await enrol.getByLabel("回家载送", { exact: true }).selectOption("家长");
+  await enrol.getByLabel("回家载送", { exact: true }).selectOption("Van");
+  await enrol.getByLabel("Van 司机", { exact: true }).selectOption("Kent");
+  await enrol.getByLabel("Van 回程时间", { exact: true }).fill("17:00");
   await enrol.getByLabel("是否需要晚餐", { exact: true }).selectOption("需要");
   await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("需要");
   await enrol.getByLabel("学生类型", { exact: true }).selectOption("功课班");
@@ -235,6 +237,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   await enrol.getByRole("checkbox", { name: "星期一", exact: true }).check();
   await enrol.getByRole("checkbox", { name: "星期三", exact: true }).check();
   await enrol.getByRole("checkbox", { name: "星期五", exact: true }).check();
+  await enrol.getByRole("combobox", { name: "星期一", exact: true }).selectOption("17:00");
+  await enrol.getByRole("combobox", { name: "星期三", exact: true }).selectOption("17:00");
+  await enrol.getByRole("combobox", { name: "星期五", exact: true }).selectOption("16:00");
   const createdResponse = page.waitForResponse((response) => (
     response.url().endsWith("/api/students") &&
     response.request().method() === "POST" &&
@@ -249,7 +254,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   expect(enrolled.body.items[0].profile).toMatchObject({
     school: "一校",
     schoolClass: "3J",
-    pickupMethod: "家长",
+    pickupMethod: "Van",
+    vanDriver: "Kent",
+    vanHomeTime: "17:00",
     dinnerRequired: "需要",
     dinnerMonday: "需要",
     dinnerTuesday: "不需要",
@@ -264,11 +271,28 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     homeworkWednesday: "有来",
     homeworkThursday: "",
     homeworkFriday: "有来",
+    lateStayMonday: "17:00",
+    lateStayWednesday: "17:00",
+    lateStayFriday: "16:00",
   });
 
   const studentCard = page.getByTestId("student-card").filter({
     has: page.getByRole("button", { name: `选择 ${name}`, exact: true }),
   });
+  await expect(studentCard.getByText("一校 · 3J", { exact: true })).toBeVisible();
+  await expect(studentCard.getByLabel(
+    "Van载送 · Kent · 平日 · 17:00",
+    { exact: true },
+  )).toBeVisible();
+  await expect(studentCard.getByLabel(
+    "功课班 · 周一、三、五 · 14:00–18:00",
+    { exact: true },
+  )).toBeVisible();
+  await expect(studentCard.getByLabel("晚餐 · 周一", { exact: true })).toBeVisible();
+  await expect(studentCard.getByLabel(
+    "留校 · 周一、三 17:00 · 周五 16:00",
+    { exact: true },
+  )).toBeVisible();
   const arrive = studentCard.getByRole("button", { name: "到", exact: true });
   await arrive.click();
   await expect(studentCard.getByText("已保存")).toBeVisible();
@@ -305,7 +329,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   expect(active.body.items[0].profile).toMatchObject({
     school: "一校",
     schoolClass: "3J",
-    pickupMethod: "家长",
+    pickupMethod: "Van",
+    vanDriver: "Kent",
+    vanHomeTime: "17:00",
     dinnerRequired: "需要",
     dinnerMonday: "需要",
     dinnerTuesday: "不需要",
@@ -320,6 +346,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     homeworkWednesday: "有来",
     homeworkThursday: "",
     homeworkFriday: "有来",
+    lateStayMonday: "17:00",
+    lateStayWednesday: "17:00",
+    lateStayFriday: "16:00",
   });
 
   const attendance = await attendanceFor(
