@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useState } from "react";
 import { sessionApi } from "./api/client.js";
 import { LoginScreen } from "./features/auth/LoginScreen.jsx";
 import { BranchGateway } from "./features/branches/BranchGateway.jsx";
+import { DashboardScreen } from "./features/dashboard/DashboardScreen.jsx";
 import { GroupChooser } from "./features/groups/GroupChooser.jsx";
 import { AppShell } from "./features/layout/AppShell.jsx";
 import { RosterScreen } from "./features/roster/RosterScreen.jsx";
@@ -103,8 +104,17 @@ export function App() {
       <AppShell>
         <BranchGateway
           branches={branches}
+          onDashboard={() => dispatch({ type: "OPEN_DASHBOARD" })}
           onSelect={(branchCode) => dispatch({ type: "SELECT_BRANCH", branchCode })}
         />
+      </AppShell>
+    );
+  }
+
+  if (flow.screen === "dashboard") {
+    return (
+      <AppShell onLogout={logout}>
+        <DashboardScreen onBack={() => dispatch({ type: "BACK_TO_BRANCHES" })} />
       </AppShell>
     );
   }

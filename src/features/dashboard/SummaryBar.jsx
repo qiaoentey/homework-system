@@ -3,10 +3,10 @@ import { EMPTY_SUMMARY } from "../../domain/attendance.js";
 const SUMMARY_ITEMS = [
   ["expected", "应到"],
   ["arrived", "已到"],
-  ["notArrived", "未到"],
+  ["notArrived", "还没有"],
   ["absent", "缺席"],
   ["koko", "KOKO"],
-  ["unmarked", "未标记"],
+  ["unmarked", "未点"],
 ];
 
 export function SummaryBar({ summary = EMPTY_SUMMARY, loading = false }) {

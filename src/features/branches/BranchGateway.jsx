@@ -1,4 +1,4 @@
-export function BranchGateway({ branches, onSelect }) {
+export function BranchGateway({ branches, onSelect, onDashboard }) {
   return (
     <section className="entrance entrance--branch">
       <div className="entrance__heading">
@@ -18,6 +18,10 @@ export function BranchGateway({ branches, onSelect }) {
           </button>
         ))}
       </div>
+      <button aria-label="Dashboard" className="dashboard-entry" type="button" onClick={onDashboard}>
+        <span>Dashboard</span>
+        <small>查看全部班级当天点名状态</small>
+      </button>
     </section>
   );
 }

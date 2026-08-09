@@ -60,6 +60,9 @@ function signedInFetch() {
     if (url === "/api/catalog" && (options.method ?? "GET") === "GET") {
       return jsonResponse(200, catalog);
     }
+    if (url.startsWith("/api/dashboard?date=")) {
+      return jsonResponse(200, { date: "2026-07-27", groups: [] });
+    }
     throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
   });
 }
@@ -124,6 +127,11 @@ describe.each([
     expect(screen.queryByRole("button", { name: "HAPPY" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "返回分院" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dashboard" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "返回分院" }));
+    expect(screen.getByRole("heading", { name: "请选择分院" })).toBeVisible();
+
     fireEvent.click(screen.getByRole("button", { name: "WS" }));
     expect(screen.getByRole("button", { name: "HUILING" })).toBeVisible();
     expect(screen.queryByRole("button", { name: "HAPPY" })).not.toBeInTheDocument();
@@ -145,6 +153,11 @@ describe("flow state boundaries", () => {
 
     expect(flowReducer(changedBranch, { type: "BACK_TO_BRANCHES" })).toEqual({
       screen: "branch",
+      branchCode: null,
+      groupCode: null,
+    });
+    expect(flowReducer(changedBranch, { type: "OPEN_DASHBOARD" })).toEqual({
+      screen: "dashboard",
       branchCode: null,
       groupCode: null,
     });
