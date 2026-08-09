@@ -23,6 +23,14 @@ const DINNER_FIELDS = [
   ["dinnerFriday", "星期五晚餐"],
 ];
 
+const VAN_DAY_FIELDS = [
+  ["vanMonday", "星期一 Van", "星期一"],
+  ["vanTuesday", "星期二 Van", "星期二"],
+  ["vanWednesday", "星期三 Van", "星期三"],
+  ["vanThursday", "星期四 Van", "星期四"],
+  ["vanFriday", "星期五 Van", "星期五"],
+];
+
 const HOMEWORK_DAY_FIELDS = [
   ["homeworkMonday", "星期一"],
   ["homeworkTuesday", "星期二"],
@@ -184,6 +192,23 @@ export function StudentProfileFields({
                 onChange={(event) => onChange("vanHomeTime", event.target.value)}
               />
             </label>
+            <div className="student-profile-fields__van-days">
+              <h3>Van 载送星期</h3>
+              <div>
+                {VAN_DAY_FIELDS.map(([field, ariaLabel, label]) => (
+                  <label data-testid={fieldTestId} key={field}>
+                    <input
+                      aria-label={ariaLabel}
+                      type="checkbox"
+                      disabled={disabled}
+                      checked={values[field] === "需要"}
+                      onChange={(event) => onChange(field, event.target.checked ? "需要" : "")}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </>
         ) : null}
       </div>

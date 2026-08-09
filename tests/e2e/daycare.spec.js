@@ -273,6 +273,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   }
   await vanDriver.selectOption("Mr Kent");
   await enrol.getByLabel("Van 回程时间", { exact: true }).fill("17:00");
+  await enrol.getByRole("checkbox", { name: "星期一 Van", exact: true }).check();
+  await enrol.getByRole("checkbox", { name: "星期三 Van", exact: true }).check();
+  await enrol.getByRole("checkbox", { name: "星期五 Van", exact: true }).check();
   await enrol.getByLabel("是否需要晚餐", { exact: true }).selectOption("需要");
   await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("需要");
   await enrol.getByLabel("学生类型", { exact: true }).selectOption("功课班");
@@ -302,6 +305,11 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     pickupMethod: "Van",
     vanDriver: "Mr Kent",
     vanHomeTime: "17:00",
+    vanMonday: "需要",
+    vanTuesday: "",
+    vanWednesday: "需要",
+    vanThursday: "",
+    vanFriday: "需要",
     dinnerRequired: "需要",
     dinnerMonday: "需要",
     dinnerTuesday: "不需要",
@@ -326,7 +334,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   });
   await expect(studentCard.getByText("一校 · 3J", { exact: true })).toBeVisible();
   await expect(studentCard.getByLabel(
-    "Van载送 · Mr Kent · 平日 · 17:00",
+    "Van载送 · Mr Kent · 周一、三、五 · 17:00",
     { exact: true },
   )).toBeVisible();
   await expect(studentCard.getByLabel(
@@ -391,6 +399,11 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     pickupMethod: "Van",
     vanDriver: "Mr Kent",
     vanHomeTime: "17:00",
+    vanMonday: "需要",
+    vanTuesday: "",
+    vanWednesday: "需要",
+    vanThursday: "",
+    vanFriday: "需要",
     dinnerRequired: "需要",
     dinnerMonday: "需要",
     dinnerTuesday: "不需要",

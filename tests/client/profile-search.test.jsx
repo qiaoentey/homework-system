@@ -22,6 +22,11 @@ const PROFILE = {
   pickupMethod: "Van",
   vanDriver: "Tong",
   vanHomeTime: "17:30",
+  vanMonday: "需要",
+  vanTuesday: "",
+  vanWednesday: "需要",
+  vanThursday: "",
+  vanFriday: "需要",
   dinnerRequired: "需要",
   dinnerMonday: "需要",
   dinnerTuesday: "不需要",
@@ -62,6 +67,11 @@ const PROFILE_LABELS = [
   "回家载送",
   "Van 司机",
   "Van 回程时间",
+  "星期一 Van",
+  "星期二 Van",
+  "星期三 Van",
+  "星期四 Van",
+  "星期五 Van",
   "学生类型",
   "是否需要晚餐",
   "星期一晚餐",
@@ -77,7 +87,8 @@ const PROFILE_LABELS = [
 ];
 
 const BASE_PROFILE_LABELS = PROFILE_LABELS.filter((label) => (
-  label !== "年级" && !label.startsWith("Van ") && !/^星期[一二三四五]晚餐$/u.test(label)
+  label !== "年级" && !label.startsWith("Van ") && !label.endsWith(" Van")
+    && !/^星期[一二三四五]晚餐$/u.test(label)
 ));
 
 function jsonResponse(status, body) {
@@ -211,7 +222,7 @@ describe("current-group search and safe profile selection", () => {
     expect(screen.queryByRole("button", { name: "写留言" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("年级")).not.toBeInTheDocument();
     for (const label of BASE_PROFILE_LABELS) {
-      expect(screen.getByLabelText(label)).toHaveValue("");
+      expect(screen.getByLabelText(label, { exact: true })).toHaveValue("");
     }
 
     const searchUrl = fetchMock.mock.calls
@@ -233,9 +244,14 @@ describe("current-group search and safe profile selection", () => {
     const card = await screen.findByTestId("student-card");
     fireEvent.click(within(card).getByRole("button", { name: /选择 HAYDEN CHIN/ }));
     for (const label of PROFILE_LABELS) {
-      expect(screen.getByLabelText(label)).toBeVisible();
+      const field = label.endsWith(" Van")
+        ? screen.getByRole("checkbox", { name: label, exact: true })
+        : /^星期[一二三四五]$/u.test(label)
+          ? screen.getByRole("combobox", { name: label, exact: true })
+          : screen.getByLabelText(label, { exact: true });
+      expect(field).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(19);
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(24);
     const grade = screen.getByLabelText("年级");
     expect(grade).toHaveValue("Y3");
     for (const option of ["F4", "F5", "F6"]) {

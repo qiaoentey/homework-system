@@ -28,6 +28,11 @@ const emptyProfile = {
   pickupMethod: "",
   vanDriver: "",
   vanHomeTime: "",
+  vanMonday: "",
+  vanTuesday: "",
+  vanWednesday: "",
+  vanThursday: "",
+  vanFriday: "",
   dinnerRequired: "",
   dinnerMonday: "",
   dinnerTuesday: "",
@@ -875,6 +880,9 @@ test("atomically rejects one of two concurrent profile updates with the same ver
           updatedAt: student.updatedAt,
           profile: {
             pickupMethod: "Bus",
+            vanMonday: "需要",
+            vanWednesday: "需要",
+            vanFriday: "需要",
             dinnerRequired: "需要",
             dinnerMonday: "需要",
             dinnerTuesday: "不需要",
@@ -889,6 +897,11 @@ test("atomically rejects one of two concurrent profile updates with the same ver
       },
     ));
     assert.equal(seeded.profile.pickupMethod, "Bus");
+    assert.equal(seeded.profile.vanMonday, "需要");
+    assert.equal(seeded.profile.vanTuesday, undefined);
+    assert.equal(seeded.profile.vanWednesday, "需要");
+    assert.equal(seeded.profile.vanThursday, undefined);
+    assert.equal(seeded.profile.vanFriday, "需要");
     assert.equal(seeded.profile.dinnerRequired, "需要");
     assert.equal(seeded.profile.dinnerMonday, "需要");
     assert.equal(seeded.profile.dinnerTuesday, "不需要");

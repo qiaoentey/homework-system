@@ -1,9 +1,9 @@
 const WEEKDAYS = [
-  { short: "一", homework: "homeworkMonday", dinner: "dinnerMonday", stay: "lateStayMonday" },
-  { short: "二", homework: "homeworkTuesday", dinner: "dinnerTuesday", stay: "lateStayTuesday" },
-  { short: "三", homework: "homeworkWednesday", dinner: "dinnerWednesday", stay: "lateStayWednesday" },
-  { short: "四", homework: "homeworkThursday", dinner: "dinnerThursday", stay: "lateStayThursday" },
-  { short: "五", homework: "homeworkFriday", dinner: "dinnerFriday", stay: "lateStayFriday" },
+  { short: "一", van: "vanMonday", homework: "homeworkMonday", dinner: "dinnerMonday", stay: "lateStayMonday" },
+  { short: "二", van: "vanTuesday", homework: "homeworkTuesday", dinner: "dinnerTuesday", stay: "lateStayTuesday" },
+  { short: "三", van: "vanWednesday", homework: "homeworkWednesday", dinner: "dinnerWednesday", stay: "lateStayWednesday" },
+  { short: "四", van: "vanThursday", homework: "homeworkThursday", dinner: "dinnerThursday", stay: "lateStayThursday" },
+  { short: "五", van: "vanFriday", homework: "homeworkFriday", dinner: "dinnerFriday", stay: "lateStayFriday" },
 ];
 
 function clean(value) {
@@ -53,7 +53,7 @@ export function studentProfileLabels(profile) {
   if (clean(profile?.pickupMethod).toLowerCase() === "van") {
     labels.push(profileLabel("van", "V", "Van载送", [
       clean(profile?.vanDriver),
-      "平日",
+      weekdaySummary(profile, "van", "需要") || "平日",
       clean(profile?.vanHomeTime) || clean(profile?.usualPickupTime),
     ]));
   }

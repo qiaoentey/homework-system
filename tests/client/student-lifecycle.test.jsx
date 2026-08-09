@@ -28,6 +28,11 @@ const EMPTY_PROFILE = {
   pickupMethod: "",
   vanDriver: "",
   vanHomeTime: "",
+  vanMonday: "",
+  vanTuesday: "",
+  vanWednesday: "",
+  vanThursday: "",
+  vanFriday: "",
   dinnerRequired: "",
   dinnerMonday: "",
   dinnerTuesday: "",
@@ -220,6 +225,18 @@ describe("student enrolment", () => {
     fireEvent.change(within(dialog).getByLabelText("星期一晚餐"), {
       target: { value: "需要" },
     });
+    fireEvent.change(within(dialog).getByLabelText("回家载送"), {
+      target: { value: "Van" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Van 司机"), {
+      target: { value: "Tong" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Van 回程时间"), {
+      target: { value: "17:30" },
+    });
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期一 Van" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期三 Van" }));
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期五 Van" }));
     fireEvent.change(within(dialog).getByRole("combobox", { name: "学生类型" }), {
       target: { value: "功课班" },
     });
@@ -255,6 +272,12 @@ describe("student enrolment", () => {
       profile: {
         ...EMPTY_PROFILE,
         school: "南益",
+        pickupMethod: "Van",
+        vanDriver: "Tong",
+        vanHomeTime: "17:30",
+        vanMonday: "需要",
+        vanWednesday: "需要",
+        vanFriday: "需要",
         dinnerRequired: "需要",
         dinnerMonday: "需要",
         dinnerTuesday: "不需要",

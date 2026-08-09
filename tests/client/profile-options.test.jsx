@@ -14,6 +14,11 @@ const EMPTY_PROFILE = {
   pickupMethod: "家长",
   vanDriver: "",
   vanHomeTime: "",
+  vanMonday: "",
+  vanTuesday: "",
+  vanWednesday: "",
+  vanThursday: "",
+  vanFriday: "",
   dinnerRequired: "",
   dinnerMonday: "",
   dinnerTuesday: "",
@@ -275,6 +280,15 @@ describe("restored student profile choices", () => {
       "Aunty Airine",
     ]);
     expect(screen.getByLabelText("Van 回程时间")).toHaveAttribute("type", "time");
+    for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
+      expect(screen.getByRole("checkbox", { name: `${day} Van` })).not.toBeChecked();
+    }
+    fireEvent.click(screen.getByRole("checkbox", { name: "星期一 Van" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "星期三 Van" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "星期五 Van" }));
+    expect(screen.getByRole("checkbox", { name: "星期一 Van" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "星期三 Van" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "星期五 Van" })).toBeChecked();
 
     for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
       expect(within(screen.getByRole("combobox", { name: day }))

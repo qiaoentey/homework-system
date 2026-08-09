@@ -836,25 +836,34 @@ button {
   gap: 14px;
 }
 
-.student-profile-fields__homework-days {
+.student-profile-fields__homework-days,
+.student-profile-fields__van-days {
   display: grid;
   gap: 10px;
 }
 
-.student-profile-fields__homework-days h3 {
+.student-profile-fields__van-days {
+  grid-column: 1 / -1;
+}
+
+.student-profile-fields__homework-days h3,
+.student-profile-fields__van-days h3 {
   margin: 0;
   color: var(--color-navy);
   font-size: 14px;
 }
 
-.student-profile-fields__homework-days > div {
+.student-profile-fields__homework-days > div,
+.student-profile-fields__van-days > div {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
 
 .profile-form .student-profile-fields__homework-days label,
-.lifecycle-form .student-profile-fields__homework-days label {
+.lifecycle-form .student-profile-fields__homework-days label,
+.profile-form .student-profile-fields__van-days label,
+.lifecycle-form .student-profile-fields__van-days label {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -868,7 +877,9 @@ button {
 }
 
 .profile-form .student-profile-fields__homework-days input[type="checkbox"],
-.lifecycle-form .student-profile-fields__homework-days input[type="checkbox"] {
+.lifecycle-form .student-profile-fields__homework-days input[type="checkbox"],
+.profile-form .student-profile-fields__van-days input[type="checkbox"],
+.lifecycle-form .student-profile-fields__van-days input[type="checkbox"] {
   width: 20px;
   min-height: 20px;
   margin: 0;
@@ -1357,7 +1368,8 @@ button {
 
   .student-profile-fields__stay-grid,
   .student-profile-fields__dinner-days,
-  .student-profile-fields__homework-days > div {
+  .student-profile-fields__homework-days > div,
+  .student-profile-fields__van-days > div {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

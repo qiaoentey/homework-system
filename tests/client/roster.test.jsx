@@ -22,6 +22,11 @@ const EMPTY_PROFILE = {
   pickupMethod: "",
   vanDriver: "",
   vanHomeTime: "",
+  vanMonday: "",
+  vanTuesday: "",
+  vanWednesday: "",
+  vanThursday: "",
+  vanFriday: "",
   lateStayMonday: "",
   lateStayTuesday: "",
   lateStayWednesday: "",
@@ -103,6 +108,9 @@ describe("virtualized current-group roster", () => {
         pickupMethod: "Van",
         vanDriver: "Uncle Kent",
         vanHomeTime: "17:00",
+        vanMonday: "需要",
+        vanWednesday: "需要",
+        vanFriday: "需要",
         dinnerRequired: "需要",
         dinnerMonday: "需要",
         dinnerWednesday: "需要",
@@ -134,7 +142,7 @@ describe("virtualized current-group roster", () => {
       .not.toContainElement(labelList);
 
     const expectedLabels = [
-      ["Van载送 · Uncle Kent · 平日 · 17:00", "van"],
+      ["Van载送 · Uncle Kent · 周一、三、五 · 17:00", "van"],
       ["功课班 · 周一、三、五 · 14:00–18:00", "homework"],
       ["晚餐 · 周一、三", "dinner"],
       ["留校 · 周一、三 17:00 · 周五 18:00", "stay"],
