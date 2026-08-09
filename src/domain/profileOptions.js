@@ -69,6 +69,12 @@ const MK_VAN_DRIVER_OPTIONS = [
   "Uncle Law",
 ];
 
+const WS_VAN_DRIVER_OPTIONS = [
+  "Uncle Liew",
+  "Uncle Chan",
+  "Aunty Airine",
+];
+
 export const STAY_TIME_OPTIONS = [
   ["", "不留校"],
   ["15:30", "3:30 PM"],
@@ -88,9 +94,13 @@ export function schoolOptionsFor(branchCode) {
 }
 
 export function vanDriverOptionsFor(branchCode) {
-  return branchCode === "MK"
-    ? [...VAN_DRIVER_OPTIONS, ...MK_VAN_DRIVER_OPTIONS]
-    : [...VAN_DRIVER_OPTIONS];
+  if (branchCode === "MK") {
+    return [...VAN_DRIVER_OPTIONS, ...MK_VAN_DRIVER_OPTIONS];
+  }
+  if (branchCode === "WS") {
+    return [...VAN_DRIVER_OPTIONS, ...WS_VAN_DRIVER_OPTIONS];
+  }
+  return [...VAN_DRIVER_OPTIONS];
 }
 
 export function schoolClassesFor(branchCode, school, grade) {

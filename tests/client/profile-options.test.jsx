@@ -262,6 +262,9 @@ describe("restored student profile choices", () => {
       "Boon",
       "Aunty Lily",
       "Liew",
+      "Uncle Liew",
+      "Uncle Chan",
+      "Aunty Airine",
     ]);
     expect(screen.getByLabelText("Van 回程时间")).toHaveAttribute("type", "time");
 
@@ -276,7 +279,7 @@ describe("restored student profile choices", () => {
     }
   });
 
-  it("adds the seven requested Van drivers only to the MK branch", () => {
+  it("keeps each branch-specific Van driver list isolated", () => {
     const sharedDrivers = [
       "Tong",
       "Lam",
@@ -296,6 +299,11 @@ describe("restored student profile choices", () => {
       "Uncle Tan",
       "Uncle Law",
     ];
+    const wsDrivers = [
+      "Uncle Liew",
+      "Uncle Chan",
+      "Aunty Airine",
+    ];
     renderProfile(student({
       branchCode: "MK",
       groupCode: "MK HAPPY",
@@ -312,6 +320,16 @@ describe("restored student profile choices", () => {
     }), "WS");
     const wsDriver = screen.getByRole("combobox", { name: "Van 司机" });
     expect(within(wsDriver).getAllByRole("option").map((option) => option.textContent))
+      .toEqual(["请选择司机", ...sharedDrivers, ...wsDrivers]);
+
+    cleanup();
+    renderProfile(student({
+      branchCode: "STP",
+      groupCode: "STP QIAO EN",
+      profile: { ...EMPTY_PROFILE, pickupMethod: "Van" },
+    }), "STP");
+    const stpDriver = screen.getByRole("combobox", { name: "Van 司机" });
+    expect(within(stpDriver).getAllByRole("option").map((option) => option.textContent))
       .toEqual(["请选择司机", ...sharedDrivers]);
   });
 

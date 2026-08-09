@@ -195,6 +195,34 @@ test("one tap opens the selected student's editable profile", async ({ page }) =
   await expect(page.getByLabel("学校", { exact: true })).toBeFocused();
 });
 
+test("WS enrol offers and saves only its requested Van drivers", async ({
+  page,
+}, testInfo) => {
+  await openRoster(page, "WS", "HUILING", "WS HUILING");
+  const name = `WS DRIVER ${testInfo.project.name.toUpperCase()} ${Date.now()}`;
+
+  await page.getByRole("button", { name: "Enrol 学生" }).click();
+  const enrol = page.getByRole("dialog", { name: "Enrol 学生" });
+  await enrol.getByLabel("学生姓名").fill(name);
+  await enrol.getByLabel("年级").selectOption("Y3");
+  await enrol.getByLabel("回家载送", { exact: true }).selectOption("Van");
+  const vanDriver = enrol.getByLabel("Van 司机", { exact: true });
+  for (const driver of ["Uncle Liew", "Uncle Chan", "Aunty Airine"]) {
+    await expect(vanDriver.locator(`option[value="${driver}"]`)).toHaveCount(1);
+  }
+  await expect(vanDriver.locator('option[value="Mr Kent"]')).toHaveCount(0);
+  await vanDriver.selectOption("Uncle Liew");
+  await enrol.getByRole("button", { name: "保存学生" }).click();
+
+  const enrolled = await listStudents(page, "WS", "WS HUILING", "active", name);
+  expect(enrolled.status).toBe(200);
+  expect(enrolled.body.items).toHaveLength(1);
+  expect(enrolled.body.items[0].profile).toMatchObject({
+    pickupMethod: "Van",
+    vanDriver: "Uncle Liew",
+  });
+});
+
 test("enrol, stop, and restore preserve UUID, profile, attendance, and messages", async ({
   page,
 }, testInfo) => {

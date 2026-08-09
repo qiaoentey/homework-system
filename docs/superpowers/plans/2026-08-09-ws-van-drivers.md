@@ -28,7 +28,7 @@
 - Consumes: `vanDriverOptionsFor(branchCode): string[]`.
 - Produces: WS-specific driver choices while retaining the established MK and STP results.
 
-- [ ] **Step 1: Write the failing branch-isolation test**
+- [x] **Step 1: Write the failing branch-isolation test**
 
 Update the existing branch driver test so its literal expectations require:
 
@@ -40,13 +40,13 @@ expect(stpOptions).toEqual(["请选择司机", ...sharedDrivers]);
 
 Keep the current exact MK expectation unchanged.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `npm test -- tests/client/profile-options.test.jsx --testTimeout=20000 --maxWorkers=1`
 
 Expected: FAIL because WS still returns only the shared driver list.
 
-- [ ] **Step 3: Implement the minimal WS branch selector**
+- [x] **Step 3: Implement the minimal WS branch selector**
 
 Add the exact private catalog:
 
@@ -60,7 +60,7 @@ const WS_VAN_DRIVER_OPTIONS = [
 
 Extend `vanDriverOptionsFor` so `WS` returns the shared list followed by this catalog, `MK` retains its current list, and all other branches return only the shared list.
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [x] **Step 4: Run focused tests and verify GREEN**
 
 Run: `npm test -- tests/client/profile-options.test.jsx --testTimeout=20000 --maxWorkers=1`
 
@@ -75,11 +75,11 @@ Expected: all focused tests pass.
 - Consumes: the WS Enrol `Van 司机` combobox and saved profile payload.
 - Produces: desktop/mobile proof that WS offers and retains `Uncle Liew`.
 
-- [ ] **Step 1: Extend a WS browser flow**
+- [x] **Step 1: Extend a WS browser flow**
 
 In an existing WS Enrol flow, assert all three new options exist, choose `Uncle Liew`, and verify the saved profile retains that exact driver value.
 
-- [ ] **Step 2: Run complete verification**
+- [x] **Step 2: Run complete verification**
 
 Run:
 
