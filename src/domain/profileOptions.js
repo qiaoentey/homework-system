@@ -59,6 +59,16 @@ export const VAN_DRIVER_OPTIONS = [
   "Liew",
 ];
 
+const MK_VAN_DRIVER_OPTIONS = [
+  "Mr Kent",
+  "Uncle Yeow",
+  "Uncle Sam",
+  "Uncle Leong",
+  "Uncle Ting",
+  "Uncle Tan",
+  "Uncle Law",
+];
+
 export const STAY_TIME_OPTIONS = [
   ["", "不留校"],
   ["15:30", "3:30 PM"],
@@ -75,6 +85,12 @@ function gradePrefix(grade) {
 
 export function schoolOptionsFor(branchCode) {
   return branchCode === "MK" ? [...MK_SCHOOL_OPTIONS] : [...SCHOOL_OPTIONS];
+}
+
+export function vanDriverOptionsFor(branchCode) {
+  return branchCode === "MK"
+    ? [...VAN_DRIVER_OPTIONS, ...MK_VAN_DRIVER_OPTIONS]
+    : [...VAN_DRIVER_OPTIONS];
 }
 
 export function schoolClassesFor(branchCode, school, grade) {

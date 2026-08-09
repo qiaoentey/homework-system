@@ -276,6 +276,45 @@ describe("restored student profile choices", () => {
     }
   });
 
+  it("adds the seven requested Van drivers only to the MK branch", () => {
+    const sharedDrivers = [
+      "Tong",
+      "Lam",
+      "Lim",
+      "Kent",
+      "Wong",
+      "Boon",
+      "Aunty Lily",
+      "Liew",
+    ];
+    const mkDrivers = [
+      "Mr Kent",
+      "Uncle Yeow",
+      "Uncle Sam",
+      "Uncle Leong",
+      "Uncle Ting",
+      "Uncle Tan",
+      "Uncle Law",
+    ];
+    renderProfile(student({
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: { ...EMPTY_PROFILE, pickupMethod: "Van" },
+    }), "MK");
+
+    const mkDriver = screen.getByRole("combobox", { name: "Van 司机" });
+    expect(within(mkDriver).getAllByRole("option").map((option) => option.textContent))
+      .toEqual(["请选择司机", ...sharedDrivers, ...mkDrivers]);
+
+    cleanup();
+    renderProfile(student({
+      profile: { ...EMPTY_PROFILE, pickupMethod: "Van" },
+    }), "WS");
+    const wsDriver = screen.getByRole("combobox", { name: "Van 司机" });
+    expect(within(wsDriver).getAllByRole("option").map((option) => option.textContent))
+      .toEqual(["请选择司机", ...sharedDrivers]);
+  });
+
   it("reveals weekday dinner choices only when dinner is required and clears hidden days", () => {
     renderProfile();
 
