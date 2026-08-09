@@ -279,6 +279,43 @@ describe("restored student profile choices", () => {
     }
   });
 
+  it("replaces 3:30 PM with 3:20 PM for every MK 二校 stay-time selector", () => {
+    renderProfile(student({
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: { ...EMPTY_PROFILE, school: "二校" },
+    }), "MK");
+
+    for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
+      expect(within(screen.getByRole("combobox", { name: day }))
+        .getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "不留校",
+        "3:20 PM",
+        "4:00 PM",
+        "5:00 PM",
+      ]);
+    }
+  });
+
+  it("adds 2:00 PM to every MK 启智 stay-time selector", () => {
+    renderProfile(student({
+      branchCode: "MK",
+      groupCode: "MK HAPPY",
+      profile: { ...EMPTY_PROFILE, school: "启智" },
+    }), "MK");
+
+    for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
+      expect(within(screen.getByRole("combobox", { name: day }))
+        .getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "不留校",
+        "2:00 PM",
+        "3:30 PM",
+        "4:00 PM",
+        "5:00 PM",
+      ]);
+    }
+  });
+
   it("keeps each branch-specific Van driver list isolated", () => {
     const sharedDrivers = [
       "Tong",

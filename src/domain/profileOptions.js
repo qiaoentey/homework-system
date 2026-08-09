@@ -107,6 +107,31 @@ export const STAY_TIME_OPTIONS = [
   ["17:00", "5:00 PM"],
 ];
 
+const MK_SECOND_SCHOOL_STAY_TIME_OPTIONS = [
+  ["", "不留校"],
+  ["15:20", "3:20 PM"],
+  ["16:00", "4:00 PM"],
+  ["17:00", "5:00 PM"],
+];
+
+const MK_QIZHI_STAY_TIME_OPTIONS = [
+  ["", "不留校"],
+  ["14:00", "2:00 PM"],
+  ["15:30", "3:30 PM"],
+  ["16:00", "4:00 PM"],
+  ["17:00", "5:00 PM"],
+];
+
+export function stayTimeOptionsFor(branchCode, school) {
+  let options = STAY_TIME_OPTIONS;
+  if (branchCode === "MK" && school === "二校") {
+    options = MK_SECOND_SCHOOL_STAY_TIME_OPTIONS;
+  } else if (branchCode === "MK" && school === "启智") {
+    options = MK_QIZHI_STAY_TIME_OPTIONS;
+  }
+  return options.map(([value, label]) => [value, label]);
+}
+
 function gradePrefix(grade) {
   if (CHINESE_PRIMARY_GRADES[grade]) return CHINESE_PRIMARY_GRADES[grade];
   if (/^Y[1-6]$/.test(grade)) return grade.slice(1);
