@@ -13,14 +13,12 @@ const METRICS = [
   ["arrived", "已到"],
   ["notArrived", "还没有"],
   ["absent", "缺席"],
-  ["koko", "KOKO"],
   ["unmarked", "未点"],
 ];
 
 const STATUS_LABELS = {
   arrived: "已到",
   absent: "缺席",
-  koko: "KOKO",
   unmarked: "未点",
 };
 
@@ -32,10 +30,17 @@ function localToday() {
   return `${year}-${month}-${day}`;
 }
 
-export function DashboardScreen({ date = localToday(), onBack }) {
+export function DashboardScreen({
+  date = localToday(),
+  onBack,
+  backLabel = "返回分院",
+  initialGroupCode = null,
+}) {
   const [dashboard, setDashboard] = useState(null);
   const [branchFilter, setBranchFilter] = useState("ALL");
-  const [expandedGroups, setExpandedGroups] = useState([]);
+  const [expandedGroups, setExpandedGroups] = useState(() => (
+    initialGroupCode ? [initialGroupCode] : []
+  ));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -72,9 +77,9 @@ export function DashboardScreen({ date = localToday(), onBack }) {
   return (
     <section className="dashboard-screen">
       <div className="dashboard-screen__actions">
-        <button aria-label="返回分院" className="back-button" type="button" onClick={onBack}>
+        <button aria-label={backLabel} className="back-button" type="button" onClick={onBack}>
           <span aria-hidden="true">←</span>
-          返回分院
+          {backLabel}
         </button>
         <button
           className="secondary-button"

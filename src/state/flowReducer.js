@@ -13,7 +13,11 @@ export function flowReducer(state, action) {
     case "SELECT_GROUP":
       return { ...state, screen: "roster", groupCode: action.groupCode };
     case "OPEN_DASHBOARD":
-      return { screen: "dashboard", branchCode: null, groupCode: null };
+      return { ...state, screen: "dashboard" };
+    case "BACK_FROM_DASHBOARD":
+      return state.branchCode && state.groupCode
+        ? { ...state, screen: "roster" }
+        : { screen: "branch", branchCode: null, groupCode: null };
     case "BACK_TO_GROUPS":
       return { ...state, screen: "group", groupCode: null };
     case "BACK_TO_BRANCHES":

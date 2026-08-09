@@ -716,7 +716,7 @@ test("writes, lists, summarizes, and clears attendance", async () => {
     const student = roster.items[0];
     const prefix = `/api/students/${student.id}/attendance/2026-07-27`;
 
-    for (const eventCode of ["arrive", "shower", "koko"]) {
+    for (const eventCode of ["arrive", "shower"]) {
       const event = await readJson(await apiWithD1(env, `${prefix}/${eventCode}`, {
         method: "PUT",
         headers: groupHeaders(),
@@ -728,7 +728,7 @@ test("writes, lists, summarizes, and clears attendance", async () => {
       assert.equal(event.updatedBy, TEST_ALLOWED_EMAIL);
     }
 
-    for (const eventCode of ["home", "review"]) {
+    for (const eventCode of ["home", "review", "koko"]) {
       const removedEvent = await readJson(await apiWithD1(env, `${prefix}/${eventCode}`, {
         method: "PUT",
         headers: groupHeaders(),
@@ -741,7 +741,7 @@ test("writes, lists, summarizes, and clears attendance", async () => {
       env,
       "/api/attendance?branch=MK&group=MK%20HAPPY&date=2026-07-27",
     ));
-    assert.deepEqual(attendance.items.filter(({ active }) => active).map(({ eventCode }) => eventCode), ["koko", "shower"]);
+    assert.deepEqual(attendance.items.filter(({ active }) => active).map(({ eventCode }) => eventCode), ["arrive", "shower"]);
 
     const summary = await readJson(await apiWithD1(
       env,
@@ -749,17 +749,16 @@ test("writes, lists, summarizes, and clears attendance", async () => {
     ));
     assert.deepEqual(summary, {
       expected: 82,
-      arrived: 0,
-      notArrived: 82,
+      arrived: 1,
+      notArrived: 81,
       absent: 0,
-      koko: 1,
       unmarked: 81,
     });
 
     assert.deepEqual(await readJson(await apiWithD1(env, prefix, {
       method: "DELETE",
       headers: groupHeaders(),
-    })), { cleared: 3 });
+    })), { cleared: 2 });
   });
 });
 
@@ -813,13 +812,12 @@ test("returns a signed-in daily dashboard for every daycare group", async () => 
         arrived: 1,
         notArrived: 2,
         absent: 1,
-        koko: 1,
-        unmarked: 1,
+        unmarked: 2,
       },
       students: [
         { id: students[1][0], name: "MK ABSENT", grade: "Y4", status: "absent" },
         { id: students[0][0], name: "MK ARRIVED", grade: "Y4", status: "arrived" },
-        { id: students[2][0], name: "MK KOKO", grade: "Y4", status: "koko" },
+        { id: students[2][0], name: "MK KOKO", grade: "Y4", status: "unmarked" },
         { id: students[3][0], name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
       ],
     });
@@ -830,7 +828,7 @@ test("returns a signed-in daily dashboard for every daycare group", async () => 
     assert.deepEqual(currentClass, mkHappy.summary);
     assert.deepEqual(
       dashboard.groups.find(({ groupCode }) => groupCode === "MK WEN XUAN").summary,
-      { expected: 0, arrived: 0, notArrived: 0, absent: 0, koko: 0, unmarked: 0 },
+      { expected: 0, arrived: 0, notArrived: 0, absent: 0, unmarked: 0 },
     );
   });
 });

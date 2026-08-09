@@ -83,7 +83,7 @@ function supportFetch(recordHandler) {
     if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
     if (url.startsWith("/api/summary?")) {
       return jsonResponse(200, {
-        expected: 1, arrived: 0, notArrived: 1, absent: 0, koko: 0, unmarked: 1,
+        expected: 1, arrived: 0, notArrived: 1, absent: 0, unmarked: 1,
       });
     }
     if (url.startsWith("/api/attendance-records?")) return recordHandler(url);

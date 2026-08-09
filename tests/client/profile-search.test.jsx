@@ -140,7 +140,6 @@ function setupFetch() {
         arrived: 0,
         notArrived: 1,
         absent: 0,
-        koko: 0,
         unmarked: 1,
       });
     }

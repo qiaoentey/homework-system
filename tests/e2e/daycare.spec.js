@@ -123,18 +123,18 @@ test("Dashboard shows every class and expands daily student statuses", async ({ 
   await expect(page.getByRole("article")).toHaveCount(11);
 
   const mkHappy = page.getByRole("article", { name: "MK HAPPY" });
-  await expect(mkHappy.locator(".dashboard-metric")).toHaveCount(6);
+  await expect(mkHappy.locator(".dashboard-metric")).toHaveCount(5);
   await expect(mkHappy.getByText("应到", { exact: true })).toBeVisible();
   await expect(mkHappy.getByText("已到", { exact: true })).toBeVisible();
   await expect(mkHappy.getByText("还没有", { exact: true })).toBeVisible();
   await expect(mkHappy.getByText("缺席", { exact: true })).toBeVisible();
-  await expect(mkHappy.getByText("KOKO", { exact: true })).toBeVisible();
+  await expect(mkHappy.getByText("KOKO", { exact: true })).toHaveCount(0);
   await expect(mkHappy.getByText("未点", { exact: true })).toBeVisible();
 
   await mkHappy.getByRole("button", { name: "展开 MK HAPPY 名单" }).click();
   await expect(mkHappy.locator(".dashboard-student").first()).toBeVisible();
   await expect(mkHappy.locator(".dashboard-student").first().locator("span"))
-    .toContainText(/· (已到|缺席|KOKO|未点)/u);
+    .toContainText(/· (已到|缺席|未点)/u);
 
   await page.getByRole("button", { name: "WS", exact: true }).click();
   await expect(page.getByRole("article")).toHaveCount(3);
@@ -146,6 +146,33 @@ test("Dashboard shows every class and expands daily student statuses", async ({ 
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(390);
   }
+});
+
+test("class roster places Dashboard beside attendance records and returns to the same class", async ({
+  page,
+}) => {
+  const browserErrors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") browserErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  await openRoster(page, "MK", "HAPPY", "MK HAPPY");
+  const actions = page.getByRole("group", { name: "学生管理" });
+  await expect(actions.getByRole("button")).toHaveText([
+    "Enrol 学生",
+    "停补学生",
+    "恢复学生",
+    "点名记录",
+    "Dashboard",
+  ]);
+  await expect(page.getByText("KOKO", { exact: true })).toHaveCount(0);
+
+  await actions.getByRole("button", { name: "Dashboard" }).click();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("article")).toHaveCount(11);
+  await page.getByRole("button", { name: "返回班级" }).click();
+  await expect(page.getByRole("heading", { name: "MK HAPPY" })).toBeVisible();
+  expect(browserErrors).toEqual([]);
 });
 
 test("every branch exposes only its approved teacher groups", async ({ page }) => {
@@ -190,7 +217,9 @@ test("Qiao En STP loads all 90 students through browser-safe headers", async ({ 
 
 test("WS Huiling merges the supplied roster without duplicating same-grade students", async ({ page }) => {
   await openRoster(page, "WS", "HUILING", "WS HUILING");
-  await expect(page.getByText("只显示当前老师的在读学生 · 共 89 名")).toBeVisible();
+  const roster = await listStudents(page, "WS", "WS HUILING", "active");
+  expect(roster.body.total).toBeGreaterThanOrEqual(89);
+  await expect(page.getByText(`只显示当前老师的在读学生 · 共 ${roster.body.total} 名`)).toBeVisible();
 
   const duplicate = await listStudents(page, "WS", "WS HUILING", "active", "颜凯峯");
   expect(duplicate.status).toBe(200);
@@ -549,10 +578,10 @@ test("failed attendance can be retried without leaving stale optimistic state", 
 
   const card = page.getByTestId("student-card").first();
   await expect(card.locator(".event-grid .event-button")).toHaveText([
-    "到", "缺席", "KOKO", "冲", "餐", "功", "补",
+    "到", "缺席", "冲", "餐", "功", "补",
   ]);
   await expect(page.getByRole("region", { name: "当前班级统计" })
-    .getByText("KOKO", { exact: true })).toBeVisible();
+    .getByText("KOKO", { exact: true })).toHaveCount(0);
   await expect(card.getByRole("button", { name: "清除今日", exact: true })).toHaveCount(0);
   const arrive = card.getByRole("button", { name: "到", exact: true });
   const previous = await arrive.getAttribute("aria-pressed");

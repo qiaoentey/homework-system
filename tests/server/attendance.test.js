@@ -336,6 +336,11 @@ describe("attendance API", () => {
       .send({ active: true })
       .expect(400);
     await agent
+      .put(`${prefix}/2026-07-27/koko`)
+      .set(groupHeaders())
+      .send({ active: true })
+      .expect(400);
+    await agent
       .put(`${prefix}/2026-07-27/arrive`)
       .set(groupHeaders())
       .send({ active: "true" })
@@ -384,7 +389,7 @@ describe("attendance API", () => {
     });
     const prefix = `/api/students/${selected.id}/attendance/2026-07-27`;
 
-    for (const eventCode of ["arrive", "koko", "absent"]) {
+    for (const eventCode of ["arrive", "absent"]) {
       await agent
         .put(`${prefix}/${eventCode}`)
         .set(groupHeaders())
@@ -478,8 +483,7 @@ describe("attendance API", () => {
       arrived: 2,
       notArrived: 3,
       absent: 1,
-      koko: 1,
-      unmarked: 2,
+      unmarked: 3,
     });
   });
 
@@ -540,13 +544,12 @@ describe("attendance API", () => {
         arrived: 1,
         notArrived: 2,
         absent: 1,
-        koko: 1,
-        unmarked: 1,
+        unmarked: 2,
       },
       students: [
         { id: absent.id, name: "MK ABSENT", grade: "Y4", status: "absent" },
         { id: arrived.id, name: "MK ARRIVED", grade: "Y4", status: "arrived" },
-        { id: koko.id, name: "MK KOKO", grade: "Y4", status: "koko" },
+        { id: koko.id, name: "MK KOKO", grade: "Y4", status: "unmarked" },
         { id: unmarked.id, name: "MK UNMARKED", grade: "Y4", status: "unmarked" },
       ],
     });
@@ -561,10 +564,9 @@ describe("attendance API", () => {
           arrived: 0,
           notArrived: 1,
           absent: 0,
-          koko: 1,
-          unmarked: 0,
+          unmarked: 1,
         },
-        students: [{ id: wsKoko.id, name: "WS KOKO", grade: "Y4", status: "koko" }],
+        students: [{ id: wsKoko.id, name: "WS KOKO", grade: "Y4", status: "unmarked" }],
       });
     expect(response.body.groups.find(({ groupCode }) => groupCode === "MK WEN XUAN"))
       .toMatchObject({
@@ -573,7 +575,6 @@ describe("attendance API", () => {
           arrived: 0,
           notArrived: 0,
           absent: 0,
-          koko: 0,
           unmarked: 0,
         },
         students: [],

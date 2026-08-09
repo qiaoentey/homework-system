@@ -71,7 +71,6 @@ const ATTENDANCE_EVENTS = new Set([
   "homework",
   "supplement",
   "absent",
-  "koko",
 ]);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
@@ -779,7 +778,7 @@ async function summary(database, url) {
        ON ae.student_id = s.id
       AND ae.attendance_date = ?
       AND ae.is_active = 1
-      AND ae.event_code IN ('arrive', 'absent', 'koko')
+      AND ae.event_code IN ('arrive', 'absent')
      WHERE s.branch_code = ?
        AND s.group_code = ?
        AND s.status = 'active'
@@ -821,7 +820,7 @@ async function dailyDashboard(database, url) {
        ON ae.student_id = s.id
       AND ae.attendance_date = ?
       AND ae.is_active = 1
-      AND ae.event_code IN ('arrive', 'absent', 'koko')
+      AND ae.event_code IN ('arrive', 'absent')
      WHERE s.status = 'active'
      ORDER BY s.group_code, lower(s.name), s.id, ae.event_code`,
     [date],
@@ -874,7 +873,7 @@ async function updateAttendance(request, database, id, date, eventCode, identity
        SET is_active = 0, updated_by = ?, updated_at = ?
        WHERE student_id = ?
          AND attendance_date = ?
-         AND event_code IN ('arrive', 'absent', 'koko')
+         AND event_code IN ('arrive', 'absent')
          AND event_code <> ?`,
     ).bind(identity.email, now, id, date, eventCode);
     await database.batch([requested, deactivateOtherPrimaryStates]);

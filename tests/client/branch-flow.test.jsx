@@ -120,6 +120,12 @@ describe.each([
     expect(await screen.findByRole("heading", { name: "MK HAPPY" })).toBeVisible();
     expect(screen.getByRole("button", { name: "返回老师" })).toBeVisible();
     expect(screen.getByRole("button", { name: "返回分院" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Dashboard" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dashboard" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "返回班级" }));
+    expect(await screen.findByRole("heading", { name: "MK HAPPY" })).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "返回分院" }));
     fireEvent.click(screen.getByRole("button", { name: "STP" }));
@@ -158,9 +164,13 @@ describe("flow state boundaries", () => {
     });
     expect(flowReducer(changedBranch, { type: "OPEN_DASHBOARD" })).toEqual({
       screen: "dashboard",
-      branchCode: null,
+      branchCode: "WS",
       groupCode: null,
     });
+    expect(flowReducer(
+      { screen: "dashboard", branchCode: "MK", groupCode: "MK HAPPY" },
+      { type: "BACK_FROM_DASHBOARD" },
+    )).toEqual({ screen: "roster", branchCode: "MK", groupCode: "MK HAPPY" });
     expect(flowReducer(changedBranch, { type: "LOGOUT" })).toEqual(initialFlowState);
   });
 });

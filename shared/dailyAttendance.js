@@ -1,9 +1,8 @@
-export const PRIMARY_ATTENDANCE_EVENTS = ["arrive", "absent", "koko"];
+export const PRIMARY_ATTENDANCE_EVENTS = ["arrive", "absent"];
 
 const STATUS_PRIORITY = [
   ["absent", "absent"],
   ["arrive", "arrived"],
-  ["koko", "koko"],
 ];
 
 export function primaryStatusFor(events) {
@@ -17,7 +16,6 @@ export function dailyAttendanceResult(students) {
     arrived: 0,
     notArrived: 0,
     absent: 0,
-    koko: 0,
     unmarked: 0,
   };
   const items = students.map(({ id, name, grade, events }) => {
@@ -25,6 +23,6 @@ export function dailyAttendanceResult(students) {
     summary[status] += 1;
     return { id, name, grade, status };
   });
-  summary.notArrived = summary.koko + summary.unmarked;
+  summary.notArrived = summary.unmarked;
   return { summary, students: items };
 }

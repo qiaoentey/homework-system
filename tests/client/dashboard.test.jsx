@@ -18,13 +18,12 @@ const dashboard = {
         arrived: 1,
         notArrived: 2,
         absent: 1,
-        koko: 1,
-        unmarked: 1,
+        unmarked: 2,
       },
       students: [
         { id: "1", name: "AMY", grade: "Y1", status: "arrived" },
         { id: "2", name: "BEN", grade: "Y2", status: "absent" },
-        { id: "3", name: "CARA", grade: "Y3", status: "koko" },
+        { id: "3", name: "CARA", grade: "Y3", status: "unmarked" },
         { id: "4", name: "DAN", grade: "Y4", status: "unmarked" },
       ],
     },
@@ -37,7 +36,6 @@ const dashboard = {
         arrived: 0,
         notArrived: 1,
         absent: 0,
-        koko: 0,
         unmarked: 1,
       },
       students: [{ id: "5", name: "EVA", grade: "Y5", status: "unmarked" }],
@@ -62,6 +60,23 @@ afterEach(() => {
 });
 
 describe("daily Dashboard", () => {
+  it("opens the current class immediately when entered from its roster", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(200, dashboard)));
+
+    render(
+      <DashboardScreen
+        date="2026-07-27"
+        initialGroupCode="MK HAPPY"
+        onBack={vi.fn()}
+      />,
+    );
+
+    const mkCard = await screen.findByRole("article", { name: "MK HAPPY" });
+    expect(within(mkCard).getByRole("button", { name: "收起 MK HAPPY 名单" })).toBeVisible();
+    expect(within(mkCard).getByText("AMY")).toBeVisible();
+    expect(within(mkCard).getByText("Y1 · 已到")).toBeVisible();
+  });
+
   it("loads all groups, filters branches, and expands one class into student statuses", async () => {
     const fetchMock = vi.fn(async () => jsonResponse(200, dashboard));
     vi.stubGlobal("fetch", fetchMock);
@@ -80,15 +95,15 @@ describe("daily Dashboard", () => {
     expect(within(mkCard).getByText("已到").nextSibling).toHaveTextContent("1");
     expect(within(mkCard).getByText("还没有").nextSibling).toHaveTextContent("2");
     expect(within(mkCard).getByText("缺席").nextSibling).toHaveTextContent("1");
-    expect(within(mkCard).getByText("KOKO").nextSibling).toHaveTextContent("1");
-    expect(within(mkCard).getByText("未点").nextSibling).toHaveTextContent("1");
+    expect(within(mkCard).getByText("未点").nextSibling).toHaveTextContent("2");
+    expect(within(mkCard).queryByText("KOKO", { exact: true })).not.toBeInTheDocument();
     expect(screen.queryByText("AMY")).not.toBeInTheDocument();
 
     fireEvent.click(within(mkCard).getByRole("button", { name: "展开 MK HAPPY 名单" }));
     expect(within(mkCard).getByText("AMY")).toBeVisible();
     expect(within(mkCard).getByText("Y1 · 已到")).toBeVisible();
     expect(within(mkCard).getByText("Y2 · 缺席")).toBeVisible();
-    expect(within(mkCard).getByText("Y3 · KOKO")).toBeVisible();
+    expect(within(mkCard).getByText("Y3 · 未点")).toBeVisible();
     expect(within(mkCard).getByText("Y4 · 未点")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "WS" }));

@@ -35,6 +35,7 @@ export function RosterScreen({
   date = localDate(),
   onBackGroups,
   onBackBranches,
+  onDashboard,
 }) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -331,7 +332,7 @@ export function RosterScreen({
 
       <SummaryBar summary={summary} loading={summaryStatus === "loading"} />
 
-      <div className="roster-lifecycle-actions" aria-label="学生管理">
+      <div className="roster-lifecycle-actions" aria-label="学生管理" role="group">
         <button className="primary-button" type="button" onClick={() => setLifecycleDialog("enrol")}>
           Enrol 学生
         </button>
@@ -343,6 +344,9 @@ export function RosterScreen({
         </button>
         <button className="secondary-button" type="button" onClick={() => setLifecycleDialog("records")}>
           点名记录
+        </button>
+        <button className="dashboard-button" type="button" onClick={onDashboard}>
+          Dashboard
         </button>
       </div>
 

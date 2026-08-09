@@ -112,9 +112,14 @@ export function App() {
   }
 
   if (flow.screen === "dashboard") {
+    const openedFromRoster = Boolean(flow.branchCode && flow.groupCode);
     return (
       <AppShell onLogout={logout}>
-        <DashboardScreen onBack={() => dispatch({ type: "BACK_TO_BRANCHES" })} />
+        <DashboardScreen
+          backLabel={openedFromRoster ? "返回班级" : "返回分院"}
+          initialGroupCode={openedFromRoster ? flow.groupCode : null}
+          onBack={() => dispatch({ type: "BACK_FROM_DASHBOARD" })}
+        />
       </AppShell>
     );
   }
@@ -140,6 +145,7 @@ export function App() {
           groups={selectedBranch.groups}
           onBackGroups={() => dispatch({ type: "BACK_TO_GROUPS" })}
           onBackBranches={() => dispatch({ type: "BACK_TO_BRANCHES" })}
+          onDashboard={() => dispatch({ type: "OPEN_DASHBOARD" })}
         />
       </AppShell>
     );

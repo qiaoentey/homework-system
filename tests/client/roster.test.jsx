@@ -88,7 +88,6 @@ function rosterSupport(url) {
       arrived: 0,
       notArrived: 121,
       absent: 0,
-      koko: 0,
       unmarked: 121,
     });
   }
@@ -244,9 +243,9 @@ describe("virtualized current-group roster", () => {
     const labels = within(card.querySelector(".event-grid"))
       .getAllByRole("button")
       .map((button) => button.textContent);
-    expect(labels).toEqual(["到", "缺席", "KOKO", "冲", "餐", "功", "补"]);
+    expect(labels).toEqual(["到", "缺席", "冲", "餐", "功", "补"]);
     expect(within(screen.getByRole("region", { name: "当前班级统计" }))
-      .getByText("KOKO", { exact: true })).toBeVisible();
+      .queryByText("KOKO", { exact: true })).not.toBeInTheDocument();
   });
 
   it("mounts fewer than 30 cards for 121 students and requests 50 rows at a time", async () => {
@@ -398,7 +397,7 @@ describe("attendance controls and summary", () => {
       }
       if (url.startsWith("/api/summary?")) {
         return jsonResponse(200, {
-          expected: 1, arrived: 1, notArrived: 0, absent: 0, koko: 0, unmarked: 0,
+          expected: 1, arrived: 1, notArrived: 0, absent: 0, unmarked: 0,
         });
       }
       if (url.includes("/attendance/") && options.method === "PUT") {
@@ -436,7 +435,7 @@ describe("attendance controls and summary", () => {
       if (url.startsWith("/api/attendance?")) return initialAttendance.promise;
       if (url.startsWith("/api/summary?")) {
         return jsonResponse(200, {
-          expected: 1, arrived: 1, notArrived: 0, absent: 0, koko: 0, unmarked: 0,
+          expected: 1, arrived: 1, notArrived: 0, absent: 0, unmarked: 0,
         });
       }
       if (url.includes("/attendance/") && options.method === "PUT") {
@@ -477,7 +476,7 @@ describe("attendance controls and summary", () => {
         summaryCalls += 1;
         if (summaryCalls === 1) return initialSummary.promise;
         return jsonResponse(200, {
-          expected: 1, arrived: 1, notArrived: 0, absent: 0, koko: 0, unmarked: 0,
+          expected: 1, arrived: 1, notArrived: 0, absent: 0, unmarked: 0,
         });
       }
       if (url.includes("/attendance/") && options.method === "PUT") {
@@ -500,7 +499,7 @@ describe("attendance controls and summary", () => {
 
     await act(async () => {
       initialSummary.resolve(jsonResponse(200, {
-        expected: 1, arrived: 0, notArrived: 1, absent: 0, koko: 0, unmarked: 1,
+        expected: 1, arrived: 0, notArrived: 1, absent: 0, unmarked: 1,
       }));
     });
 
@@ -526,7 +525,7 @@ describe("attendance controls and summary", () => {
         return summaryCalls === 1
           ? jsonResponse(503, { error: "summary unavailable" })
           : jsonResponse(200, {
-            expected: 1, arrived: 0, notArrived: 1, absent: 0, koko: 0, unmarked: 1,
+            expected: 1, arrived: 0, notArrived: 1, absent: 0, unmarked: 1,
           });
       }
       throw new Error(`Unexpected request: GET ${url}`);
@@ -574,7 +573,6 @@ describe("attendance controls and summary", () => {
           arrived: summaryCalls > 1 ? 1 : 0,
           notArrived: summaryCalls > 1 ? 1 : 2,
           absent: 0,
-          koko: 0,
           unmarked: summaryCalls > 1 ? 1 : 2,
         });
       }
@@ -642,7 +640,6 @@ describe("attendance controls and summary", () => {
           arrived: 0,
           notArrived: 1,
           absent: 0,
-          koko: 0,
           unmarked: 1,
         });
       }
@@ -671,7 +668,7 @@ describe("one on-demand message editor", () => {
       if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
       if (url.startsWith("/api/summary?")) {
         return jsonResponse(200, {
-          expected: 2, arrived: 0, notArrived: 2, absent: 0, koko: 0, unmarked: 2,
+          expected: 2, arrived: 0, notArrived: 2, absent: 0, unmarked: 2,
         });
       }
       if (url.endsWith("/messages") && (options.method ?? "GET") === "GET") {

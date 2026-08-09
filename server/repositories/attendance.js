@@ -199,7 +199,7 @@ export async function getGroupSummary(pool, {
        on ae.student_id = s.id
       and ae.attendance_date = $3
       and ae.is_active = true
-      and ae.event_code in ('arrive', 'absent', 'koko')
+      and ae.event_code in ('arrive', 'absent')
      where s.branch_code = $1
        and s.group_code = $2
        and s.status = 'active'
@@ -233,7 +233,7 @@ export async function getDailyDashboard(pool, { date }) {
        on ae.student_id = s.id
       and ae.attendance_date = $1
       and ae.is_active = true
-      and ae.event_code in ('arrive', 'absent', 'koko')
+      and ae.event_code in ('arrive', 'absent')
      where s.status = 'active'
      order by s.group_code, lower(s.name), s.id, ae.event_code`,
     [date],

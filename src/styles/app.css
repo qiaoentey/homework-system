@@ -381,7 +381,7 @@ button {
 
 .summary-bar {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 24px;
 }
@@ -394,9 +394,26 @@ button {
 }
 
 .roster-lifecycle-actions .primary-button,
-.roster-lifecycle-actions .secondary-button {
+.roster-lifecycle-actions .secondary-button,
+.roster-lifecycle-actions .dashboard-button {
   min-height: 44px;
   padding: 8px 16px;
+}
+
+.dashboard-button {
+  border: 1px solid var(--color-blue);
+  border-radius: 14px;
+  background: var(--color-blue);
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+}
+
+.dashboard-button:hover,
+.dashboard-button:focus-visible {
+  background: var(--color-navy);
+  border-color: var(--color-navy);
 }
 
 .lifecycle-toast {
@@ -566,7 +583,7 @@ button {
 
 .dashboard-metrics {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 7px;
   padding: 0 20px 18px;
 }
@@ -602,10 +619,6 @@ button {
 
 .dashboard-metric--absent {
   background: #fff0f0;
-}
-
-.dashboard-metric--koko {
-  background: #f3efff;
 }
 
 .dashboard-students {
@@ -653,10 +666,6 @@ button {
 
 .dashboard-student--absent {
   border-left-color: #d94141;
-}
-
-.dashboard-student--koko {
-  border-left-color: #7755c9;
 }
 
 .dashboard-students__empty {

@@ -3,7 +3,6 @@ import { PRIMARY_ATTENDANCE_EVENTS } from "../../shared/dailyAttendance.js";
 export const EVENT_BUTTONS = [
   ["arrive", "到"],
   ["absent", "缺席"],
-  ["koko", "KOKO"],
   ["shower", "冲"],
   ["meal", "餐"],
   ["homework", "功"],
@@ -24,6 +23,5 @@ export const EMPTY_SUMMARY = {
   arrived: 0,
   notArrived: 0,
   absent: 0,
-  koko: 0,
   unmarked: 0,
 };

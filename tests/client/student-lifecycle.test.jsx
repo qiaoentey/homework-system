@@ -100,7 +100,6 @@ function supportResponse(url) {
       arrived: 0,
       notArrived: 1,
       absent: 0,
-      koko: 0,
       unmarked: 1,
     });
   }
@@ -687,7 +686,6 @@ describe("stop-supplement", () => {
           arrived: 0,
           notArrived: 1,
           absent: 0,
-          koko: 0,
           unmarked: 1,
         });
       }
