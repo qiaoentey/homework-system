@@ -38,6 +38,9 @@ function allowedGoogleEmails(env) {
     ...(typeof env?.GOOGLE_ALLOWED_EMAILS === "string"
       ? env.GOOGLE_ALLOWED_EMAILS.split(",")
       : []),
+    ...(typeof env?.GOOGLE_ALLOWED_EMAILS_EXTRA === "string"
+      ? env.GOOGLE_ALLOWED_EMAILS_EXTRA.split(",")
+      : []),
     env?.GOOGLE_ALLOWED_EMAIL,
   ].map(normalizedEmail).filter(Boolean));
 }
