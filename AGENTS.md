@@ -13,3 +13,5 @@ Roster profile editing must have an obvious one-action entry on every student ca
 Student profile entry must preserve the original STP controlled choices: fixed schools, grade-aware school-class options, time controls, parent/Van transport, Van details, and weekday stay-time choices. Use the same profile controls for existing students and Enrol.
 
 Dashboard student rows must show every daily point-marking item in the same order as the roster buttons. Active items change color, inactive items stay gray, and legacy KOKO records remain hidden.
+
+Marking a student absent must require one of these reasons: 生病、旅行、校外比赛、家事、其他. “其他” requires teacher-entered text, and the saved reason must remain visible on the roster, Dashboard, and dated attendance records.
