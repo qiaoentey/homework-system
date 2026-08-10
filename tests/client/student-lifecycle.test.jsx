@@ -159,17 +159,17 @@ describe("student enrolment", () => {
     ]);
 
     fireEvent.change(school, { target: { value: "姚贞暖" } });
-    const emptySchoolClass = within(dialog).getByRole("combobox", { name: "学校班级" });
-    expect(within(emptySchoolClass).getAllByRole("option").map((option) => (
+    const schoolClass = within(dialog).getByRole("combobox", { name: "学校班级" });
+    expect(within(schoolClass).getAllByRole("option").map((option) => (
       option.textContent
-    ))).toEqual(["请选择学校班级"]);
-    expect(emptySchoolClass).toHaveValue("");
+    ))).toEqual(["请选择学校班级", "3H"]);
+    expect(schoolClass).toHaveValue("");
 
     fireEvent.change(school, { target: { value: "幼儿园" } });
-    expect(within(emptySchoolClass).getAllByRole("option").map((option) => (
+    expect(within(schoolClass).getAllByRole("option").map((option) => (
       option.textContent
     ))).toEqual(["请选择学校班级"]);
-    expect(emptySchoolClass).toHaveValue("");
+    expect(schoolClass).toHaveValue("");
   });
 
   it("requires identity, offers only authenticated branch groups, sends every profile field once, and refreshes only the current group", async () => {

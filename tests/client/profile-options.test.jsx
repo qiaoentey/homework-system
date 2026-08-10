@@ -105,6 +105,14 @@ describe("restored student profile choices", () => {
         Y5: ["5C", "5J", "5B"],
         Y6: ["6C", "6J", "6B"],
       },
+      姚贞暖: {
+        Y1: [],
+        Y2: ["2B"],
+        Y3: ["3H"],
+        Y4: ["4Y"],
+        Y5: [],
+        Y6: ["6W"],
+      },
     };
 
     for (const [school, grades] of Object.entries(classesBySchool)) {
@@ -113,7 +121,6 @@ describe("restored student profile choices", () => {
       }
     }
     expect(schoolClassesFor("MK", "南益", "Y3")).toEqual([]);
-    expect(schoolClassesFor("MK", "姚贞暖", "Y3")).toEqual([]);
     expect(schoolClassesFor("MK", "幼儿园", "Y3")).toEqual([]);
     expect(schoolClassesFor("MK", "一校", "三年级")).toEqual([
       "3J", "3B", "3M", "3U",
@@ -154,17 +161,17 @@ describe("restored student profile choices", () => {
     ]);
 
     fireEvent.change(school, { target: { value: "姚贞暖" } });
-    const emptySchoolClass = screen.getByRole("combobox", { name: "学校班级" });
-    expect(within(emptySchoolClass).getAllByRole("option").map((option) => (
+    const schoolClass = screen.getByRole("combobox", { name: "学校班级" });
+    expect(within(schoolClass).getAllByRole("option").map((option) => (
       option.textContent
-    ))).toEqual(["请选择学校班级"]);
-    expect(emptySchoolClass).toHaveValue("");
+    ))).toEqual(["请选择学校班级", "3H"]);
+    expect(schoolClass).toHaveValue("");
 
     fireEvent.change(school, { target: { value: "幼儿园" } });
-    expect(within(emptySchoolClass).getAllByRole("option").map((option) => (
+    expect(within(schoolClass).getAllByRole("option").map((option) => (
       option.textContent
     ))).toEqual(["请选择学校班级"]);
-    expect(emptySchoolClass).toHaveValue("");
+    expect(schoolClass).toHaveValue("");
   });
 
   it("links the six original schools to grade-matched classes and clears an incompatible class", () => {

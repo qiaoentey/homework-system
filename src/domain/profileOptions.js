@@ -51,6 +51,12 @@ const MK_SCHOOL_CLASSES = {
     String(year),
     [`${year}C`, `${year}J`, `${year}B`],
   ])),
+  姚贞暖: {
+    2: ["2B"],
+    3: ["3H"],
+    4: ["4Y"],
+    6: ["6W"],
+  },
 };
 
 const SCHOOL_CLASS_SUFFIXES = {
