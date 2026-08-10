@@ -28,6 +28,41 @@ function weekdaySummary(profile, field, activeValue) {
   return days.length > 0 ? `周${days.join("、")}` : "";
 }
 
+function vanScheduleDetails(profile) {
+  const fallbackTime = clean(profile?.vanHomeTime) || clean(profile?.usualPickupTime);
+  const activeDays = WEEKDAYS.flatMap((day) => {
+    const savedValue = clean(profile?.[day.van]);
+    if (!savedValue) return [];
+    return [{
+      short: day.short,
+      time: savedValue === "需要" ? fallbackTime : savedValue,
+      legacy: savedValue === "需要",
+    }];
+  });
+
+  if (activeDays.length === 0) {
+    return ["平日", displayTime(fallbackTime)];
+  }
+
+  if (activeDays.every((day) => day.legacy)) {
+    return [
+      `周${activeDays.map((day) => day.short).join("、")}`,
+      displayTime(fallbackTime),
+    ];
+  }
+
+  const daysByTime = new Map();
+  for (const day of activeDays) {
+    const days = daysByTime.get(day.time) ?? [];
+    days.push(day.short);
+    daysByTime.set(day.time, days);
+  }
+  return [...daysByTime].map(([time, days]) => [
+    `周${days.join("、")}`,
+    displayTime(time),
+  ].filter(Boolean).join(" "));
+}
+
 function homeworkTimeSummary(profile) {
   const arrival = clean(profile?.homeworkArrivalTime);
   const departure = clean(profile?.homeworkDepartureTime);
@@ -89,8 +124,7 @@ export function studentProfileLabels(profile) {
   if (clean(profile?.pickupMethod).toLowerCase() === "van") {
     labels.push(profileLabel("van", "V", "Van载送", [
       clean(profile?.vanDriver),
-      weekdaySummary(profile, "van", "需要") || "平日",
-      displayTime(profile?.vanHomeTime) || displayTime(profile?.usualPickupTime),
+      ...vanScheduleDetails(profile),
     ]));
   }
 

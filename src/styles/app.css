@@ -1199,11 +1199,6 @@ button {
   grid-column: 1 / -1;
 }
 
-.student-profile-fields__van-time {
-  grid-column: 1 / -1;
-  max-width: 260px;
-}
-
 .student-profile-fields__homework-days h3,
 .student-profile-fields__van-days h3 {
   margin: 0;
@@ -1232,6 +1227,22 @@ button {
   border-radius: 12px;
   background: white;
   cursor: pointer;
+}
+
+.profile-form .student-profile-fields__van-days label,
+.lifecycle-form .student-profile-fields__van-days label {
+  align-items: stretch;
+  flex-direction: column;
+  cursor: default;
+}
+
+.student-profile-fields__van-days label > span {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.student-profile-fields__van-days select {
+  width: 100%;
 }
 
 .profile-form .student-profile-fields__homework-days input[type="checkbox"],

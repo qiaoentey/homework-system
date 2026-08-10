@@ -286,27 +286,28 @@ describe("restored student profile choices", () => {
       "Aunty Airine",
     ]);
     for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
-      expect(screen.getByRole("checkbox", { name: `${day} Van` })).not.toBeChecked();
+      const vanTime = screen.getByRole("combobox", { name: `${day} Van 时间` });
+      expect(within(vanTime).getAllByRole("option").map((option) => option.textContent)).toEqual([
+        "不需要",
+        "5:30 PM",
+        "7:00 PM",
+        "8:45 PM",
+      ]);
+      expect(vanTime).toHaveValue("");
     }
-    fireEvent.click(screen.getByRole("checkbox", { name: "星期一 Van" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "星期三 Van" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "星期五 Van" }));
-    expect(screen.getByRole("checkbox", { name: "星期一 Van" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "星期三 Van" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "星期五 Van" })).toBeChecked();
-
-    const weekdayGroup = screen.getByRole("heading", { name: "Van 载送星期" }).parentElement;
-    const vanTime = screen.getByRole("combobox", { name: "Van 载送时间" });
-    expect(weekdayGroup.compareDocumentPosition(vanTime) & Node.DOCUMENT_POSITION_FOLLOWING)
-      .toBeTruthy();
-    expect(within(vanTime).getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "请选择时间",
-      "5:30 PM",
-      "7:00 PM",
-      "8:45 PM",
-    ]);
-    fireEvent.change(vanTime, { target: { value: "19:00" } });
-    expect(vanTime).toHaveValue("19:00");
+    fireEvent.change(screen.getByRole("combobox", { name: "星期一 Van 时间" }), {
+      target: { value: "17:30" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "星期三 Van 时间" }), {
+      target: { value: "19:00" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "星期五 Van 时间" }), {
+      target: { value: "20:45" },
+    });
+    expect(screen.getByRole("combobox", { name: "星期一 Van 时间" })).toHaveValue("17:30");
+    expect(screen.getByRole("combobox", { name: "星期三 Van 时间" })).toHaveValue("19:00");
+    expect(screen.getByRole("combobox", { name: "星期五 Van 时间" })).toHaveValue("20:45");
+    expect(screen.queryByRole("combobox", { name: "Van 载送时间" })).not.toBeInTheDocument();
 
     for (const day of ["星期一", "星期二", "星期三", "星期四", "星期五"]) {
       expect(within(screen.getByRole("combobox", { name: day }))
@@ -317,6 +318,22 @@ describe("restored student profile choices", () => {
         "5:00 PM",
       ]);
     }
+  });
+
+  it("shows legacy Van weekdays with their saved shared return time", () => {
+    renderProfile(student({
+      profile: {
+        ...EMPTY_PROFILE,
+        pickupMethod: "Van",
+        vanHomeTime: "19:00",
+        vanMonday: "需要",
+        vanWednesday: "需要",
+      },
+    }));
+
+    expect(screen.getByRole("combobox", { name: "星期一 Van 时间" })).toHaveValue("19:00");
+    expect(screen.getByRole("combobox", { name: "星期二 Van 时间" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "星期三 Van 时间" })).toHaveValue("19:00");
   });
 
   it("replaces 3:30 PM with 3:20 PM for every MK 二校 stay-time selector", () => {
@@ -504,6 +521,7 @@ describe("restored student profile choices", () => {
         pickupMethod: "Van",
         vanDriver: "其他司机",
         vanHomeTime: "17:00",
+        vanMonday: "17:00",
         lateStayMonday: "18:00",
       },
     }));
@@ -514,7 +532,7 @@ describe("restored student profile choices", () => {
     expect(screen.getByRole("option", { name: "3Z（现有资料）" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Van 司机" })).toHaveValue("其他司机");
     expect(screen.getByRole("option", { name: "其他司机（现有资料）" })).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Van 载送时间" })).toHaveValue("17:00");
+    expect(screen.getByRole("combobox", { name: "星期一 Van 时间" })).toHaveValue("17:00");
     expect(screen.getByRole("option", { name: "17:00（现有资料）" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "星期一" })).toHaveValue("18:00");
     expect(screen.getByRole("option", { name: "18:00（现有资料）" })).toBeInTheDocument();

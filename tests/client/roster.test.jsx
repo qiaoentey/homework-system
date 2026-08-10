@@ -186,6 +186,33 @@ describe("virtualized current-group roster", () => {
     }
   });
 
+  it("groups Van weekdays by their saved return time", async () => {
+    const vanStudent = student(2, {
+      name: "VAN STUDENT",
+      profile: {
+        ...EMPTY_PROFILE,
+        pickupMethod: "Van",
+        vanDriver: "Uncle Kent",
+        vanMonday: "17:30",
+        vanWednesday: "19:00",
+        vanFriday: "17:30",
+      },
+    });
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [vanStudent], nextCursor: null, total: 1 });
+      }
+      return rosterSupport(url);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" />);
+
+    const card = await screen.findByTestId("student-card");
+    expect(within(card).getByLabelText(
+      "Van载送 · Uncle Kent · 周一、五 5:30 PM · 周三 7:00 PM",
+    )).toHaveClass("profile-label--van");
+  });
+
   it("shows dinner from saved weekday data even when the old global flag is missing", async () => {
     const dinnerStudent = student(2, {
       name: "DINNER STUDENT",

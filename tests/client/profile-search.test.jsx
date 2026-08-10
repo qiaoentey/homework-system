@@ -72,12 +72,11 @@ const PROFILE_LABELS = [
   "平常回家时间",
   "回家载送",
   "Van 司机",
-  "Van 载送时间",
-  "星期一 Van",
-  "星期二 Van",
-  "星期三 Van",
-  "星期四 Van",
-  "星期五 Van",
+  "星期一 Van 时间",
+  "星期二 Van 时间",
+  "星期三 Van 时间",
+  "星期四 Van 时间",
+  "星期五 Van 时间",
   "学生类型",
   "是否需要晚餐",
   "星期一晚餐",
@@ -103,7 +102,7 @@ const SPECIAL_NOTE_LABELS = [
 ];
 
 const BASE_PROFILE_LABELS = PROFILE_LABELS.filter((label) => (
-  label !== "年级" && !label.startsWith("Van ") && !label.endsWith(" Van")
+  label !== "年级" && !label.startsWith("Van ") && !label.includes(" Van 时间")
     && !/^星期[一二三四五]晚餐$/u.test(label)
 ));
 
@@ -262,9 +261,7 @@ describe("current-group search and safe profile selection", () => {
     const card = await screen.findByTestId("student-card");
     fireEvent.click(within(card).getByRole("button", { name: /选择 HAYDEN CHIN/ }));
     for (const label of PROFILE_LABELS) {
-      const field = label.endsWith(" Van")
-        ? screen.getByRole("checkbox", { name: label, exact: true })
-        : /^星期[一二三四五]$/u.test(label)
+      const field = /^星期[一二三四五]$/u.test(label)
           ? screen.getByRole("combobox", { name: label, exact: true })
           : screen.getByLabelText(label, { exact: true });
       expect(field).toBeVisible();
@@ -275,7 +272,7 @@ describe("current-group search and safe profile selection", () => {
     for (const label of DETENTION_LABELS) {
       expect(screen.getByRole("checkbox", { name: label, exact: true })).toBeVisible();
     }
-    expect(screen.getAllByTestId("profile-field")).toHaveLength(32);
+    expect(screen.getAllByTestId("profile-field")).toHaveLength(31);
     const grade = screen.getByLabelText("年级");
     expect(grade).toHaveValue("Y3");
     for (const option of ["F4", "F5", "F6"]) {

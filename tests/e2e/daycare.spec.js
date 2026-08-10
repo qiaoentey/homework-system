@@ -379,10 +379,9 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     await expect(vanDriver.locator(`option[value="${driver}"]`)).toHaveCount(1);
   }
   await vanDriver.selectOption("Mr Kent");
-  await enrol.getByLabel("Van 载送时间", { exact: true }).selectOption("17:30");
-  await enrol.getByRole("checkbox", { name: "星期一 Van", exact: true }).check();
-  await enrol.getByRole("checkbox", { name: "星期三 Van", exact: true }).check();
-  await enrol.getByRole("checkbox", { name: "星期五 Van", exact: true }).check();
+  await enrol.getByLabel("星期一 Van 时间", { exact: true }).selectOption("17:30");
+  await enrol.getByLabel("星期三 Van 时间", { exact: true }).selectOption("19:00");
+  await enrol.getByLabel("星期五 Van 时间", { exact: true }).selectOption("20:45");
   await enrol.getByLabel("是否需要晚餐", { exact: true }).selectOption("需要");
   await enrol.getByLabel("星期一晚餐", { exact: true }).selectOption("小");
   await enrol.getByLabel("学生类型", { exact: true }).selectOption("功课班");
@@ -421,12 +420,12 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     schoolClass: "3J",
     pickupMethod: "Van",
     vanDriver: "Mr Kent",
-    vanHomeTime: "17:30",
-    vanMonday: "需要",
+    vanHomeTime: "",
+    vanMonday: "17:30",
     vanTuesday: "",
-    vanWednesday: "需要",
+    vanWednesday: "19:00",
     vanThursday: "",
-    vanFriday: "需要",
+    vanFriday: "20:45",
     dinnerRequired: "需要",
     dinnerMonday: "小",
     dinnerTuesday: "不需要",
@@ -457,7 +456,7 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
   });
   await expect(studentCard.getByText("一校 · 3J", { exact: true })).toBeVisible();
   await expect(studentCard.getByLabel(
-    "Van载送 · Mr Kent · 周一、三、五 · 5:30 PM",
+    "Van载送 · Mr Kent · 周一 5:30 PM · 周三 7:00 PM · 周五 8:45 PM",
     { exact: true },
   )).toBeVisible();
   await expect(studentCard.getByLabel(
@@ -535,12 +534,12 @@ test("enrol, stop, and restore preserve UUID, profile, attendance, and messages"
     schoolClass: "",
     pickupMethod: "Van",
     vanDriver: "Mr Kent",
-    vanHomeTime: "17:30",
-    vanMonday: "需要",
+    vanHomeTime: "",
+    vanMonday: "17:30",
     vanTuesday: "",
-    vanWednesday: "需要",
+    vanWednesday: "19:00",
     vanThursday: "",
-    vanFriday: "需要",
+    vanFriday: "20:45",
     dinnerRequired: "需要",
     dinnerMonday: "小",
     dinnerTuesday: "不需要",

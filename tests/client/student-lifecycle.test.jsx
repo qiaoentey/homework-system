@@ -236,12 +236,15 @@ describe("student enrolment", () => {
     fireEvent.change(within(dialog).getByLabelText("Van 司机"), {
       target: { value: "Tong" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Van 载送时间"), {
+    fireEvent.change(within(dialog).getByLabelText("星期一 Van 时间"), {
       target: { value: "17:30" },
     });
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期一 Van" }));
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期三 Van" }));
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: "星期五 Van" }));
+    fireEvent.change(within(dialog).getByLabelText("星期三 Van 时间"), {
+      target: { value: "19:00" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("星期五 Van 时间"), {
+      target: { value: "20:45" },
+    });
     fireEvent.change(within(dialog).getByRole("combobox", { name: "学生类型" }), {
       target: { value: "功课班" },
     });
@@ -292,10 +295,9 @@ describe("student enrolment", () => {
         school: "南益",
         pickupMethod: "Van",
         vanDriver: "Tong",
-        vanHomeTime: "17:30",
-        vanMonday: "需要",
-        vanWednesday: "需要",
-        vanFriday: "需要",
+        vanMonday: "17:30",
+        vanWednesday: "19:00",
+        vanFriday: "20:45",
         dinnerRequired: "需要",
         dinnerMonday: "小",
         dinnerTuesday: "不需要",

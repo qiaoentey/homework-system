@@ -24,11 +24,11 @@ const DINNER_FIELDS = [
 ];
 
 const VAN_DAY_FIELDS = [
-  ["vanMonday", "星期一 Van", "星期一"],
-  ["vanTuesday", "星期二 Van", "星期二"],
-  ["vanWednesday", "星期三 Van", "星期三"],
-  ["vanThursday", "星期四 Van", "星期四"],
-  ["vanFriday", "星期五 Van", "星期五"],
+  ["vanMonday", "星期一"],
+  ["vanTuesday", "星期二"],
+  ["vanWednesday", "星期三"],
+  ["vanThursday", "星期四"],
+  ["vanFriday", "星期五"],
 ];
 
 const VAN_HOME_TIME_OPTIONS = [
@@ -66,6 +66,12 @@ function serializeDetentionTypes(types) {
 function ExistingOption({ value, choices }) {
   if (!value || choices.includes(value)) return null;
   return <option value={value}>{value}（现有资料）</option>;
+}
+
+function vanDayTime(values, field, choices) {
+  const savedValue = values[field];
+  if (savedValue !== "需要") return savedValue;
+  return choices.includes(values.vanHomeTime) ? values.vanHomeTime : "";
 }
 
 export function StudentProfileFields({
@@ -223,37 +229,30 @@ export function StudentProfileFields({
               </select>
             </label>
             <div className="student-profile-fields__van-days">
-              <h3>Van 载送星期</h3>
+              <h3>Van 载送星期与时间</h3>
               <div>
-                {VAN_DAY_FIELDS.map(([field, ariaLabel, label]) => (
-                  <label data-testid={fieldTestId} key={field}>
-                    <input
-                      aria-label={ariaLabel}
-                      type="checkbox"
-                      disabled={disabled}
-                      checked={values[field] === "需要"}
-                      onChange={(event) => onChange(field, event.target.checked ? "需要" : "")}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
+                {VAN_DAY_FIELDS.map(([field, label]) => {
+                  const savedTime = vanDayTime(values, field, vanHomeTimeValues);
+                  return (
+                    <label data-testid={fieldTestId} key={field}>
+                      <span>{label}</span>
+                      <select
+                        aria-label={`${label} Van 时间`}
+                        disabled={disabled}
+                        value={savedTime}
+                        onChange={(event) => onChange(field, event.target.value)}
+                      >
+                        <option value="">不需要</option>
+                        {VAN_HOME_TIME_OPTIONS.map(([value, text]) => (
+                          <option key={value} value={value}>{text}</option>
+                        ))}
+                        <ExistingOption value={savedTime} choices={vanHomeTimeValues} />
+                      </select>
+                    </label>
+                  );
+                })}
               </div>
             </div>
-            <label data-testid={fieldTestId} className="student-profile-fields__van-time">
-              <span>Van 载送时间</span>
-              <select
-                aria-label="Van 载送时间"
-                disabled={disabled}
-                value={values.vanHomeTime}
-                onChange={(event) => onChange("vanHomeTime", event.target.value)}
-              >
-                <option value="">请选择时间</option>
-                {VAN_HOME_TIME_OPTIONS.map(([value, text]) => (
-                  <option key={value} value={value}>{text}</option>
-                ))}
-                <ExistingOption value={values.vanHomeTime} choices={vanHomeTimeValues} />
-              </select>
-            </label>
           </>
         ) : null}
       </div>
