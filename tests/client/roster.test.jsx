@@ -468,6 +468,206 @@ describe("attendance controls and summary", () => {
     expect(await within(card).findByText("已保存")).toBeVisible();
   });
 
+  it("requires a fixed absence reason before saving and shows it on the student card", async () => {
+    let savedBody;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
+      if (url.startsWith("/api/summary?")) {
+        return jsonResponse(200, {
+          expected: 1, arrived: 0, notArrived: 0, absent: 1, unmarked: 0,
+        });
+      }
+      if (url.endsWith("/attendance/2026-07-27/absent") && options.method === "PUT") {
+        savedBody = JSON.parse(options.body);
+        return jsonResponse(200, {
+          studentId: student(1).id,
+          date: "2026-07-27",
+          eventCode: "absent",
+          active: true,
+          absenceReason: "旅行",
+          updatedBy: "teacher@example.com",
+          updatedAt: "2026-07-27T01:00:00.000Z",
+        });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    const absent = within(card).getByRole("button", { name: "缺席" });
+    fireEvent.click(absent);
+
+    const dialog = await screen.findByRole("dialog", { name: "选择缺席原因" });
+    expect(absent).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(within(dialog).getByLabelText("旅行"));
+    fireEvent.click(within(dialog).getByRole("button", { name: "确认缺席" }));
+
+    await waitFor(() => expect(savedBody).toEqual({ active: true, reason: "旅行" }));
+    expect(absent).toHaveAttribute("aria-pressed", "true");
+    expect(await within(card).findByText("缺席原因：旅行")).toBeVisible();
+  });
+
+  it("requires text for another absence reason and formats it when displayed", async () => {
+    let savedBody;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
+      if (url.startsWith("/api/summary?")) {
+        return jsonResponse(200, {
+          expected: 1, arrived: 0, notArrived: 0, absent: 1, unmarked: 0,
+        });
+      }
+      if (url.endsWith("/attendance/2026-07-27/absent") && options.method === "PUT") {
+        savedBody = JSON.parse(options.body);
+        return jsonResponse(200, {
+          studentId: student(1).id,
+          eventCode: "absent",
+          active: true,
+          absenceReason: savedBody.reason,
+        });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    fireEvent.click(within(card).getByRole("button", { name: "缺席" }));
+    const dialog = await screen.findByRole("dialog", { name: "选择缺席原因" });
+    fireEvent.click(within(dialog).getByLabelText("其他"));
+    const confirm = within(dialog).getByRole("button", { name: "确认缺席" });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(within(dialog).getByLabelText("其他原因"), {
+      target: { value: "  回乡处理事情  " },
+    });
+    expect(confirm).toBeEnabled();
+    fireEvent.click(confirm);
+
+    await waitFor(() => expect(savedBody).toEqual({ active: true, reason: "回乡处理事情" }));
+    expect(await within(card).findByText("缺席原因：其他：回乡处理事情")).toBeVisible();
+  });
+
+  it("closes the absence dialog without changing attendance", async () => {
+    const fetchMock = vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
+      if (url.startsWith("/api/summary?")) {
+        return jsonResponse(200, {
+          expected: 1, arrived: 0, notArrived: 1, absent: 0, unmarked: 1,
+        });
+      }
+      throw new Error(`Unexpected request: GET ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    const absent = within(card).getByRole("button", { name: "缺席" });
+    fireEvent.click(absent);
+    const dialog = await screen.findByRole("dialog", { name: "选择缺席原因" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "关闭" }));
+
+    expect(screen.queryByRole("dialog", { name: "选择缺席原因" })).not.toBeInTheDocument();
+    expect(absent).toHaveAttribute("aria-pressed", "false");
+    expect(fetchMock.mock.calls.filter(([, options]) => options?.method === "PUT")).toHaveLength(0);
+  });
+
+  it("shows a saved reason and clears an active absence with one click", async () => {
+    let savedBody;
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) {
+        return jsonResponse(200, { items: [{
+          studentId: student(1).id,
+          date: "2026-07-27",
+          eventCode: "absent",
+          active: true,
+          absenceReason: "生病",
+        }] });
+      }
+      if (url.startsWith("/api/summary?")) {
+        return jsonResponse(200, {
+          expected: 1, arrived: 0, notArrived: 1, absent: 0, unmarked: 1,
+        });
+      }
+      if (url.endsWith("/attendance/2026-07-27/absent") && options.method === "PUT") {
+        savedBody = JSON.parse(options.body);
+        return jsonResponse(200, {
+          studentId: student(1).id,
+          eventCode: "absent",
+          active: false,
+          absenceReason: null,
+        });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    const absent = within(card).getByRole("button", { name: "缺席" });
+    expect(await within(card).findByText("缺席原因：生病")).toBeVisible();
+    expect(absent).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(absent);
+
+    await waitFor(() => expect(savedBody).toEqual({ active: false }));
+    expect(screen.queryByRole("dialog", { name: "选择缺席原因" })).not.toBeInTheDocument();
+    expect(within(card).queryByText("缺席原因：生病")).not.toBeInTheDocument();
+  });
+
+  it("retries a failed absence with the originally selected reason", async () => {
+    const savedBodies = [];
+    vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      if (url.startsWith("/api/attendance?")) return jsonResponse(200, { items: [] });
+      if (url.startsWith("/api/summary?")) {
+        return jsonResponse(200, {
+          expected: 1, arrived: 0, notArrived: 0, absent: 1, unmarked: 0,
+        });
+      }
+      if (url.endsWith("/attendance/2026-07-27/absent") && options.method === "PUT") {
+        savedBodies.push(JSON.parse(options.body));
+        if (savedBodies.length === 1) return jsonResponse(500, { error: "save failed" });
+        return jsonResponse(200, {
+          studentId: student(1).id,
+          eventCode: "absent",
+          active: true,
+          absenceReason: "家事",
+        });
+      }
+      throw new Error(`Unexpected request: ${options.method ?? "GET"} ${url}`);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-07-27" />);
+    const card = await screen.findByTestId("student-card");
+    const absent = within(card).getByRole("button", { name: "缺席" });
+    fireEvent.click(absent);
+    const dialog = await screen.findByRole("dialog", { name: "选择缺席原因" });
+    fireEvent.click(within(dialog).getByLabelText("家事"));
+    fireEvent.click(within(dialog).getByRole("button", { name: "确认缺席" }));
+
+    const retry = await within(card).findByRole("button", { name: "重试" });
+    expect(absent).toHaveAttribute("aria-pressed", "false");
+    expect(within(card).queryByText("缺席原因：家事")).not.toBeInTheDocument();
+    fireEvent.click(retry);
+
+    expect(await within(card).findByText("缺席原因：家事")).toBeVisible();
+    expect(await within(card).findByText("已保存")).toBeVisible();
+    expect(savedBodies).toEqual([
+      { active: true, reason: "家事" },
+      { active: true, reason: "家事" },
+    ]);
+  });
+
   it("does not let a stale initial attendance response overwrite a newer saved event", async () => {
     const initialAttendance = deferred();
     vi.stubGlobal("fetch", vi.fn(async (url, options = {}) => {

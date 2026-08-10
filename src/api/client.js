@@ -142,11 +142,12 @@ export const rosterApi = {
     date,
     eventCode,
     active,
+    reason,
   }) => apiRequest(
     `/api/students/${encodeURIComponent(studentId)}/attendance/${date}/${eventCode}`,
     {
       method: "PUT",
-      body: { active },
+      body: { active, ...(reason ? { reason } : {}) },
       branchCode,
       groupCode,
     },

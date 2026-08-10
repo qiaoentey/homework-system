@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
 import { EMPTY_SUMMARY, nextAttendanceEvents } from "../../domain/attendance.js";
+import { AbsenceReasonDialog } from "../attendance/AbsenceReasonDialog.jsx";
 import { AttendanceRecordsDialog } from "../attendance/AttendanceRecordsDialog.jsx";
 import { SummaryBar } from "../dashboard/SummaryBar.jsx";
 import { MessageDialog } from "../messages/MessageDialog.jsx";
@@ -34,14 +35,18 @@ function rosterDateLabel(date) {
   return `今天 · ${year}年${month}月${day}日 · ${weekday}`;
 }
 
-function eventsByStudent(items) {
-  const grouped = {};
+function attendanceState(items) {
+  const events = {};
+  const absenceReasons = {};
   for (const item of items) {
     if (!item.active) continue;
-    grouped[item.studentId] ??= [];
-    grouped[item.studentId].push(item.eventCode);
+    events[item.studentId] ??= [];
+    events[item.studentId].push(item.eventCode);
+    if (item.eventCode === "absent" && item.absenceReason) {
+      absenceReasons[item.studentId] = item.absenceReason;
+    }
   }
-  return grouped;
+  return { events, absenceReasons };
 }
 
 export function RosterScreen({
@@ -62,6 +67,7 @@ export function RosterScreen({
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [attendance, setAttendance] = useState({});
+  const [absenceReasons, setAbsenceReasons] = useState({});
   const [attendanceStatus, setAttendanceStatus] = useState("loading");
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [summaryStatus, setSummaryStatus] = useState("loading");
@@ -70,6 +76,7 @@ export function RosterScreen({
   const [saveStates, setSaveStates] = useState({});
   const [messageOpen, setMessageOpen] = useState(false);
   const [lifecycleDialog, setLifecycleDialog] = useState(null);
+  const [absenceReasonStudentId, setAbsenceReasonStudentId] = useState(null);
   const [toast, setToast] = useState("");
   const requestGeneration = useRef(0);
   const attendanceRequestGeneration = useRef(0);
@@ -115,14 +122,23 @@ export function RosterScreen({
     try {
       const response = await rosterApi.attendance({ branchCode, groupCode, date });
       if (request !== attendanceRequestGeneration.current) return;
-      const loadedAttendance = eventsByStudent(response.items);
+      const loaded = attendanceState(response.items);
       setAttendance((current) => {
         for (const [studentId, version] of attendanceMutationVersions.current) {
           if (startingVersions.get(studentId) !== version) {
-            loadedAttendance[studentId] = current[studentId] ?? [];
+            loaded.events[studentId] = current[studentId] ?? [];
           }
         }
-        return loadedAttendance;
+        return loaded.events;
+      });
+      setAbsenceReasons((current) => {
+        for (const [studentId, version] of attendanceMutationVersions.current) {
+          if (startingVersions.get(studentId) !== version) {
+            if (current[studentId]) loaded.absenceReasons[studentId] = current[studentId];
+            else delete loaded.absenceReasons[studentId];
+          }
+        }
+        return loaded.absenceReasons;
       });
       setAttendanceStatus("ready");
     } catch {
@@ -167,6 +183,7 @@ export function RosterScreen({
   useEffect(() => {
     attendanceMutationVersions.current = new Map();
     setAttendance({});
+    setAbsenceReasons({});
     setSaveStates({});
     loadAttendance();
     loadSummary();
@@ -178,6 +195,7 @@ export function RosterScreen({
 
   useEffect(() => {
     setLifecycleDialog(null);
+    setAbsenceReasonStudentId(null);
     setToast("");
   }, [branchCode, groupCode]);
 
@@ -215,14 +233,25 @@ export function RosterScreen({
       [studentId]: { status: "saving", operation },
     }));
     try {
-      await rosterApi.setAttendance({
+      const saved = await rosterApi.setAttendance({
         branchCode,
         groupCode,
         studentId,
         date,
         eventCode: operation.eventCode,
         active: operation.active,
+        reason: operation.reason,
       });
+      if (operation.eventCode === "absent") {
+        setAbsenceReasons((current) => {
+          if (!saved.absenceReason) {
+            const next = { ...current };
+            delete next[studentId];
+            return next;
+          }
+          return { ...current, [studentId]: saved.absenceReason };
+        });
+      }
       setSaveStates((current) => ({
         ...current,
         [studentId]: { status: "saved", operation },
@@ -233,6 +262,15 @@ export function RosterScreen({
         ...current,
         [studentId]: operation.previous,
       }));
+      setAbsenceReasons((current) => {
+        const next = { ...current };
+        if (operation.previousAbsenceReason) {
+          next[studentId] = operation.previousAbsenceReason;
+        } else {
+          delete next[studentId];
+        }
+        return next;
+      });
       setSaveStates((current) => ({
         ...current,
         [studentId]: { status: "error", operation },
@@ -240,16 +278,58 @@ export function RosterScreen({
     }
   }, [branchCode, date, groupCode, loadSummary]);
 
-  function toggleEvent(studentId, eventCode) {
+  function optimisticAbsenceReason(eventCode, active, reason, previousReason) {
+    if (eventCode === "absent") return active ? reason : null;
+    if (eventCode === "arrive" && active) return null;
+    return previousReason;
+  }
+
+  function applyEvent(studentId, eventCode, active, reason) {
     attendanceMutationVersions.current.set(
       studentId,
       (attendanceMutationVersions.current.get(studentId) ?? 0) + 1,
     );
     const previous = attendance[studentId] ?? [];
-    const active = !previous.includes(eventCode);
+    const previousAbsenceReason = absenceReasons[studentId] ?? null;
     const next = nextAttendanceEvents(previous, eventCode, active);
+    const nextAbsenceReason = optimisticAbsenceReason(
+      eventCode,
+      active,
+      reason,
+      previousAbsenceReason,
+    );
     setAttendance((current) => ({ ...current, [studentId]: next }));
-    saveAttendance(studentId, { type: "event", eventCode, active, previous });
+    setAbsenceReasons((current) => {
+      const nextReasons = { ...current };
+      if (nextAbsenceReason) nextReasons[studentId] = nextAbsenceReason;
+      else delete nextReasons[studentId];
+      return nextReasons;
+    });
+    saveAttendance(studentId, {
+      type: "event",
+      eventCode,
+      active,
+      reason,
+      previous,
+      previousAbsenceReason,
+    });
+  }
+
+  function toggleEvent(studentId, eventCode) {
+    const previous = attendance[studentId] ?? [];
+    const active = !previous.includes(eventCode);
+    if (eventCode === "absent" && active) {
+      setAbsenceReasonStudentId(studentId);
+      return;
+    }
+    applyEvent(studentId, eventCode, active);
+  }
+
+  function confirmAbsenceReason(reason) {
+    const studentId = absenceReasonStudentId;
+    if (!studentId) return;
+    setAbsenceReasonStudentId(null);
+    applyEvent(studentId, "absent", true, reason);
   }
 
   function retry(studentId) {
@@ -265,6 +345,18 @@ export function RosterScreen({
       operation.active,
     );
     setAttendance((current) => ({ ...current, [studentId]: optimistic }));
+    const nextAbsenceReason = optimisticAbsenceReason(
+      operation.eventCode,
+      operation.active,
+      operation.reason,
+      operation.previousAbsenceReason,
+    );
+    setAbsenceReasons((current) => {
+      const next = { ...current };
+      if (nextAbsenceReason) next[studentId] = nextAbsenceReason;
+      else delete next[studentId];
+      return next;
+    });
     saveAttendance(studentId, operation);
   }
 
@@ -415,6 +507,7 @@ export function RosterScreen({
           onRetryLoadMore={() => loadMore(true)}
           selectedStudentId={selectedStudentId}
           attendanceByStudent={attendance}
+          absenceReasonsByStudent={absenceReasons}
           saveStates={saveStates}
           onSelect={selectStudent}
           onToggleEvent={toggleEvent}
@@ -472,6 +565,13 @@ export function RosterScreen({
           groupCode={groupCode}
           initialDate={date}
           onClose={() => setLifecycleDialog(null)}
+        />
+      ) : null}
+      {absenceReasonStudentId ? (
+        <AbsenceReasonDialog
+          studentName={students.find(({ id }) => id === absenceReasonStudentId)?.name ?? "学生"}
+          onClose={() => setAbsenceReasonStudentId(null)}
+          onConfirm={confirmAbsenceReason}
         />
       ) : null}
     </section>

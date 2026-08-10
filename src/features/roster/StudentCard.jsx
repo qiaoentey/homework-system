@@ -1,4 +1,5 @@
 import { EVENT_BUTTONS } from "../../domain/attendance.js";
+import { formatAbsenceReason } from "../../../shared/absenceReasons.js";
 import {
   studentProfileLabels,
   studentSchoolSummary,
@@ -7,6 +8,7 @@ import {
 export function StudentCard({
   student,
   activeEvents = [],
+  absenceReason,
   selected,
   saveState,
   onSelect,
@@ -81,6 +83,12 @@ export function StudentCard({
           </button>
         ))}
       </div>
+
+      {eventSet.has("absent") && absenceReason ? (
+        <p className="student-card__absence-reason">
+          缺席原因：{formatAbsenceReason(absenceReason)}
+        </p>
+      ) : null}
 
       <footer className="student-card__footer">
         <div className="student-card__footer-actions">

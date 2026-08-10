@@ -1007,6 +1007,20 @@ button {
   opacity: 0.55;
 }
 
+.student-card__absence-reason {
+  display: inline-flex;
+  max-width: 100%;
+  margin: 10px 0 0;
+  border: 1px solid #eda0a0;
+  border-radius: 999px;
+  background: #fff0f0;
+  color: #a52e2e;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
 .student-card__footer {
   display: flex;
   min-height: 34px;
@@ -1503,6 +1517,82 @@ button {
   text-align: center;
 }
 
+.absence-reason-form > p {
+  margin: 0 0 16px;
+  color: var(--color-muted);
+}
+
+.absence-reason-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.absence-reason-options legend {
+  margin-bottom: 10px;
+  color: var(--color-navy);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.absence-reason-options label {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 12px;
+  background: white;
+  color: var(--color-navy);
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 800;
+}
+
+.absence-reason-options label:has(input:checked) {
+  border-color: var(--color-blue);
+  background: var(--color-blue-light);
+}
+
+.absence-reason-options input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-blue);
+}
+
+.absence-reason-other {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  color: #354b68;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.absence-reason-other input {
+  width: 100%;
+  min-height: 46px;
+  border: 1.5px solid var(--color-line);
+  border-radius: 12px;
+  outline: none;
+  background: white;
+  color: var(--color-navy);
+  padding: 0 12px;
+}
+
+.absence-reason-other input:focus {
+  border-color: var(--color-blue);
+  box-shadow: 0 0 0 3px rgba(23, 104, 209, 0.12);
+}
+
+.absence-reason-form > .primary-button {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .attendance-records {
   display: grid;
   gap: 18px;
@@ -1814,6 +1904,10 @@ button {
 
   .event-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .absence-reason-options {
+    grid-template-columns: 1fr;
   }
 
   .student-profile-fields__grid {

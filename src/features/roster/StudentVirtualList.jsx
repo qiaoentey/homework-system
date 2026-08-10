@@ -39,6 +39,7 @@ export function StudentVirtualList({
   onRetryLoadMore,
   selectedStudentId,
   attendanceByStudent,
+  absenceReasonsByStudent,
   saveStates,
   onSelect,
   onToggleEvent,
@@ -100,6 +101,7 @@ export function StudentVirtualList({
                 <StudentCard
                   student={rosterStudent}
                   activeEvents={attendanceByStudent[rosterStudent.id] ?? []}
+                  absenceReason={absenceReasonsByStudent[rosterStudent.id]}
                   selected={selectedStudentId === rosterStudent.id}
                   saveState={saveStates[rosterStudent.id]}
                   onSelect={onSelect}
