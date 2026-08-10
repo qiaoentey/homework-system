@@ -349,6 +349,18 @@ button {
   line-height: 1.05;
 }
 
+.roster-screen__date {
+  display: inline-flex;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: rgba(23, 104, 209, 0.1);
+  color: var(--color-blue);
+  padding: 7px 11px;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
 .roster-screen__heading p {
   margin: 14px 0 0;
   color: var(--color-muted);

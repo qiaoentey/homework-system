@@ -101,6 +101,21 @@ afterEach(() => {
 });
 
 describe("virtualized current-group roster", () => {
+  it("shows the point-marking date below the class title", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      if (url.startsWith("/api/students?")) {
+        return jsonResponse(200, { items: [student(1)], nextCursor: null, total: 1 });
+      }
+      return rosterSupport(url);
+    }));
+
+    render(<RosterScreen branchCode="STP" groupCode="PS STP" date="2026-08-10" />);
+
+    const date = screen.getByText("今天 · 2026年8月10日 · 星期一");
+    expect(date).toBeVisible();
+    expect(date).toHaveAttribute("datetime", "2026-08-10");
+  });
+
   it("shows saved school and color-coded schedule labels beside the student name", async () => {
     const labelledStudent = student(1, {
       name: "Adam Herwan",

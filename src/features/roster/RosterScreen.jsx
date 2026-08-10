@@ -18,6 +18,22 @@ function localDate() {
   return `${year}-${month}-${day}`;
 }
 
+const WEEKDAYS = [
+  "星期日",
+  "星期一",
+  "星期二",
+  "星期三",
+  "星期四",
+  "星期五",
+  "星期六",
+];
+
+function rosterDateLabel(date) {
+  const [year, month, day] = date.split("-").map(Number);
+  const weekday = WEEKDAYS[new Date(year, month - 1, day).getDay()];
+  return `今天 · ${year}年${month}月${day}日 · ${weekday}`;
+}
+
 function eventsByStudent(items) {
   const grouped = {};
   for (const item of items) {
@@ -317,6 +333,9 @@ export function RosterScreen({
         <div>
           <span className="eyebrow">{branchCode} 分院</span>
           <h1>{groupCode}</h1>
+          <time className="roster-screen__date" dateTime={date}>
+            {rosterDateLabel(date)}
+          </time>
           <p>只显示当前老师的在读学生 · 共 {total} 名</p>
         </div>
         <label className="roster-search">
