@@ -206,6 +206,45 @@ test("class roster places Dashboard beside attendance records and returns to the
   expect(browserErrors).toEqual([]);
 });
 
+test("absence reason is required and appears on roster Dashboard and dated records", async ({
+  page,
+}, testInfo) => {
+  await openRoster(page, "MK", "WEN XUAN", "MK WEN XUAN");
+  const card = page.getByTestId("student-card").first();
+  const studentName = (await card.locator(".student-card__name-line strong").textContent()).trim();
+  const absent = card.getByRole("button", { name: "缺席", exact: true });
+
+  if (await absent.getAttribute("aria-pressed") === "true") {
+    await absent.click();
+    await expect(card.getByText("已保存")).toBeVisible();
+  }
+  await absent.click();
+  const dialog = page.getByRole("dialog", { name: "选择缺席原因" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("其他", { exact: true }).check();
+  const confirm = dialog.getByRole("button", { name: "确认缺席" });
+  await expect(confirm).toBeDisabled();
+  const detail = `回乡处理事情 ${testInfo.project.name}`;
+  await dialog.getByLabel("其他原因", { exact: true }).fill(detail);
+  await confirm.click();
+
+  const displayedReason = `缺席原因：其他：${detail}`;
+  await expect(card.getByText(displayedReason, { exact: true })).toBeVisible();
+  await expect(absent).toHaveAttribute("aria-pressed", "true");
+  await expect(card.getByText("已保存")).toBeVisible();
+
+  await page.getByRole("button", { name: "Dashboard" }).click();
+  const group = page.getByRole("article", { name: "MK WEN XUAN" });
+  await expect(group.getByText(studentName, { exact: true })).toBeVisible();
+  await expect(group.getByText(displayedReason, { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "返回班级" }).click();
+  await page.getByRole("button", { name: "点名记录" }).click();
+  const records = page.getByRole("dialog", { name: "点名记录" });
+  await expect(records.getByText(studentName, { exact: true })).toBeVisible();
+  await expect(records.getByText(displayedReason, { exact: true })).toBeVisible();
+});
+
 test("every branch exposes only its approved teacher groups", async ({ page }) => {
   for (const [branch, groups] of Object.entries(CATALOG)) {
     await page.getByRole("button", { name: branch, exact: true }).click();

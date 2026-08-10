@@ -7,6 +7,7 @@ const enrolmentMigration = "003_enrolment_idempotency.sql";
 const yuanNingMigration = "004_stp_yuan_ning.sql";
 const janiceMigration = "005_stp_janice.sql";
 const wsHuilingMigration = "006_ws_huiling_additions.sql";
+const absenceReasonMigration = "007_attendance_absence_reason.sql";
 
 describe("student identity migration", () => {
   const pools = [];
@@ -54,6 +55,7 @@ describe("student identity migration", () => {
       yuanNingMigration,
       janiceMigration,
       wsHuilingMigration,
+      absenceReasonMigration,
     ]);
     await pool.query(
       `insert into students (name, grade, branch_code, group_code)
@@ -73,6 +75,7 @@ describe("student identity migration", () => {
       yuanNingMigration,
       janiceMigration,
       wsHuilingMigration,
+      absenceReasonMigration,
     ]);
     await pool.query(
       `insert into students
