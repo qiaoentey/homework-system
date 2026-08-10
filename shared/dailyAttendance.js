@@ -26,7 +26,7 @@ export function dailyAttendanceResult(students) {
     absent: 0,
     unmarked: 0,
   };
-  const items = students.map(({ id, name, grade, events }) => {
+  const items = students.map(({ id, name, grade, events, absenceReason }) => {
     const status = primaryStatusFor(events);
     const activeEvents = new Set(events ?? []);
     summary[status] += 1;
@@ -36,6 +36,7 @@ export function dailyAttendanceResult(students) {
       grade,
       status,
       events: DASHBOARD_ATTENDANCE_EVENTS.filter((eventCode) => activeEvents.has(eventCode)),
+      ...(status === "absent" && absenceReason ? { absenceReason } : {}),
     };
   });
   summary.notArrived = summary.unmarked;

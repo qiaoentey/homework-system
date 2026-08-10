@@ -60,6 +60,7 @@ export const attendanceEvents = sqliteTable("attendance_events", {
   attendanceDate: text("attendance_date").notNull(),
   eventCode: text("event_code").notNull(),
   isActive: integer("is_active", { mode: "boolean" }).notNull(),
+  absenceReason: text("absence_reason"),
   updatedBy: text("updated_by").notNull(),
   updatedAt: text("updated_at").notNull().default(
     sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`,

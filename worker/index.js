@@ -8,6 +8,7 @@ import {
   PRIMARY_ATTENDANCE_EVENTS,
   dailyAttendanceResult,
 } from "../shared/dailyAttendance.js";
+import { normalizeAbsenceReason } from "../shared/absenceReasons.js";
 const BRANCHES = [
   { code: "MK", label: "MK" },
   { code: "STP", label: "STP" },
@@ -201,6 +202,7 @@ function mapAttendance(row) {
     date: row.attendance_date,
     eventCode: row.event_code,
     active: Boolean(row.is_active),
+    absenceReason: row.absence_reason ?? null,
     updatedBy: row.updated_by,
     updatedAt: row.updated_at,
   };
@@ -678,7 +680,7 @@ async function attendanceList(database, url) {
   const rows = await all(
     database,
     `SELECT ae.student_id, ae.attendance_date, ae.event_code, ae.is_active,
-            ae.updated_by, ae.updated_at
+            ae.absence_reason, ae.updated_by, ae.updated_at
      FROM attendance_events ae
      JOIN students s ON s.id = ae.student_id
      WHERE s.branch_code = ?
@@ -708,7 +710,7 @@ async function attendanceRecord(database, url) {
   }
   const rows = await all(
     database,
-    `SELECT s.id, s.name, s.grade, s.status, ae.event_code
+    `SELECT s.id, s.name, s.grade, s.status, ae.event_code, ae.absence_reason
      FROM students s
      LEFT JOIN attendance_events ae
        ON ae.student_id = s.id
@@ -728,18 +730,24 @@ async function attendanceRecord(database, url) {
         item: { id: row.id, name: row.name, grade: row.grade },
         status: row.status,
         events: new Set(),
+        absenceReason: null,
       });
     }
     if (row.event_code) students.get(row.id).events.add(row.event_code);
+    if (row.event_code === "absent" && row.absence_reason) {
+      students.get(row.id).absenceReason = row.absence_reason;
+    }
   }
   const present = [];
   const absent = [];
   const unmarked = [];
   const conflicts = [];
-  for (const { item, status, events } of students.values()) {
+  for (const { item, status, events, absenceReason } of students.values()) {
     if (events.has("arrive") && events.has("absent")) conflicts.push(item);
     else if (events.has("arrive")) present.push(item);
-    else if (events.has("absent")) absent.push(item);
+    else if (events.has("absent")) {
+      absent.push({ ...item, ...(absenceReason ? { absenceReason } : {}) });
+    }
     else if (status === "active") unmarked.push(item);
   }
   return json({
@@ -774,7 +782,7 @@ async function summary(database, url) {
   }
   const rows = await all(
     database,
-    `SELECT s.id, s.name, s.grade, ae.event_code
+    `SELECT s.id, s.name, s.grade, ae.event_code, ae.absence_reason
      FROM students s
      LEFT JOIN attendance_events ae
        ON ae.student_id = s.id
@@ -799,9 +807,13 @@ function resultFromAttendanceRows(rows) {
         name: row.name,
         grade: row.grade,
         events: new Set(),
+        absenceReason: null,
       });
     }
     if (row.event_code) students.get(row.id).events.add(row.event_code);
+    if (row.event_code === "absent" && row.absence_reason) {
+      students.get(row.id).absenceReason = row.absence_reason;
+    }
   }
   return dailyAttendanceResult([...students.values()]);
 }
@@ -816,7 +828,7 @@ async function dailyDashboard(database, url) {
   }
   const rows = await all(
     database,
-    `SELECT s.id, s.name, s.grade, s.group_code, ae.event_code
+    `SELECT s.id, s.name, s.grade, s.group_code, ae.event_code, ae.absence_reason
      FROM students s
      LEFT JOIN attendance_events ae
        ON ae.student_id = s.id
@@ -850,9 +862,14 @@ async function updateAttendance(request, database, id, date, eventCode, identity
   const body = await requestBody(request);
   if (
     !ATTENDANCE_EVENTS.has(eventCode)
-    || !hasOnlyKeys(body, ["active"])
+    || !hasOnlyKeys(body, ["active", "reason"], ["active"])
     || typeof body.active !== "boolean"
   ) {
+    return apiError(400, "INVALID_ATTENDANCE_EVENT", "Invalid attendance event");
+  }
+  const activeAbsence = eventCode === "absent" && body.active;
+  const absenceReason = activeAbsence ? normalizeAbsenceReason(body.reason) : null;
+  if ((activeAbsence && !absenceReason) || (!activeAbsence && body.reason !== undefined)) {
     return apiError(400, "INVALID_ATTENDANCE_EVENT", "Invalid attendance event");
   }
   const scoped = await scopedStudent(database, id, context.branchCode, context.groupCode, 403);
@@ -860,19 +877,32 @@ async function updateAttendance(request, database, id, date, eventCode, identity
   const now = new Date().toISOString();
   const upsert = (nextEventCode, nextActive) => database.prepare(
     `INSERT INTO attendance_events
-       (student_id, attendance_date, event_code, is_active, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
+       (student_id, attendance_date, event_code, is_active,
+        absence_reason, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (student_id, attendance_date, event_code)
      DO UPDATE SET
        is_active = excluded.is_active,
+       absence_reason = excluded.absence_reason,
        updated_by = excluded.updated_by,
        updated_at = excluded.updated_at`,
-  ).bind(id, date, nextEventCode, nextActive ? 1 : 0, identity.email, now);
+  ).bind(
+    id,
+    date,
+    nextEventCode,
+    nextActive ? 1 : 0,
+    nextEventCode === "absent" && nextActive ? absenceReason : null,
+    identity.email,
+    now,
+  );
   const requested = upsert(eventCode, body.active);
   if (body.active && PRIMARY_ATTENDANCE_EVENTS.includes(eventCode)) {
     const deactivateOtherPrimaryStates = database.prepare(
       `UPDATE attendance_events
-       SET is_active = 0, updated_by = ?, updated_at = ?
+       SET is_active = 0,
+           absence_reason = NULL,
+           updated_by = ?,
+           updated_at = ?
        WHERE student_id = ?
          AND attendance_date = ?
          AND event_code IN ('arrive', 'absent')
@@ -884,7 +914,8 @@ async function updateAttendance(request, database, id, date, eventCode, identity
   }
   const event = await first(
     database,
-    `SELECT student_id, attendance_date, event_code, is_active, updated_by, updated_at
+    `SELECT student_id, attendance_date, event_code, is_active,
+            absence_reason, updated_by, updated_at
      FROM attendance_events
      WHERE student_id = ? AND attendance_date = ? AND event_code = ?`,
     [id, date, eventCode],

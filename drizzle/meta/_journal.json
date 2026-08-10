@@ -43,6 +43,13 @@
       "when": 1786262400000,
       "tag": "0005_ws_huiling_additions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786352400000,
+      "tag": "0006_attendance_absence_reason",
+      "breakpoints": true
     }
   ]
 }

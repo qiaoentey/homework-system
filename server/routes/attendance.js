@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { normalizeAbsenceReason } from "../../shared/absenceReasons.js";
 import { requireDashboardAccess, requireSession } from "../auth/session.js";
 import { ATTENDANCE_EVENTS } from "../domain/attendance.js";
 import { BRANCHES, GROUPS } from "../domain/catalog.js";
@@ -28,7 +29,10 @@ const groupDateSchema = z.object({
   date: dateSchema,
 }).strict();
 const dashboardDateSchema = z.object({ date: dateSchema }).strict();
-const updateSchema = z.object({ active: z.boolean() }).strict();
+const updateSchema = z.object({
+  active: z.boolean(),
+  reason: z.string().optional(),
+}).strict();
 
 function error(response, status, code, message) {
   return response.status(status).json({ code, error: message });
@@ -165,10 +169,18 @@ export function createAttendanceRouter({ pool, dashboardAllowedEmails = [] }) {
       if (!eventCode.success || !body.success) {
         return error(response, 400, "INVALID_ATTENDANCE_EVENT", "Invalid attendance event");
       }
+      const activeAbsence = eventCode.data === "absent" && body.data.active;
+      const absenceReason = activeAbsence
+        ? normalizeAbsenceReason(body.data.reason)
+        : null;
+      if ((activeAbsence && !absenceReason) || (!activeAbsence && body.data.reason !== undefined)) {
+        return error(response, 400, "INVALID_ATTENDANCE_EVENT", "Invalid attendance event");
+      }
       return response.json(await upsertAttendanceEvent(pool, {
         ...target,
         eventCode: eventCode.data,
         active: body.data.active,
+        absenceReason,
         actor: request.user.email,
       }));
     }),

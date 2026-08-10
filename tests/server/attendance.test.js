@@ -44,12 +44,13 @@ async function insertStudent(pool, {
 async function insertEvent(pool, studentId, eventCode, {
   date = "2026-07-27",
   active = true,
+  absenceReason = null,
 } = {}) {
   await pool.query(
     `insert into attendance_events
-       (student_id, attendance_date, event_code, is_active, updated_by)
-     values ($1, $2, $3, $4, 'fixture@example.com')`,
-    [studentId, date, eventCode, active],
+       (student_id, attendance_date, event_code, is_active, absence_reason, updated_by)
+     values ($1, $2, $3, $4, $5, 'fixture@example.com')`,
+    [studentId, date, eventCode, active, absenceReason],
   );
 }
 
@@ -145,7 +146,7 @@ describe("attendance API", () => {
     });
     await insertEvent(pool, present.id, "arrive");
     await insertEvent(pool, stoppedPresent.id, "arrive");
-    await insertEvent(pool, absent.id, "absent");
+    await insertEvent(pool, absent.id, "absent", { absenceReason: "生病" });
     await insertEvent(pool, unmarked.id, "arrive", { active: false });
     await insertEvent(pool, conflict.id, "arrive");
     await insertEvent(pool, conflict.id, "absent");
@@ -162,7 +163,7 @@ describe("attendance API", () => {
         { id: present.id, name: "PRESENT", grade: "Y4" },
         { id: stoppedPresent.id, name: "STOPPED PRESENT", grade: "Y4" },
       ],
-      absent: [{ id: absent.id, name: "ABSENT", grade: "Y4" }],
+      absent: [{ id: absent.id, name: "ABSENT", grade: "Y4", absenceReason: "生病" }],
       unmarked: [{ id: unmarked.id, name: "UNMARKED", grade: "Y4" }],
       conflicts: [{ id: conflict.id, name: "CONFLICT", grade: "Y4" }],
     });
@@ -199,6 +200,7 @@ describe("attendance API", () => {
           date: "2026-07-27",
           eventCode: "arrive",
           active: true,
+          absenceReason: null,
           updatedBy: "fixture@example.com",
           updatedAt: expect.any(String),
         },
@@ -207,6 +209,7 @@ describe("attendance API", () => {
           date: "2026-07-27",
           eventCode: "koko",
           active: false,
+          absenceReason: null,
           updatedBy: "fixture@example.com",
           updatedAt: expect.any(String),
         },
@@ -281,6 +284,44 @@ describe("attendance API", () => {
     }]);
   });
 
+  it("requires, trims, persists, lists, and clears an active absence reason", async () => {
+    const student = await insertStudent(pool);
+    const prefix = `/api/students/${student.id}/attendance/2026-07-27`;
+
+    const saved = await agent
+      .put(`${prefix}/absent`)
+      .set(groupHeaders())
+      .send({ active: true, reason: "  旅行  " })
+      .expect(200);
+
+    expect(saved.body).toMatchObject({
+      studentId: student.id,
+      eventCode: "absent",
+      active: true,
+      absenceReason: "旅行",
+    });
+    const listed = await agent
+      .get("/api/attendance?branch=MK&group=MK%20HAPPY&date=2026-07-27")
+      .expect(200);
+    expect(listed.body.items).toContainEqual(expect.objectContaining({
+      studentId: student.id,
+      eventCode: "absent",
+      absenceReason: "旅行",
+    }));
+
+    const cleared = await agent
+      .put(`${prefix}/absent`)
+      .set(groupHeaders())
+      .send({ active: false })
+      .expect(200);
+    expect(cleared.body).toMatchObject({ active: false, absenceReason: null });
+    expect((await pool.query(
+      `select absence_reason from attendance_events
+       where student_id = $1 and attendance_date = $2 and event_code = 'absent'`,
+      [student.id, "2026-07-27"],
+    )).rows).toEqual([{ absence_reason: null }]);
+  });
+
   it("atomically makes active arrive and absent mutually exclusive", async () => {
     const student = await insertStudent(pool);
     await insertEvent(pool, student.id, "absent");
@@ -304,7 +345,7 @@ describe("attendance API", () => {
     await agent
       .put(`${prefix}/absent`)
       .set(groupHeaders())
-      .send({ active: true })
+      .send({ active: true, reason: "家事" })
       .expect(200);
     await agent
       .put(`${prefix}/arrive`)
@@ -376,6 +417,26 @@ describe("attendance API", () => {
       .send({ active: true, extra: true })
       .expect(400);
     await agent
+      .put(`${prefix}/2026-07-27/absent`)
+      .set(groupHeaders())
+      .send({ active: true })
+      .expect(400);
+    await agent
+      .put(`${prefix}/2026-07-27/absent`)
+      .set(groupHeaders())
+      .send({ active: true, reason: "   " })
+      .expect(400);
+    await agent
+      .put(`${prefix}/2026-07-27/absent`)
+      .set(groupHeaders())
+      .send({ active: true, reason: "a".repeat(101) })
+      .expect(400);
+    await agent
+      .put(`${prefix}/2026-07-27/arrive`)
+      .set(groupHeaders())
+      .send({ active: true, reason: "生病" })
+      .expect(400);
+    await agent
       .put(`${prefix}/2026-07-27/arrive`)
       .send({ active: true })
       .expect(400);
@@ -418,7 +479,7 @@ describe("attendance API", () => {
       await agent
         .put(`${prefix}/${eventCode}`)
         .set(groupHeaders())
-        .send({ active: true })
+        .send(eventCode === "absent" ? { active: true, reason: "校外比赛" } : { active: true })
         .expect(200);
     }
 
@@ -549,7 +610,7 @@ describe("attendance API", () => {
     await insertEvent(pool, arrived.id, "meal");
     await insertEvent(pool, arrived.id, "homework");
     await insertEvent(pool, arrived.id, "supplement");
-    await insertEvent(pool, absent.id, "absent");
+    await insertEvent(pool, absent.id, "absent", { absenceReason: "旅行" });
     await insertEvent(pool, koko.id, "koko");
     await insertEvent(pool, stopped.id, "arrive");
     await insertEvent(pool, wsKoko.id, "koko");
@@ -582,6 +643,7 @@ describe("attendance API", () => {
           grade: "Y4",
           status: "absent",
           events: ["absent"],
+          absenceReason: "旅行",
         },
         {
           id: arrived.id,

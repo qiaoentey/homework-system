@@ -20,6 +20,23 @@ describe("initial database schema", () => {
     expect(groups.rows).toContainEqual({ code: "JANICE STP", branch_code: "STP" });
   });
 
+  it("stores an optional reason beside attendance events", async () => {
+    const pool = await createTestDatabase();
+    pools.push(pool);
+
+    const columns = await pool.query(
+      `select column_name, is_nullable
+       from information_schema.columns
+       where table_name = 'attendance_events'
+         and column_name = 'absence_reason'`,
+    );
+
+    expect(columns.rows).toEqual([{
+      column_name: "absence_reason",
+      is_nullable: expect.any(String),
+    }]);
+  });
+
   it("prevents a student group from pointing at another branch", async () => {
     const pool = await createTestDatabase();
     pools.push(pool);

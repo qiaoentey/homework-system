@@ -797,6 +797,58 @@ test("writes, lists, summarizes, and clears attendance", async () => {
   });
 });
 
+test("persists, lists, validates, and clears Worker absence reasons", async () => {
+  await withD1(async (env) => {
+    const roster = await readJson(await apiWithD1(
+      env,
+      "/api/students?branch=MK&group=MK%20HAPPY&status=active&limit=1",
+    ));
+    const student = roster.items[0];
+    const prefix = `/api/students/${student.id}/attendance/2026-07-27`;
+
+    const saved = await readJson(await apiWithD1(env, `${prefix}/absent`, {
+      method: "PUT",
+      headers: groupHeaders(),
+      body: { active: true, reason: "  校外比赛  " },
+    }));
+    assert.equal(saved.active, true);
+    assert.equal(saved.absenceReason, "校外比赛");
+
+    const attendance = await readJson(await apiWithD1(
+      env,
+      "/api/attendance?branch=MK&group=MK%20HAPPY&date=2026-07-27",
+    ));
+    assert.equal(attendance.items[0].absenceReason, "校外比赛");
+
+    for (const body of [
+      { active: true },
+      { active: true, reason: "   " },
+      { active: true, reason: "a".repeat(101) },
+    ]) {
+      const invalid = await readJson(await apiWithD1(env, `${prefix}/absent`, {
+        method: "PUT",
+        headers: groupHeaders(),
+        body,
+      }), 400);
+      assert.equal(invalid.code, "INVALID_ATTENDANCE_EVENT");
+    }
+    const reasonOnArrive = await readJson(await apiWithD1(env, `${prefix}/arrive`, {
+      method: "PUT",
+      headers: groupHeaders(),
+      body: { active: true, reason: "生病" },
+    }), 400);
+    assert.equal(reasonOnArrive.code, "INVALID_ATTENDANCE_EVENT");
+
+    const cleared = await readJson(await apiWithD1(env, `${prefix}/absent`, {
+      method: "PUT",
+      headers: groupHeaders(),
+      body: { active: false },
+    }));
+    assert.equal(cleared.active, false);
+    assert.equal(cleared.absenceReason, null);
+  });
+});
+
 test("returns a signed-in daily dashboard for every daycare group", async () => {
   await withD1(async (env) => {
     assert.equal((await apiWithD1(env, "/api/dashboard?date=2026-07-27", {
@@ -820,20 +872,20 @@ test("returns a signed-in daily dashboard for every daycare group", async () => 
        VALUES (?, ?, 'Y4', ?, ?, 'active', ?)`,
     ).bind(id, name, branchCode, groupCode, `dashboard-${id}`)));
     const events = [
-      [students[0][0], "arrive"],
-      [students[0][0], "shower"],
-      [students[0][0], "meal"],
-      [students[0][0], "homework"],
-      [students[0][0], "supplement"],
-      [students[1][0], "absent"],
-      [students[2][0], "koko"],
-      [students[4][0], "koko"],
+      [students[0][0], "arrive", null],
+      [students[0][0], "shower", null],
+      [students[0][0], "meal", null],
+      [students[0][0], "homework", null],
+      [students[0][0], "supplement", null],
+      [students[1][0], "absent", "旅行"],
+      [students[2][0], "koko", null],
+      [students[4][0], "koko", null],
     ];
-    await env.DB.batch(events.map(([studentId, eventCode]) => env.DB.prepare(
+    await env.DB.batch(events.map(([studentId, eventCode, absenceReason]) => env.DB.prepare(
       `INSERT INTO attendance_events
-         (student_id, attendance_date, event_code, is_active, updated_by)
-       VALUES (?, '2026-07-27', ?, 1, 'fixture@example.com')`,
-    ).bind(studentId, eventCode)));
+         (student_id, attendance_date, event_code, is_active, absence_reason, updated_by)
+       VALUES (?, '2026-07-27', ?, 1, ?, 'fixture@example.com')`,
+    ).bind(studentId, eventCode, absenceReason)));
 
     const dashboard = await readJson(await apiWithD1(
       env,
@@ -860,6 +912,7 @@ test("returns a signed-in daily dashboard for every daycare group", async () => 
           grade: "Y4",
           status: "absent",
           events: ["absent"],
+          absenceReason: "旅行",
         },
         {
           id: students[0][0],
@@ -899,18 +952,18 @@ test("lists scoped attendance records including stopped history and conflicts", 
        VALUES (?, ?, 'Y4', 'MK', 'MK HAPPY', ?, ?)`,
     ).bind(id, name, status, `record-${id}`)));
     const events = [
-      [students[0][0], "arrive", 1],
-      [students[1][0], "arrive", 1],
-      [students[2][0], "absent", 1],
-      [students[3][0], "arrive", 0],
-      [students[4][0], "arrive", 1],
-      [students[4][0], "absent", 1],
+      [students[0][0], "arrive", 1, null],
+      [students[1][0], "arrive", 1, null],
+      [students[2][0], "absent", 1, "生病"],
+      [students[3][0], "arrive", 0, null],
+      [students[4][0], "arrive", 1, null],
+      [students[4][0], "absent", 1, null],
     ];
-    await env.DB.batch(events.map(([studentId, eventCode, active]) => env.DB.prepare(
+    await env.DB.batch(events.map(([studentId, eventCode, active, absenceReason]) => env.DB.prepare(
       `INSERT INTO attendance_events
-         (student_id, attendance_date, event_code, is_active, updated_by)
-       VALUES (?, '2026-07-27', ?, ?, 'fixture@example.com')`,
-    ).bind(studentId, eventCode, active)));
+         (student_id, attendance_date, event_code, is_active, absence_reason, updated_by)
+       VALUES (?, '2026-07-27', ?, ?, ?, 'fixture@example.com')`,
+    ).bind(studentId, eventCode, active, absenceReason)));
 
     const record = await readJson(await apiWithD1(
       env,
@@ -923,7 +976,12 @@ test("lists scoped attendance records including stopped history and conflicts", 
         { id: students[0][0], name: "PRESENT", grade: "Y4" },
         { id: students[1][0], name: "STOPPED PRESENT", grade: "Y4" },
       ],
-      absent: [{ id: students[2][0], name: "ABSENT", grade: "Y4" }],
+      absent: [{
+        id: students[2][0],
+        name: "ABSENT",
+        grade: "Y4",
+        absenceReason: "生病",
+      }],
       unmarked: [{ id: students[3][0], name: "UNMARKED", grade: "Y4" }],
       conflicts: [{ id: students[4][0], name: "CONFLICT", grade: "Y4" }],
     });
@@ -972,7 +1030,7 @@ test("makes Worker arrive and absent writes mutually exclusive", async () => {
     await readJson(await apiWithD1(env, `${prefix}/absent`, {
       method: "PUT",
       headers: groupHeaders(),
-      body: { active: true },
+      body: { active: true, reason: "家事" },
     }));
     await readJson(await apiWithD1(env, `${prefix}/arrive`, {
       method: "PUT",

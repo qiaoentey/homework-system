@@ -19,6 +19,7 @@ function mapAttendanceEvent(row) {
     date: dateString(row.attendance_date),
     eventCode: row.event_code,
     active: row.is_active,
+    absenceReason: row.absence_reason ?? null,
     updatedBy: row.updated_by,
     updatedAt: new Date(row.updated_at).toISOString(),
   };
@@ -67,7 +68,7 @@ export async function listAttendance(pool, {
 }) {
   const result = await pool.query(
     `select ae.student_id, ae.attendance_date, ae.event_code, ae.is_active,
-            ae.updated_by, ae.updated_at
+            ae.absence_reason, ae.updated_by, ae.updated_at
      from attendance_events ae
      join students s on s.id = ae.student_id
      where s.branch_code = $1
@@ -86,7 +87,7 @@ export async function getAttendanceRecord(pool, {
   date,
 }) {
   const result = await pool.query(
-    `select s.id, s.name, s.grade, s.status, ae.event_code
+    `select s.id, s.name, s.grade, s.status, ae.event_code, ae.absence_reason
      from students s
      left join attendance_events ae
        on ae.student_id = s.id
@@ -106,19 +107,25 @@ export async function getAttendanceRecord(pool, {
         item: { id: row.id, name: row.name, grade: row.grade },
         status: row.status,
         events: new Set(),
+        absenceReason: null,
       });
     }
     if (row.event_code) students.get(row.id).events.add(row.event_code);
+    if (row.event_code === "absent" && row.absence_reason) {
+      students.get(row.id).absenceReason = row.absence_reason;
+    }
   }
 
   const present = [];
   const absent = [];
   const unmarked = [];
   const conflicts = [];
-  for (const { item, status, events } of students.values()) {
+  for (const { item, status, events, absenceReason } of students.values()) {
     if (events.has("arrive") && events.has("absent")) conflicts.push(item);
     else if (events.has("arrive")) present.push(item);
-    else if (events.has("absent")) absent.push(item);
+    else if (events.has("absent")) {
+      absent.push({ ...item, ...(absenceReason ? { absenceReason } : {}) });
+    }
     else if (status === "active") unmarked.push(item);
   }
 
@@ -144,24 +151,33 @@ export async function upsertAttendanceEvent(pool, {
   date,
   eventCode,
   active,
+  absenceReason,
   actor,
 }) {
   return inTransaction(pool, async (client) => {
     await assertStudentScope(client, { id, branchCode, groupCode });
     const upsert = `insert into attendance_events
-       (student_id, attendance_date, event_code, is_active, updated_by)
-     values ($1, $2, $3, $4, $5)
+       (student_id, attendance_date, event_code, is_active, absence_reason, updated_by)
+     values ($1, $2, $3, $4, $5, $6)
      on conflict (student_id, attendance_date, event_code)
      do update set
        is_active = excluded.is_active,
+       absence_reason = excluded.absence_reason,
        updated_by = excluded.updated_by,
        updated_at = now()
-     returning student_id, attendance_date, event_code, is_active, updated_by, updated_at`;
-    const result = await client.query(upsert, [id, date, eventCode, active, actor]);
+     returning student_id, attendance_date, event_code, is_active,
+               absence_reason, updated_by, updated_at`;
+    const result = await client.query(
+      upsert,
+      [id, date, eventCode, active, absenceReason, actor],
+    );
     if (active && PRIMARY_ATTENDANCE_EVENTS.includes(eventCode)) {
       await client.query(
         `update attendance_events
-         set is_active = false, updated_by = $4, updated_at = now()
+         set is_active = false,
+             absence_reason = null,
+             updated_by = $4,
+             updated_at = now()
          where student_id = $1
            and attendance_date = $2
            and event_code = any($3::text[])
@@ -193,7 +209,7 @@ export async function getGroupSummary(pool, {
   date,
 }) {
   const result = await pool.query(
-    `select s.id, s.name, s.grade, ae.event_code
+    `select s.id, s.name, s.grade, ae.event_code, ae.absence_reason
      from students s
      left join attendance_events ae
        on ae.student_id = s.id
@@ -218,16 +234,20 @@ function resultFromAttendanceRows(rows) {
         name: row.name,
         grade: row.grade,
         events: new Set(),
+        absenceReason: null,
       });
     }
     if (row.event_code) students.get(row.id).events.add(row.event_code);
+    if (row.event_code === "absent" && row.absence_reason) {
+      students.get(row.id).absenceReason = row.absence_reason;
+    }
   }
   return dailyAttendanceResult([...students.values()]);
 }
 
 export async function getDailyDashboard(pool, { date }) {
   const result = await pool.query(
-    `select s.id, s.name, s.grade, s.group_code, ae.event_code
+    `select s.id, s.name, s.grade, s.group_code, ae.event_code, ae.absence_reason
      from students s
      left join attendance_events ae
        on ae.student_id = s.id
