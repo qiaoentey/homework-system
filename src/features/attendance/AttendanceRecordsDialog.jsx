@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { rosterApi } from "../../api/client.js";
+import { formatAbsenceReason } from "../../../shared/absenceReasons.js";
 import { LifecycleDialog } from "../students/LifecycleDialog.jsx";
 
 function localToday() {
@@ -20,6 +21,11 @@ function StudentList({ title, count, students }) {
             <li key={student.id}>
               <strong>{student.name}</strong>
               <span>{student.grade}</span>
+              {student.absenceReason ? (
+                <span className="attendance-records__absence-reason">
+                  缺席原因：{formatAbsenceReason(student.absenceReason)}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>

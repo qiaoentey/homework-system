@@ -60,7 +60,12 @@ const READY_RECORD = {
   date: "2026-07-27",
   counts: { present: 1, absent: 1, unmarked: 1, conflicts: 0 },
   present: [{ id: "10000000-0000-4000-8000-000000000001", name: "PRESENT ONE", grade: "Y1" }],
-  absent: [{ id: "10000000-0000-4000-8000-000000000002", name: "ABSENT ONE", grade: "Y2" }],
+  absent: [{
+    id: "10000000-0000-4000-8000-000000000002",
+    name: "ABSENT ONE",
+    grade: "Y2",
+    absenceReason: "回乡处理事情",
+  }],
   unmarked: [{ id: "10000000-0000-4000-8000-000000000003", name: "UNMARKED ONE", grade: "Y3" }],
   conflicts: [],
 };
@@ -126,6 +131,7 @@ describe("daily attendance records", () => {
     expect(within(dialog).getByRole("heading", { name: "未点名 1" })).toBeVisible();
     expect(within(dialog).getByText("PRESENT ONE")).toBeVisible();
     expect(within(dialog).getByText("ABSENT ONE")).toBeVisible();
+    expect(within(dialog).getByText("缺席原因：其他：回乡处理事情")).toBeVisible();
     expect(within(dialog).getByText("UNMARKED ONE")).toBeVisible();
 
     fireEvent.change(within(dialog).getByLabelText("记录日期"), {

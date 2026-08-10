@@ -680,6 +680,14 @@ button {
   white-space: nowrap;
 }
 
+.dashboard-student__absence-reason {
+  color: #a52e2e;
+  font-size: 11px;
+  font-weight: 850;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .dashboard-student__events {
   display: flex;
   flex-wrap: wrap;
@@ -1687,6 +1695,12 @@ button {
 .attendance-records__loading {
   color: var(--color-muted);
   font-size: 12px;
+}
+
+.attendance-records__card .attendance-records__absence-reason {
+  color: #a52e2e;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .attendance-records__empty {

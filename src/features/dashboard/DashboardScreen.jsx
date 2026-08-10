@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { rosterApi } from "../../api/client.js";
 import { EVENT_BUTTONS } from "../../domain/attendance.js";
+import { formatAbsenceReason } from "../../../shared/absenceReasons.js";
 
 const FILTERS = [
   ["ALL", "全部"],
@@ -171,6 +172,11 @@ export function DashboardScreen({
                             <span className="dashboard-student__status">
                               {student.grade} · {STATUS_LABELS[student.status]}
                             </span>
+                            {student.status === "absent" && student.absenceReason ? (
+                              <span className="dashboard-student__absence-reason">
+                                缺席原因：{formatAbsenceReason(student.absenceReason)}
+                              </span>
+                            ) : null}
                             <div
                               aria-label={`${student.name} 点名项目`}
                               className="dashboard-student__events"

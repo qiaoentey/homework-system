@@ -28,7 +28,14 @@ const dashboard = {
           status: "arrived",
           events: ["arrive", "shower", "meal", "homework", "supplement"],
         },
-        { id: "2", name: "BEN", grade: "Y2", status: "absent", events: ["absent"] },
+        {
+          id: "2",
+          name: "BEN",
+          grade: "Y2",
+          status: "absent",
+          events: ["absent"],
+          absenceReason: "生病",
+        },
         { id: "3", name: "CARA", grade: "Y3", status: "unmarked", events: [] },
         { id: "4", name: "DAN", grade: "Y4", status: "unmarked", events: [] },
       ],
@@ -109,6 +116,7 @@ describe("daily Dashboard", () => {
     expect(within(mkCard).getByText("AMY")).toBeVisible();
     expect(within(mkCard).getByText("Y1 · 已到")).toBeVisible();
     expect(within(mkCard).getByText("Y2 · 缺席")).toBeVisible();
+    expect(within(mkCard).getByText("缺席原因：生病")).toBeVisible();
     expect(within(mkCard).getByText("Y3 · 未点")).toBeVisible();
     expect(within(mkCard).getByText("Y4 · 未点")).toBeVisible();
     const amyEvents = within(mkCard).getByRole("list", { name: "AMY 点名项目" });
