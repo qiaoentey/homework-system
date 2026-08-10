@@ -174,6 +174,37 @@ describe("restored student profile choices", () => {
     expect(schoolClass).toHaveValue("");
   });
 
+  it("shows SMK Danau Kota only for STP and leaves its class list empty", () => {
+    renderProfile(student({
+      branchCode: "STP",
+      groupCode: "STP QIAO EN",
+      grade: "F3",
+    }), "STP");
+
+    const stpSchool = screen.getByRole("combobox", { name: "学校" });
+    expect(within(stpSchool).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择学校",
+      "南益",
+      "民义",
+      "旺小",
+      "桥南",
+      "中华小学",
+      "中华中学",
+      "SMK Danau Kota",
+    ]);
+
+    fireEvent.change(stpSchool, { target: { value: "SMK Danau Kota" } });
+    expect(within(screen.getByRole("combobox", { name: "学校班级" }))
+      .getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "请选择学校班级",
+    ]);
+
+    cleanup();
+    renderProfile(student({ branchCode: "WS" }), "WS");
+    expect(within(screen.getByRole("combobox", { name: "学校" }))
+      .queryByRole("option", { name: "SMK Danau Kota" })).not.toBeInTheDocument();
+  });
+
   it("links the six original schools to grade-matched classes and clears an incompatible class", () => {
     renderProfile();
 

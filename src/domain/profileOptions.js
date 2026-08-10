@@ -33,6 +33,7 @@ export const STUDENT_GRADE_OPTIONS = [
 ];
 
 const MK_SCHOOL_OPTIONS = ["一校", "二校", "启智", "姚贞暖", "幼儿园"];
+const STP_SCHOOL_OPTIONS = [...SCHOOL_OPTIONS, "SMK Danau Kota"];
 
 const MK_SCHOOL_CLASSES = {
   一校: {
@@ -148,7 +149,9 @@ function gradePrefix(grade) {
 }
 
 export function schoolOptionsFor(branchCode) {
-  return branchCode === "MK" ? [...MK_SCHOOL_OPTIONS] : [...SCHOOL_OPTIONS];
+  if (branchCode === "MK") return [...MK_SCHOOL_OPTIONS];
+  if (branchCode === "STP") return [...STP_SCHOOL_OPTIONS];
+  return [...SCHOOL_OPTIONS];
 }
 
 export function vanDriverOptionsFor(branchCode) {

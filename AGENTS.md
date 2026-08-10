@@ -17,3 +17,5 @@ Dashboard student rows must show every daily point-marking item in the same orde
 Marking a student absent must require one of these reasons: 生病、旅行、校外比赛、家事、其他. “其他” requires teacher-entered text, and the saved reason must remain visible on the roster, Dashboard, and dated attendance records.
 
 MK 姚贞暖学校班级选项为：二年级 2B、三年级 3H、四年级 4Y、六年级 6W；其他年级暂时不提供班级选项。
+
+STP 学校选项额外包含 SMK Danau Kota；该学校暂时不提供学校班级选项，并且不得出现在 WS 或 MK。
